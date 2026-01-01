@@ -60,6 +60,8 @@ export const PATH_DASHBOARD = {
     root: path(ROOTS_DASHBOARD, '/tasks'),
     list: path(ROOTS_DASHBOARD, '/tasks/list'),
     create: path(ROOTS_DASHBOARD, '/tasks/create'),
+    view: (id: string) => path(ROOTS_DASHBOARD, `/tasks/${id}`),
+    edit: (id: string) => path(ROOTS_DASHBOARD, `/tasks/${id}/edit`),
   },
   scheduling: {
     root: path(ROOTS_DASHBOARD, '/scheduling'),
@@ -69,6 +71,9 @@ export const PATH_DASHBOARD = {
   restaurantLocation: {
     root: path(ROOTS_DASHBOARD, '/restaurant-location'),
     list: path(ROOTS_DASHBOARD, '/restaurant-location/list'),
+    new: path(ROOTS_DASHBOARD, '/restaurant-location/new'),
+    view: (id: string) => path(ROOTS_DASHBOARD, `/restaurant-location/${id}`),
+    edit: (id: string) => path(ROOTS_DASHBOARD, `/restaurant-location/${id}/edit`),
     map: path(ROOTS_DASHBOARD, '/restaurant-location/map'),
   },
   templates: {

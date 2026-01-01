@@ -40,7 +40,7 @@ export default function IngredientItem({ id, name, quantity, unit, onEdit, canEd
           bgcolor: canEdit ? alpha(theme.palette.primary.main, 0.04) : alpha(theme.palette.grey[500], 0.12),
           borderColor: canEdit ? alpha(theme.palette.primary.main, 0.24) : 'transparent',
           '& .edit-icon': {
-            opacity: 1,
+            display: 'flex',
           },
         },
       }}
@@ -85,10 +85,7 @@ export default function IngredientItem({ id, name, quantity, unit, onEdit, canEd
               }}
               className="edit-icon"
               sx={{
-                opacity: 0,
-                transition: theme.transitions.create('opacity', {
-                  duration: theme.transitions.duration.short,
-                }),
+                display: 'none',
                 width: { xs: 24, md: 28 },
                 height: { xs: 24, md: 28 },
                 color: 'text.secondary',

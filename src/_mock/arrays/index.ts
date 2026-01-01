@@ -9,3 +9,5 @@ export * from './_invoice';
 export * from './_ecommerce';
 export * from './_analytics';
 export * from './_recipe';
+export * from './_task';
+export * from './_restaurantLocation';

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as Yup from 'yup';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
@@ -36,9 +37,7 @@ import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
 // sections
-import { ImageUploadZone, VideoUploadZone, SingleImageUpload, DynamicIngredientList, DynamicStepList } from './form';
-// validation
-import RecipeValidationSchema from './RecipeValidation';
+import { ImageUploadZone, VideoUploadZone, DynamicIngredientList, DynamicStepList } from './form';
 
 // ----------------------------------------------------------------------
 
@@ -65,11 +64,9 @@ type FormValuesProps = {
   essentials: Array<{ name: string; quantity: number; unit: string }>;
   starchTitle: string;
   starchSteps: string[];
-  starchImage: string | null;
   predefinedStarch: string[];
   predefinedVegetable: string[];
   designYourPlate: string[];
-  designYourPlateImage: string | null;
   predefinedIngredients: string[];
   availability: string;
   cookingDeviationComments: string[];
@@ -97,23 +94,21 @@ const PREDEFINED_STARCH = ['Bread Basket / Artisan Rolls', 'Bread Pudding (savor
 const PREDEFINED_VEGETABLE = ['Acorn Squash (roasted, stuffed)', 'Artichokes (braised, grilled, fried)', 'Beets (roasted, pickled, puréed)', 'Asparagus'];
 const PREDEFINED_INGREDIENTS = ['Bisque (shellfish)', 'Beef Stock', 'Blue Cheese Dressing', 'Beurre Blanc'];
 
-// Consistent Form Styling System
-const FORM_INPUT_SX = {
-  '& .MuiInputBase-root': {
-    fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-  },
-  '& .MuiInputLabel-root': {
-    fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-  },
-  '& .MuiFormHelperText-root': {
-    fontSize: { xs: '0.75rem', md: '0.75rem' },
-  },
-};
-
 export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Props) {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
+
+  const NewRecipeSchema = Yup.object().shape({
+    dishName: Yup.string().required('Dish name is required'),
+    cuisineType: Yup.array().min(1, 'At least one cuisine type is required'),
+    centerOfPlate: Yup.string().required('Center of plate is required'),
+    menuClass: Yup.string().required('Menu class is required'),
+    preparationTime: Yup.number().min(1, 'Preparation time must be at least 1').required('Preparation time is required'),
+    menuPrice: Yup.number().min(0, 'Menu price must be positive').required('Menu price is required'),
+    station: Yup.string().required('Station is required'),
+    description: Yup.string().required('Description is required'),
+  });
 
   const defaultValues = useMemo(
     () => ({
@@ -139,11 +134,9 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       essentials: currentRecipe?.essentialIngredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
       starchTitle: '',
       starchSteps: [],
-      starchImage: null,
       predefinedStarch: [],
       predefinedVegetable: [],
       designYourPlate: [],
-      designYourPlateImage: null,
       predefinedIngredients: [],
       availability: 'available',
       cookingDeviationComments: [],
@@ -158,7 +151,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   );
 
   const methods = useForm<FormValuesProps>({
-    resolver: yupResolver(RecipeValidationSchema),
+    resolver: yupResolver(NewRecipeSchema),
     defaultValues,
   });
 
@@ -242,24 +235,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
     }
   };
 
-  const handleStarchImageUpload = (file: File) => {
-    const url = URL.createObjectURL(file);
-    setValue('starchImage', url);
-  };
-
-  const handleStarchImageRemove = () => {
-    setValue('starchImage', null);
-  };
-
-  const handleDesignYourPlateImageUpload = (file: File) => {
-    const url = URL.createObjectURL(file);
-    setValue('designYourPlateImage', url);
-  };
-
-  const handleDesignYourPlateImageRemove = () => {
-    setValue('designYourPlateImage', null);
-  };
-
   const handleDragEnd = useCallback((result: DropResult) => {
     const { source, destination } = result;
 
@@ -297,11 +272,11 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
-        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+        <Grid container spacing={4}>
         <Grid item xs={12}>
           {/* Image Upload Section */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-            <Typography variant="h5" sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' } }}>
+          <Card sx={{ p: 4 }}>
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
               Recipe Images
             </Typography>
             <Controller
@@ -326,22 +301,120 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
         <Grid item xs={12}>
           {/* Video Upload Section */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-            <Typography variant="h5" sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' } }}>
+          <Card sx={{ p: 4 }}>
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
               Recipe Video
             </Typography>
             <Controller
               name="video"
               control={control}
               render={({ field, fieldState: { error } }) => (
-                <VideoUploadZone
-                  video={field.value}
-                  onUpload={handleVideoUpload}
-                  onRemove={handleVideoRemove}
-                  onTypeChange={handleVideoTypeChange}
-                  error={!!error}
-                  helperText={error?.message}
-                />
+                field.value ? (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                      Uploaded Video
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                        gap: 2,
+                      }}
+                    >
+                      <Card
+                        sx={{
+                          position: 'relative',
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                          boxShadow: theme.customShadows.z8,
+                          '&:hover .video-actions': {
+                            opacity: 1,
+                          },
+                        }}
+                      >
+                        <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
+                          <video
+                            src={field.value.url}
+                            controls
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          >
+                            <track kind="captions" />
+                          </video>
+                          {/* Video Type Badge */}
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              left: 8,
+                              zIndex: 9,
+                            }}
+                          >
+                            <Chip
+                              label={field.value.type === 'preparation' ? 'Preparation & Plating' : 'Presentation & Selling'}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.6875rem',
+                                fontWeight: 700,
+                                bgcolor: field.value.type === 'preparation' ? theme.palette.primary.main : theme.palette.success.main,
+                                color: '#fff',
+                              }}
+                            />
+                          </Box>
+                          {/* Actions */}
+                          <Box
+                            className="video-actions"
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              opacity: 0,
+                              transition: theme.transitions.create('opacity'),
+                              zIndex: 9,
+                            }}
+                          >
+                            <IconButton
+                              size="small"
+                              onClick={handleVideoRemove}
+                              sx={{
+                                bgcolor: alpha(theme.palette.error.main, 0.9),
+                                color: '#fff',
+                                '&:hover': {
+                                  bgcolor: theme.palette.error.main,
+                                },
+                              }}
+                            >
+                              <Iconify icon="eva:trash-2-outline" width={16} />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                        {/* Video Info */}
+                        <Stack direction="row" alignItems="center" spacing={1} sx={{ p: 2 }}>
+                          <Iconify icon="eva:video-fill" width={24} sx={{ color: theme.palette.primary.main }} />
+                          <Typography variant="subtitle2" noWrap>
+                            {field.value.name}
+                          </Typography>
+                        </Stack>
+                      </Card>
+                    </Box>
+                  </Box>
+                ) : (
+                  <VideoUploadZone
+                    video={field.value}
+                    onUpload={handleVideoUpload}
+                    onRemove={handleVideoRemove}
+                    onTypeChange={handleVideoTypeChange}
+                    error={!!error}
+                    helperText={error?.message}
+                  />
+                )
               )}
             />
           </Card>
@@ -349,17 +422,17 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
         <Grid item xs={12}>
           {/* Basic Information */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-            <Typography variant="h5" sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' } }}>
+          <Card sx={{ p: 4 }}>
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
               Basic Information
             </Typography>
 
-            <Grid container spacing={{ xs: 2, md: 3 }}>
-              <Grid item xs={12} sm={6} md={4}>
-                <RHFTextField name="dishName" label="Dish Name" sx={FORM_INPUT_SX} />
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={4}>
+                <RHFTextField name="dishName" label="Dish Name" />
               </Grid>
 
-              <Grid item xs={12} sm={6} md={4}>
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="cuisineType"
                   control={control}
@@ -379,7 +452,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                             sx={{
                               bgcolor: value.length > 1 ? alpha(theme.palette.warning.main, 0.16) : undefined,
                               color: value.length > 1 ? theme.palette.warning.main : undefined,
-                              fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
                             }}
                           />
                         ))
@@ -392,7 +464,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                           helperText={
                             error?.message || (field.value.length > 1 && '✨ Fusion Dish')
                           }
-                          sx={FORM_INPUT_SX}
                         />
                       )}
                     />
@@ -400,8 +471,8 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6} md={4}>
-                <RHFSelect name="centerOfPlate" label="Center of Plate" sx={FORM_INPUT_SX}>
+              <Grid item xs={12} md={4}>
+                <RHFSelect name="centerOfPlate" label="Center of Plate">
                   {CENTER_OF_PLATE_OPTIONS.map((option) => (
                     <MenuItem key={option} value={option}>
                       {option}
@@ -410,8 +481,8 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                 </RHFSelect>
               </Grid>
 
-              <Grid item xs={12} sm={6} md={4}>
-                <RHFSelect name="menuClass" label="Menu Class" sx={FORM_INPUT_SX}>
+              <Grid item xs={12} md={4}>
+                <RHFSelect name="menuClass" label="Menu Class">
                   {MENU_CLASS_OPTIONS.map((option) => (
                     <MenuItem key={option} value={option}>
                       {option}
@@ -420,7 +491,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                 </RHFSelect>
               </Grid>
 
-              <Grid item xs={12} sm={6} md={4}>
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="preparationTime"
                   control={control}
@@ -432,7 +503,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                       type="number"
                       error={!!error}
                       helperText={error?.message}
-                      sx={FORM_INPUT_SX}
                       InputProps={{
                         endAdornment: (
                           <InputAdornment position="end">
@@ -444,11 +514,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                                   {...unitField}
                                   select
                                   size="small"
-                                  sx={{ 
-                                    width: { xs: 80, md: 100 }, 
-                                    '& fieldset': { border: 'none' },
-                                    ...FORM_INPUT_SX,
-                                  }}
+                                  sx={{ width: 100, '& fieldset': { border: 'none' } }}
                                 >
                                   {TIME_UNIT_OPTIONS.map((unit) => (
                                     <MenuItem key={unit} value={unit}>
@@ -466,7 +532,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6} md={4}>
+              <Grid item xs={12} md={4}>
                 <RHFTextField
                   name="menuPrice"
                   label="Menu Price"
@@ -474,7 +540,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   InputProps={{
                     startAdornment: <InputAdornment position="start">$</InputAdornment>,
                   }}
-                  sx={FORM_INPUT_SX}
                 />
               </Grid>
 
@@ -488,12 +553,11 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     readOnly: true,
                   }}
                   helperText="Auto-calculated from ingredients"
-                  sx={FORM_INPUT_SX}
                 />
               </Grid>
 
               <Grid item xs={12} md={4}>
-                <RHFSelect name="station" label="Station to Prepare Dish" sx={FORM_INPUT_SX}>
+                <RHFSelect name="station" label="Station to Prepare Dish">
                   {STATION_OPTIONS.map((option) => (
                     <MenuItem key={option} value={option}>
                       {option}
@@ -502,11 +566,10 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                 </RHFSelect>
               </Grid>
 
-              <Grid item xs={12} sm={6} md={4}>
+              <Grid item xs={12} md={4}>
                 <RHFTextField
                   name="youtubeUrl"
                   label="Youtube URL"
-                  sx={FORM_INPUT_SX}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
@@ -522,12 +585,12 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
         <Grid item xs={12}>
           {/* Food Cost Calculator */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-            <Typography variant="h5" sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' } }}>
+          <Card sx={{ p: 4 }}>
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
               Food Cost Calculator
             </Typography>
 
-            <Grid container spacing={{ xs: 2, md: 3 }}>
+            <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={3}>
                 <RHFTextField
                   name="caseCost"
@@ -536,7 +599,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   InputProps={{
                     startAdornment: <InputAdornment position="start">$</InputAdornment>,
                   }}
-                  sx={FORM_INPUT_SX}
                 />
               </Grid>
 
@@ -545,7 +607,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   name="caseWeight"
                   label="Case Weight (lbs)"
                   type="number"
-                  sx={FORM_INPUT_SX}
                 />
               </Grid>
 
@@ -554,7 +615,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   name="servingWeight"
                   label="Serving Weight (oz)"
                   type="number"
-                  sx={FORM_INPUT_SX}
                 />
               </Grid>
 
@@ -563,16 +623,14 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   name="servingsInCase"
                   label="Servings in Case"
                   type="number"
-                  sx={FORM_INPUT_SX}
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6} md={4}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Cost per Serving"
                   value={`$${values.costPerServing.toFixed(2)}`}
-                  sx={FORM_INPUT_SX}
                   InputProps={{
                     readOnly: true,
                     sx: {
@@ -583,7 +641,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6} md={4}>
+              <Grid item xs={12} md={4}>
                 <RHFTextField
                   name="foodCostWanted"
                   label="Margin per Serving (%)"
@@ -591,7 +649,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   InputProps={{
                     endAdornment: <InputAdornment position="end">%</InputAdornment>,
                   }}
-                  sx={FORM_INPUT_SX}
                 />
               </Grid>
 
@@ -600,7 +657,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   fullWidth
                   label="Suggested Menu Price"
                   value={`$${((values.costPerServing / (values.foodCostWanted / 100)) || 0).toFixed(2)}`}
-                  sx={FORM_INPUT_SX}
                   InputProps={{
                     readOnly: true,
                     sx: {
@@ -617,18 +673,17 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
         <Grid item xs={12}>
           {/* Description & Tags */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-            <Typography variant="h5" sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' } }}>
+          <Card sx={{ p: 4 }}>
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
               Description & Tags
             </Typography>
 
-            <Stack spacing={{ xs: 2, md: 3 }}>
+            <Stack spacing={3}>
               <RHFTextField
                 name="description"
                 label="Description"
                 multiline
                 rows={4}
-                sx={FORM_INPUT_SX}
               />
 
               <Controller
@@ -652,13 +707,12 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                             bgcolor: alpha(theme.palette.primary.main, 0.16),
                             color: theme.palette.primary.main,
                             fontWeight: 600,
-                            fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
                           }}
                         />
                       ))
                     }
                     renderInput={(params) => (
-                      <TextField {...params} label="Tags" placeholder="Add tags" sx={FORM_INPUT_SX} />
+                      <TextField {...params} label="Tags" placeholder="Add tags" />
                     )}
                   />
                 )}
@@ -669,9 +723,9 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
         <Grid item xs={12}>
           {/* Ingredients & Essentials */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-            <Grid container spacing={{ xs: 2, md: 4 }}>
-              <Grid item xs={12} md={7} lg={8}>
+          <Card sx={{ p: 4 }}>
+            <Grid container spacing={4}>
+              <Grid item xs={12} md={8}>
                 <Controller
                   name="ingredients"
                   control={control}
@@ -686,7 +740,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                 />
               </Grid>
 
-              <Grid item xs={12} md={5} lg={4}>
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="essentials"
                   control={control}
@@ -707,7 +761,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
         <Grid item xs={12}>
           {/* Preparation Steps */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          <Card sx={{ p: 4 }}>
             <Controller
               name="starchSteps"
               control={control}
@@ -718,32 +772,12 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   onChange={field.onChange}
                   droppableId="starchSteps"
                   placeholder="Enter preparation step"
+                  showUploadImage
                 />
               )}
             />
 
-            {/* Starch Preparation Image */}
-            <Box sx={{ mt: { xs: 3, md: 4 } }}>
-              <Typography variant="subtitle2" sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: 600, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' } }}>
-                Starch Preparation Image
-              </Typography>
-              <Controller
-                name="starchImage"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <SingleImageUpload
-                    image={field.value}
-                    onUpload={handleStarchImageUpload}
-                    onRemove={handleStarchImageRemove}
-                    label="Upload Starch Preparation Image"
-                    error={!!error}
-                    helperText={error?.message}
-                  />
-                )}
-              />
-            </Box>
-
-            <Divider sx={{ my: { xs: 3, md: 4 } }} />
+            <Divider sx={{ my: 4 }} />
 
             <Controller
               name="designYourPlate"
@@ -755,41 +789,21 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   onChange={field.onChange}
                   droppableId="designYourPlate"
                   placeholder="Enter plating instruction"
+                  showUploadImage
                 />
               )}
             />
-
-            {/* Design Your Plate Image */}
-            <Box sx={{ mt: { xs: 3, md: 4 } }}>
-              <Typography variant="subtitle2" sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: 600, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' } }}>
-                Design Your Plate Image
-              </Typography>
-              <Controller
-                name="designYourPlateImage"
-                control={control}
-                render={({ field, fieldState: { error } }) => (
-                  <SingleImageUpload
-                    image={field.value}
-                    onUpload={handleDesignYourPlateImageUpload}
-                    onRemove={handleDesignYourPlateImageRemove}
-                    label="Upload Design Your Plate Image"
-                    error={!!error}
-                    helperText={error?.message}
-                  />
-                )}
-              />
-            </Box>
           </Card>
         </Grid>
 
         <Grid item xs={12}>
           {/* Predefined Selections */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-            <Typography variant="h5" sx={{ mb: { xs: 1.5, md: 2 }, fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' } }}>
+          <Card sx={{ p: 4 }}>
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
               Predefined Items
             </Typography>
 
-            <Stack spacing={{ xs: 2, md: 3 }}>
+            <Stack spacing={3}>
               <Controller
                 name="predefinedStarch"
                 control={control}
@@ -802,16 +816,11 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     onChange={(_, newValue) => field.onChange(newValue)}
                     renderTags={(value, getTagProps) =>
                       value.map((option, index) => (
-                        <Chip 
-                          {...getTagProps({ index })} 
-                          label={option} 
-                          size="small"
-                          sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' } }}
-                        />
+                        <Chip {...getTagProps({ index })} label={option} size="small" />
                       ))
                     }
                     renderInput={(params) => (
-                      <TextField {...params} label="Predefined Starch" sx={FORM_INPUT_SX} />
+                      <TextField {...params} label="Predefined Starch" />
                     )}
                   />
                 )}
@@ -829,16 +838,11 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     onChange={(_, newValue) => field.onChange(newValue)}
                     renderTags={(value, getTagProps) =>
                       value.map((option, index) => (
-                        <Chip 
-                          {...getTagProps({ index })} 
-                          label={option} 
-                          size="small"
-                          sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' } }}
-                        />
+                        <Chip {...getTagProps({ index })} label={option} size="small" />
                       ))
                     }
                     renderInput={(params) => (
-                      <TextField {...params} label="Predefined Vegetable" sx={FORM_INPUT_SX} />
+                      <TextField {...params} label="Predefined Vegetable" />
                     )}
                   />
                 )}
@@ -856,16 +860,11 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     onChange={(_, newValue) => field.onChange(newValue)}
                     renderTags={(value, getTagProps) =>
                       value.map((option, index) => (
-                        <Chip 
-                          {...getTagProps({ index })} 
-                          label={option} 
-                          size="small"
-                          sx={{ fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' } }}
-                        />
+                        <Chip {...getTagProps({ index })} label={option} size="small" />
                       ))
                     }
                     renderInput={(params) => (
-                      <TextField {...params} label="Predefined Ingredients" sx={FORM_INPUT_SX} />
+                      <TextField {...params} label="Predefined Ingredients" />
                     )}
                   />
                 )}
@@ -876,9 +875,9 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
         <Grid item xs={12}>
           {/* Comments & Status */}
-          <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          <Card sx={{ p: 4 }}>
             <Grid container spacing={4}>
-              <Grid item xs={12} lg={6}>
+              <Grid item xs={12} md={6}>
                 <Controller
                   name="cookingDeviationComments"
                   control={control}
@@ -894,7 +893,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                 />
               </Grid>
 
-              <Grid item xs={12} lg={6}>
+              <Grid item xs={12} md={6}>
                 <Controller
                   name="realtimeVariableComments"
                   control={control}
@@ -911,20 +910,12 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
               </Grid>
             </Grid>
 
-            <Divider sx={{ my: { xs: 3, md: 4 } }} />
+            <Divider sx={{ my: 4 }} />
 
-            <Grid container spacing={{ xs: 2, md: 3 }}>
-              <Grid item xs={12} sm={6}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
                 <FormControl component="fieldset">
-                  <FormLabel 
-                    component="legend" 
-                    sx={{ 
-                      fontWeight: 700, 
-                      mb: { xs: 1, md: 1.5 },
-                      fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
-                      color: 'text.primary',
-                    }}
-                  >
+                  <FormLabel component="legend" sx={{ fontWeight: 700, mb: 1 }}>
                     Availability
                   </FormLabel>
                   <Controller
@@ -932,53 +923,18 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     control={control}
                     render={({ field }) => (
                       <RadioGroup {...field} row>
-                        <FormControlLabel 
-                          value="available" 
-                          control={<Radio size="small" />} 
-                          label="Available"
-                          sx={{
-                            '& .MuiFormControlLabel-label': {
-                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                            },
-                          }}
-                        />
-                        <FormControlLabel 
-                          value="low" 
-                          control={<Radio size="small" />} 
-                          label="Low Stock"
-                          sx={{
-                            '& .MuiFormControlLabel-label': {
-                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                            },
-                          }}
-                        />
-                        <FormControlLabel 
-                          value="out" 
-                          control={<Radio size="small" />} 
-                          label="Out of Stock"
-                          sx={{
-                            '& .MuiFormControlLabel-label': {
-                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                            },
-                          }}
-                        />
+                        <FormControlLabel value="available" control={<Radio />} label="Available" />
+                        <FormControlLabel value="low" control={<Radio />} label="Low Stock" />
+                        <FormControlLabel value="out" control={<Radio />} label="Out of Stock" />
                       </RadioGroup>
                     )}
                   />
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} md={6}>
                 <FormControl component="fieldset">
-                  <FormLabel 
-                    component="legend" 
-                    sx={{ 
-                      fontWeight: 700, 
-                      mb: { xs: 1, md: 1.5 },
-                      fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
-                      color: 'text.primary',
-                    }}
-                  >
+                  <FormLabel component="legend" sx={{ fontWeight: 700, mb: 1 }}>
                     Status
                   </FormLabel>
                   <Controller
@@ -986,36 +942,9 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     control={control}
                     render={({ field }) => (
                       <RadioGroup {...field} row>
-                        <FormControlLabel 
-                          value="draft" 
-                          control={<Radio size="small" />} 
-                          label="Draft"
-                          sx={{
-                            '& .MuiFormControlLabel-label': {
-                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                            },
-                          }}
-                        />
-                        <FormControlLabel 
-                          value="active" 
-                          control={<Radio size="small" />} 
-                          label="Active"
-                          sx={{
-                            '& .MuiFormControlLabel-label': {
-                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                            },
-                          }}
-                        />
-                        <FormControlLabel 
-                          value="archived" 
-                          control={<Radio size="small" />} 
-                          label="Archived"
-                          sx={{
-                            '& .MuiFormControlLabel-label': {
-                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                            },
-                          }}
-                        />
+                        <FormControlLabel value="draft" control={<Radio />} label="Draft" />
+                        <FormControlLabel value="active" control={<Radio />} label="Active" />
+                        <FormControlLabel value="archived" control={<Radio />} label="Archived" />
                       </RadioGroup>
                     )}
                   />
@@ -1027,17 +956,11 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
         <Grid item xs={12}>
           {/* Action Buttons */}
-          <Stack 
-            direction={{ xs: 'column', sm: 'row' }} 
-            spacing={2} 
-            justifyContent="flex-end"
-            sx={{ mt: { xs: 2, md: 3 } }}
-          >
+          <Stack direction="row" spacing={2} justifyContent="flex-end">
             <Button
               variant="outlined"
               size="large"
               onClick={() => navigate(PATH_DASHBOARD.recipes.list)}
-              sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 120 } }}
             >
               Cancel
             </Button>
@@ -1046,7 +969,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
               variant="outlined"
               size="large"
               onClick={() => reset()}
-              sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 120 } }}
             >
               Clear
             </Button>
@@ -1056,7 +978,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
               size="large"
               loading={isSubmitting}
               onClick={onSaveDraft}
-              sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 120 } }}
             >
               Save as Draft
             </LoadingButton>
@@ -1066,7 +987,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
               variant="contained"
               size="large"
               loading={isSubmitting}
-              sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 140 } }}
             >
               {isEdit ? 'Update Recipe' : 'Create Recipe'}
             </LoadingButton>

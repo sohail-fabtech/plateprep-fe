@@ -98,9 +98,14 @@ export const WineInventoryListPage = Loadable(lazy(() => import('../pages/custom
 export const WineInventoryAddPage = Loadable(lazy(() => import('../pages/custom/WineInventoryAddPage')));
 export const TasksListPage = Loadable(lazy(() => import('../pages/custom/TasksListPage')));
 export const TasksCreatePage = Loadable(lazy(() => import('../pages/custom/TasksCreatePage')));
+export const TasksEditPage = Loadable(lazy(() => import('../pages/custom/TasksEditPage')));
+export const TasksDetailsPage = Loadable(lazy(() => import('../pages/custom/TaskDetailsPage')));
 export const SchedulingCalendarPage = Loadable(lazy(() => import('../pages/custom/SchedulingCalendarPage')));
 export const SchedulingReleasesPage = Loadable(lazy(() => import('../pages/custom/SchedulingReleasesPage')));
 export const RestaurantLocationListPage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationListPage')));
+export const RestaurantLocationCreatePage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationCreatePage')));
+export const RestaurantLocationEditPage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationEditPage')));
+export const RestaurantLocationDetailsPage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationDetailsPage')));
 export const RestaurantLocationMapPage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationMapPage')));
 export const TemplatesListPage = Loadable(lazy(() => import('../pages/custom/TemplatesListPage')));
 export const TemplatesCreatePage = Loadable(lazy(() => import('../pages/custom/TemplatesCreatePage')));

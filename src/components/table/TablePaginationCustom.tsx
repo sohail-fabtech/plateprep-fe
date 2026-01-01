@@ -19,7 +19,7 @@ type Props = {
 };
 
 export default function TablePaginationCustom({
-  dense,
+  dense = false,
   onChangeDense,
   rowsPerPageOptions = [5, 10, 25],
   sx,
@@ -27,22 +27,22 @@ export default function TablePaginationCustom({
 }: Props & TablePaginationProps) {
   return (
     <Box sx={{ position: 'relative', ...sx }}>
-      <TablePagination rowsPerPageOptions={rowsPerPageOptions} component="div" {...other} />
-
       {onChangeDense && (
         <FormControlLabel
           label="Dense"
-          control={<Switch checked={dense} onChange={onChangeDense} />}
+          control={<Switch checked={!!dense} onChange={onChangeDense} />}
           sx={{
             pl: 2,
             py: 1.5,
             top: 0,
-            position: {
-              md: 'absolute',
-            },
+            position: 'absolute',
+            left: 0,
+            display: { xs: 'none', sm: 'flex' }, // Hide on mobile, show on tablet+
           }}
         />
       )}
+
+      <TablePagination rowsPerPageOptions={rowsPerPageOptions} component="div" {...other} />
     </Box>
   );
 }

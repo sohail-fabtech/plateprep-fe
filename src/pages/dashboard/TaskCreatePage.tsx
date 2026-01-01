@@ -11,7 +11,7 @@ import TaskNewEditForm from '../../sections/@dashboard/task/TaskNewEditForm';
 
 // ----------------------------------------------------------------------
 
-export default function TasksCreatePage() {
+export default function TaskCreatePage() {
   const { themeStretch } = useSettingsContext();
 
   return (

@@ -91,7 +91,7 @@ export default function EditableField({
             borderColor: canEdit ? alpha(theme.palette.primary.main, 0.24) : 'transparent',
             bgcolor: canEdit ? alpha(theme.palette.primary.main, 0.04) : 'transparent',
             '& .edit-icon': {
-              opacity: 1,
+              visibility: 'visible',
             },
           },
         }}
@@ -118,10 +118,7 @@ export default function EditableField({
                   width: 28,
                   height: 28,
                   color: 'text.secondary',
-                  opacity: 0,
-                  transition: theme.transitions.create(['color', 'background-color', 'opacity'], {
-                    duration: theme.transitions.duration.short,
-                  }),
+                  visibility: 'hidden',
                   '&:hover': {
                     color: 'primary.main',
                     bgcolor: alpha(theme.palette.primary.main, 0.08),

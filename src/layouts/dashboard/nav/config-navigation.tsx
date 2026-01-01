@@ -57,42 +57,42 @@ const navConfig = [
       },
       {
         title: 'Recipes',
-        path: PATH_DASHBOARD.recipes.list,
+        path: PATH_DASHBOARD.recipes.root,
         icon: ICONS.recipes,
       },
       {
         title: 'Wine Inventory',
-        path: PATH_DASHBOARD.wineInventory.list,
+        path: PATH_DASHBOARD.wineInventory.root,
         icon: ICONS.wine,
       },
       {
         title: 'Tasks',
-        path: PATH_DASHBOARD.tasks.list,
+        path: PATH_DASHBOARD.tasks.root,
         icon: ICONS.kanban,
       },
       {
         title: 'Scheduling',
-        path: PATH_DASHBOARD.scheduling.calendar,
+        path: PATH_DASHBOARD.scheduling.root,
         icon: ICONS.calendar,
       },
       {
         title: 'Restaurant Location',
-        path: PATH_DASHBOARD.restaurantLocation.list,
+        path: PATH_DASHBOARD.restaurantLocation.root,
         icon: ICONS.location,
       },
       {
         title: 'Users',
-        path: PATH_DASHBOARD.user.list,
+        path: PATH_DASHBOARD.user.root,
         icon: ICONS.user,
       },
       {
         title: 'Templates',
-        path: PATH_DASHBOARD.templates.list,
+        path: PATH_DASHBOARD.templates.root,
         icon: ICONS.chef,
       },
       {
         title: 'Editor Template',
-        path: PATH_DASHBOARD.editorTemplate.edit,
+        path: PATH_DASHBOARD.editorTemplate.root,
         icon: ICONS.editorTemplate,
       },
       {
@@ -102,12 +102,12 @@ const navConfig = [
       },
       {
         title: 'Video Generation',
-        path: PATH_DASHBOARD.videoGeneration.create,
+        path: PATH_DASHBOARD.videoGeneration.root,
         icon: ICONS.videoGen,
       },
       {
         title: 'Settings',
-        path: PATH_DASHBOARD.settings.general,
+        path: PATH_DASHBOARD.settings.root,
         icon: ICONS.settingsCustom,
       },
       {

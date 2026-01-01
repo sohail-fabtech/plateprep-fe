@@ -91,11 +91,14 @@ export default function RecipeTableToolbar({
       {isFiltered && (
         <Button
           color="error"
+          variant="soft"
           sx={{ 
             flexShrink: 0,
             fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
             minWidth: { xs: 80, sm: 100 },
+            width: { xs: '100%', sm: 'auto' },
             height: { xs: 40, md: 44 },
+            fontWeight: 600,
           }}
           onClick={onResetFilter}
           startIcon={<Iconify icon="eva:trash-2-outline" />}

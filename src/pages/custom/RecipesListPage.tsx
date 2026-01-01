@@ -211,7 +211,11 @@ export default function RecipesListPage() {
             <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
               {dataInPage.map((recipe) => (
                 <Grid key={recipe.id} item xs={12} sm={6} md={4} lg={3}>
-                  <RecipeCard recipe={recipe} onDelete={() => handleDeleteRow(recipe.id)} />
+                  <RecipeCard 
+                    recipe={recipe} 
+                    onDelete={() => handleDeleteRow(recipe.id)}
+                    filterStatus={filterStatus}
+                  />
                 </Grid>
               ))}
             </Grid>
@@ -224,13 +228,6 @@ export default function RecipesListPage() {
                   onChange={handleChangePage}
                   color="primary"
                   size="large"
-                  sx={{
-                    '& .MuiPaginationItem-root': {
-                      fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                      minWidth: { xs: 32, md: 36 },
-                      height: { xs: 32, md: 36 },
-                    },
-                  }}
                 />
               </Box>
             )}

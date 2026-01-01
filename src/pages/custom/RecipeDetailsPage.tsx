@@ -901,7 +901,7 @@ export default function RecipeDetailsPage() {
           </Grid>
         </Grid>
 
-        {/* Starch Title */}
+        {/* Starch Preparation */}
         <Box sx={{ mb: { xs: 4, md: 6 } }}>
           <Typography 
             variant="h4" 
@@ -912,7 +912,7 @@ export default function RecipeDetailsPage() {
               mb: { xs: 2, md: 3 },
             }}
           >
-            {recipe.starchPreparation?.type || 'Starch Title'}
+            Starch Preparation
           </Typography>
 
           <Stack spacing={{ xs: 1.25, md: 1.5 }}>

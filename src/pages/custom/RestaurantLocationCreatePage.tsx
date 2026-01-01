@@ -7,36 +7,36 @@ import { PATH_DASHBOARD } from '../../routes/paths';
 import { useSettingsContext } from '../../components/settings';
 import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 // sections
-import TaskNewEditForm from '../../sections/@dashboard/task/TaskNewEditForm';
+import RestaurantLocationNewEditForm from '../../sections/@dashboard/restaurantLocation/RestaurantLocationNewEditForm';
 
 // ----------------------------------------------------------------------
 
-export default function TasksCreatePage() {
+export default function RestaurantLocationCreatePage() {
   const { themeStretch } = useSettingsContext();
 
   return (
     <>
       <Helmet>
-        <title>Create Task | Minimal UI</title>
+        <title>Create Restaurant Location | Minimal UI</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>
         <CustomBreadcrumbs
-          heading="Create New Task"
+          heading="Add New Restaurant Location"
           links={[
             {
               name: 'Dashboard',
               href: PATH_DASHBOARD.root,
             },
             {
-              name: 'Tasks',
-              href: PATH_DASHBOARD.tasks.root,
+              name: 'Restaurant Locations',
+              href: PATH_DASHBOARD.restaurantLocation.root,
             },
-            { name: 'New Task' },
+            { name: 'New Location' },
           ]}
         />
 
-        <TaskNewEditForm />
+        <RestaurantLocationNewEditForm />
       </Container>
     </>
   );

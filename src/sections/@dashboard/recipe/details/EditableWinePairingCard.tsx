@@ -192,7 +192,7 @@ export default function EditableWinePairingCard({ wine, canEdit = false, onSave 
           transform: 'translateY(-4px)',
           borderColor: canEdit ? alpha(theme.palette.primary.main, 0.24) : undefined,
           '& .edit-icon': {
-            opacity: 1,
+            visibility: 'visible',
           },
         },
       }}
@@ -207,10 +207,7 @@ export default function EditableWinePairingCard({ wine, canEdit = false, onSave 
               position: 'absolute',
               top: 12,
               right: 12,
-              opacity: 0,
-              transition: theme.transitions.create('opacity', {
-                duration: theme.transitions.duration.short,
-              }),
+              visibility: 'hidden',
               width: { xs: 28, md: 32 },
               height: { xs: 28, md: 32 },
               color: 'text.secondary',

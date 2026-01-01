@@ -1,4 +1,5 @@
 import { Helmet } from 'react-helmet-async';
+import { useParams } from 'react-router-dom';
 // @mui
 import { Container } from '@mui/material';
 // routes
@@ -8,21 +9,27 @@ import { useSettingsContext } from '../../components/settings';
 import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 // sections
 import TaskNewEditForm from '../../sections/@dashboard/task/TaskNewEditForm';
+// mock data
+import { _taskList } from '../../_mock/arrays';
 
 // ----------------------------------------------------------------------
 
-export default function TasksCreatePage() {
+export default function TasksEditPage() {
   const { themeStretch } = useSettingsContext();
+  
+  const { id } = useParams();
+
+  const currentTask = _taskList.find((task) => task.id === id);
 
   return (
     <>
       <Helmet>
-        <title>Create Task | Minimal UI</title>
+        <title>Edit Task | Minimal UI</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>
         <CustomBreadcrumbs
-          heading="Create New Task"
+          heading="Edit Task"
           links={[
             {
               name: 'Dashboard',
@@ -32,11 +39,11 @@ export default function TasksCreatePage() {
               name: 'Tasks',
               href: PATH_DASHBOARD.tasks.root,
             },
-            { name: 'New Task' },
+            { name: currentTask?.taskName || 'Edit' },
           ]}
         />
 
-        <TaskNewEditForm />
+        <TaskNewEditForm isEdit currentTask={currentTask} />
       </Container>
     </>
   );

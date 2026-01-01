@@ -18,9 +18,10 @@ import ConfirmDialog from '../../../components/confirm-dialog';
 type Props = {
   recipe: IRecipe;
   onDelete: VoidFunction;
+  filterStatus?: string;
 };
 
-export default function RecipeCard({ recipe, onDelete }: Props) {
+export default function RecipeCard({ recipe, onDelete, filterStatus = 'all' }: Props) {
   const theme = useTheme();
   
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ export default function RecipeCard({ recipe, onDelete }: Props) {
   const [openConfirm, setOpenConfirm] = useState(false);
 
   const { id, dishName, cuisineType, imageFiles, status, isAvailable } = recipe;
+  
+  const isArchived = filterStatus === 'archived';
 
   const coverImage = imageFiles && imageFiles.length > 0 ? imageFiles[0] : '/assets/images/placeholder.jpg';
 
@@ -170,16 +173,40 @@ export default function RecipeCard({ recipe, onDelete }: Props) {
             <Button
               fullWidth
               variant="contained"
-              color="error"
-              startIcon={<Iconify icon="eva:archive-fill" width={{ xs: 16, md: 18 }} />}
               onClick={handleOpenConfirm}
+              startIcon={
+                <Iconify 
+                  icon={isArchived ? "eva:trash-2-outline" : "eva:archive-fill"} 
+                  width={{ xs: 16, md: 18 }} 
+                />
+              }
               sx={{
                 fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
                 height: { xs: 36, sm: 40, md: 42 },
                 fontWeight: 600,
+                boxShadow: 'none',
+                ...(isArchived
+                  ? {
+                      // Delete - Red/Error color
+                      bgcolor: 'error.main',
+                      color: 'error.contrastText',
+                      '&:hover': {
+                        bgcolor: 'error.main',
+                        boxShadow: 'none',
+                      },
+                    }
+                  : {
+                      // Archive - Soft gray
+                      bgcolor: theme.palette.grey[500],
+                      color: '#fff',
+                      '&:hover': {
+                        bgcolor: theme.palette.grey[500],
+                        boxShadow: 'none',
+                      },
+                    }),
               }}
             >
-              Archive
+              {isArchived ? 'Delete' : 'Archive'}
             </Button>
           </Stack>
         </Stack>
@@ -188,11 +215,38 @@ export default function RecipeCard({ recipe, onDelete }: Props) {
       <ConfirmDialog
         open={openConfirm}
         onClose={handleCloseConfirm}
-        title="Archive Recipe"
-        content={`Are you sure you want to archive "${dishName}"?`}
+        title={isArchived ? "Delete" : "Archive"}
+        content={
+          isArchived
+            ? "Are you sure want to delete?"
+            : `Are you sure you want to archive "${dishName}"?`
+        }
         action={
-          <Button variant="contained" color="error" onClick={onDelete}>
-            Archive
+          <Button 
+            variant="contained" 
+            onClick={onDelete}
+            sx={{
+              boxShadow: 'none',
+              ...(isArchived
+                ? {
+                    bgcolor: 'error.main',
+                    color: 'error.contrastText',
+                    '&:hover': { 
+                      bgcolor: 'error.main',
+                      boxShadow: 'none',
+                    },
+                  }
+                : {
+                    bgcolor: theme.palette.grey[500],
+                    color: '#fff',
+                    '&:hover': { 
+                      bgcolor: theme.palette.grey[500],
+                      boxShadow: 'none',
+                    },
+                  }),
+            }}
+          >
+            {isArchived ? 'Delete' : 'Archive'}
           </Button>
         }
       />
