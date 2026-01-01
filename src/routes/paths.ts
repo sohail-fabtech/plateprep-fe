@@ -54,7 +54,9 @@ export const PATH_DASHBOARD = {
   wineInventory: {
     root: path(ROOTS_DASHBOARD, '/wine-inventory'),
     list: path(ROOTS_DASHBOARD, '/wine-inventory/list'),
-    add: path(ROOTS_DASHBOARD, '/wine-inventory/add'),
+    create: path(ROOTS_DASHBOARD, '/wine-inventory/create'),
+    view: (id: string) => path(ROOTS_DASHBOARD, `/wine-inventory/${id}`),
+    edit: (id: string) => path(ROOTS_DASHBOARD, `/wine-inventory/${id}/edit`),
   },
   tasks: {
     root: path(ROOTS_DASHBOARD, '/tasks'),
@@ -65,6 +67,9 @@ export const PATH_DASHBOARD = {
   },
   scheduling: {
     root: path(ROOTS_DASHBOARD, '/scheduling'),
+    list: path(ROOTS_DASHBOARD, '/scheduling/list'),
+    create: path(ROOTS_DASHBOARD, '/scheduling/create'),
+    edit: (id: string) => path(ROOTS_DASHBOARD, `/scheduling/${id}/edit`),
     calendar: path(ROOTS_DASHBOARD, '/scheduling/calendar'),
     releases: path(ROOTS_DASHBOARD, '/scheduling/releases'),
   },
@@ -75,6 +80,13 @@ export const PATH_DASHBOARD = {
     view: (id: string) => path(ROOTS_DASHBOARD, `/restaurant-location/${id}`),
     edit: (id: string) => path(ROOTS_DASHBOARD, `/restaurant-location/${id}/edit`),
     map: path(ROOTS_DASHBOARD, '/restaurant-location/map'),
+  },
+  users: {
+    root: path(ROOTS_DASHBOARD, '/users'),
+    list: path(ROOTS_DASHBOARD, '/users/list'),
+    create: path(ROOTS_DASHBOARD, '/users/create'),
+    view: (id: string) => path(ROOTS_DASHBOARD, `/users/${id}`),
+    edit: (id: string) => path(ROOTS_DASHBOARD, `/users/${id}/edit`),
   },
   templates: {
     root: path(ROOTS_DASHBOARD, '/templates'),
@@ -96,8 +108,14 @@ export const PATH_DASHBOARD = {
     general: path(ROOTS_DASHBOARD, '/settings/general'),
     account: path(ROOTS_DASHBOARD, '/settings/account'),
   },
-  howTo: path(ROOTS_DASHBOARD, '/how-to'),
-  dictionary: path(ROOTS_DASHBOARD, '/dictionary'),
+  howTo: {
+    root: path(ROOTS_DASHBOARD, '/how-to'),
+    view: (title: string) => path(ROOTS_DASHBOARD, `/how-to/${title}`),
+  },
+  dictionary: {
+    root: path(ROOTS_DASHBOARD, '/dictionary'),
+    terms: (categoryId: number) => path(ROOTS_DASHBOARD, `/dictionary/${categoryId}`),
+  },
   
   general: {
     app: path(ROOTS_DASHBOARD, '/app'),

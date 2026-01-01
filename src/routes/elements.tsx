@@ -95,13 +95,22 @@ export const RecipeCreatePage = Loadable(lazy(() => import('../pages/custom/Reci
 export const RecipeEditPage = Loadable(lazy(() => import('../pages/custom/RecipeEditPage')));
 export const RecipeDetailsPage = Loadable(lazy(() => import('../pages/custom/RecipeDetailsPage')));
 export const WineInventoryListPage = Loadable(lazy(() => import('../pages/custom/WineInventoryListPage')));
-export const WineInventoryAddPage = Loadable(lazy(() => import('../pages/custom/WineInventoryAddPage')));
+export const WineInventoryCreatePage = Loadable(lazy(() => import('../pages/custom/WineInventoryCreatePage')));
+export const WineInventoryEditPage = Loadable(lazy(() => import('../pages/custom/WineInventoryEditPage')));
+export const WineInventoryDetailsPage = Loadable(lazy(() => import('../pages/custom/WineInventoryDetailsPage')));
 export const TasksListPage = Loadable(lazy(() => import('../pages/custom/TasksListPage')));
 export const TasksCreatePage = Loadable(lazy(() => import('../pages/custom/TasksCreatePage')));
 export const TasksEditPage = Loadable(lazy(() => import('../pages/custom/TasksEditPage')));
 export const TasksDetailsPage = Loadable(lazy(() => import('../pages/custom/TaskDetailsPage')));
+export const SchedulingListPage = Loadable(lazy(() => import('../pages/custom/SchedulingListPage')));
+export const SchedulingCreatePage = Loadable(lazy(() => import('../pages/custom/SchedulingCreatePage')));
+export const SchedulingEditPage = Loadable(lazy(() => import('../pages/custom/SchedulingEditPage')));
 export const SchedulingCalendarPage = Loadable(lazy(() => import('../pages/custom/SchedulingCalendarPage')));
 export const SchedulingReleasesPage = Loadable(lazy(() => import('../pages/custom/SchedulingReleasesPage')));
+export const UsersListPage = Loadable(lazy(() => import('../pages/custom/UsersListPage')));
+export const UsersCreatePage = Loadable(lazy(() => import('../pages/custom/UsersCreatePage')));
+export const UsersEditPage = Loadable(lazy(() => import('../pages/custom/UsersEditPage')));
+export const UserDetailsPage = Loadable(lazy(() => import('../pages/custom/UserDetailsPage')));
 export const RestaurantLocationListPage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationListPage')));
 export const RestaurantLocationCreatePage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationCreatePage')));
 export const RestaurantLocationEditPage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationEditPage')));
@@ -112,11 +121,13 @@ export const TemplatesCreatePage = Loadable(lazy(() => import('../pages/custom/T
 export const EditorTemplatePage = Loadable(lazy(() => import('../pages/custom/EditorTemplatePage')));
 export const TrackingAnalyticsPage = Loadable(lazy(() => import('../pages/custom/TrackingAnalyticsPage')));
 export const VideoGenerationCreatePage = Loadable(lazy(() => import('../pages/custom/VideoGenerationCreatePage')));
-export const VideoGenerationLibraryPage = Loadable(lazy(() => import('../pages/custom/VideoGenerationLibraryPage')));
+export const VideoGenerationListPage = Loadable(lazy(() => import('../pages/custom/VideoGenerationListPage')));
 export const SettingsGeneralPage = Loadable(lazy(() => import('../pages/custom/SettingsGeneralPage')));
 export const SettingsAccountPage = Loadable(lazy(() => import('../pages/custom/SettingsAccountPage')));
-export const HowToGuidesPage = Loadable(lazy(() => import('../pages/custom/HowToGuidesPage')));
-export const DictionarySearchPage = Loadable(lazy(() => import('../pages/custom/DictionarySearchPage')));
+export const HowToGuidesListPage = Loadable(lazy(() => import('../pages/custom/HowToGuidesListPage')));
+export const HowToGuideDetailPage = Loadable(lazy(() => import('../pages/custom/HowToGuideDetailPage')));
+export const DictionaryListPage = Loadable(lazy(() => import('../pages/custom/DictionaryListPage')));
+export const DictionaryTermsPage = Loadable(lazy(() => import('../pages/custom/DictionaryTermsPage')));
 
 // TEST RENDER PAGE BY ROLE
 export const PermissionDeniedPage = Loadable(

@@ -26,23 +26,32 @@ export default function TablePaginationCustom({
   ...other
 }: Props & TablePaginationProps) {
   return (
-    <Box sx={{ position: 'relative', ...sx }}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        px: 2,
+        ...sx,
+      }}
+    >
       {onChangeDense && (
         <FormControlLabel
           label="Dense"
           control={<Switch checked={!!dense} onChange={onChangeDense} />}
           sx={{
-            pl: 2,
-            py: 1.5,
-            top: 0,
-            position: 'absolute',
-            left: 0,
             display: { xs: 'none', sm: 'flex' }, // Hide on mobile, show on tablet+
+            mr: 2,
+            '& .MuiFormControlLabel-label': {
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+            },
           }}
         />
       )}
 
-      <TablePagination rowsPerPageOptions={rowsPerPageOptions} component="div" {...other} />
+      <Box sx={{ flex: 1 }}>
+        <TablePagination rowsPerPageOptions={rowsPerPageOptions} component="div" {...other} />
+      </Box>
     </Box>
   );
 }

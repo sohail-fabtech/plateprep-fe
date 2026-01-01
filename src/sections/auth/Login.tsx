@@ -17,9 +17,26 @@ export default function Login() {
   const { method } = useAuthContext();
 
   return (
-    <LoginLayout>
+    <LoginLayout
+      title="Welcome back to PlatePrep"
+      subtitle="Manage your restaurant operations with ease"
+      benefits={[
+        'Complete restaurant management solution',
+        'Streamline operations and increase efficiency',
+        'Access your restaurant data from anywhere',
+      ]}
+      illustration="/assets/images/auth/login.jpg"
+    >
       <Stack spacing={2} sx={{ mb: 5, position: 'relative' }}>
-        <Typography variant="h4">Sign in to Minimal</Typography>
+        <Typography 
+          variant="h4"
+          sx={{
+            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+            fontWeight: 700,
+          }}
+        >
+          Sign in to PlatePrep
+        </Typography>
 
         <Stack direction="row" spacing={0.5}>
           <Typography variant="body2">New user?</Typography>
@@ -29,19 +46,19 @@ export default function Login() {
           </Link>
         </Stack>
 
-        <Tooltip title={method} placement="left">
+        {/* <Tooltip title={method} placement="left">
           <Box
             component="img"
             alt={method}
             src={`/assets/icons/auth/ic_${method}.png`}
             sx={{ width: 32, height: 32, position: 'absolute', right: 0 }}
           />
-        </Tooltip>
+        </Tooltip> */}
       </Stack>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
+      {/* <Alert severity="info" sx={{ mb: 3 }}>
         Use email : <strong>demo@minimals.cc</strong> / password :<strong> @2Minimal</strong>
-      </Alert>
+      </Alert> */}
 
       <AuthLoginForm />
 

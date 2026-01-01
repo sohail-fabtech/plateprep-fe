@@ -6,46 +6,71 @@ import { bgGradient } from '../../utils/cssStyles';
 // ----------------------------------------------------------------------
 
 export const StyledRoot = styled('main')(() => ({
-  height: '100%',
+  height: '100vh',
+  width: '100%',
   display: 'flex',
   position: 'relative',
+  overflow: 'hidden',
 }));
 
 export const StyledSection = styled('div')(({ theme }) => ({
   display: 'none',
   position: 'relative',
+  width: '100%',
+  height: '100%',
+  overflow: 'hidden',
   [theme.breakpoints.up('md')]: {
-    flexGrow: 1,
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: '50%',
+    flexShrink: 0,
     flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    padding: theme.spacing(4, 5),
+  },
+  [theme.breakpoints.up('lg')]: {
+    padding: theme.spacing(6, 8),
   },
 }));
 
-export const StyledSectionBg = styled('div')(({ theme }) => ({
-  ...bgGradient({
-    color: alpha(theme.palette.background.default, theme.palette.mode === 'light' ? 0.9 : 0.94),
-    imgUrl: '/assets/background/overlay_2.jpg',
-  }),
+export const StyledSectionBg = styled('div')<{ imageUrl?: string }>(({ imageUrl }) => ({
+  position: 'absolute',
   top: 0,
   left: 0,
-  zIndex: -1,
   width: '100%',
   height: '100%',
-  position: 'absolute',
-  transform: 'scaleX(-1)',
+  backgroundImage: imageUrl ? `url(${imageUrl})` : 'none',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+  zIndex: 0,
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.3) 40%, rgba(0, 0, 0, 0.7) 70%, rgba(0, 0, 0, 1) 100%)',
+    zIndex: 1,
+  },
 }));
 
 export const StyledContent = styled('div')(({ theme }) => ({
-  width: 480,
-  margin: 'auto',
+  width: '100%',
+  height: '100vh',
   display: 'flex',
-  minHeight: '100vh',
+  alignItems: 'center',
   justifyContent: 'center',
-  padding: theme.spacing(15, 2),
+  padding: theme.spacing(3, 2),
+  overflowY: 'auto',
+  overflowX: 'hidden',
   [theme.breakpoints.up('md')]: {
+    width: '50%',
     flexShrink: 0,
-    padding: theme.spacing(30, 8, 0, 8),
+    padding: theme.spacing(4, 6),
+  },
+  [theme.breakpoints.up('lg')]: {
+    padding: theme.spacing(6, 8),
   },
 }));

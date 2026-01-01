@@ -24,13 +24,18 @@ import {
   GeneralBookingPage,
   GeneralEcommercePage,
   GeneralAnalyticsPage,
-  // Dashboard: User
+  // Dashboard: User (old - deprecated)
   UserListPage,
   UserEditPage,
   UserCardsPage,
   UserCreatePage,
   UserProfilePage,
   UserAccountPage,
+  // Dashboard: Users (new - separate module)
+  UsersListPage,
+  UsersCreatePage,
+  UsersEditPage,
+  UserDetailsPage,
   // Dashboard: Ecommerce
   EcommerceShopPage,
   EcommerceCheckoutPage,
@@ -54,11 +59,16 @@ import {
   RecipeEditPage,
   RecipeDetailsPage,
   WineInventoryListPage,
-  WineInventoryAddPage,
+  WineInventoryCreatePage,
+  WineInventoryEditPage,
+  WineInventoryDetailsPage,
   TasksListPage,
   TasksCreatePage,
   TasksEditPage,
   TasksDetailsPage,
+  SchedulingListPage,
+  SchedulingCreatePage,
+  SchedulingEditPage,
   SchedulingCalendarPage,
   SchedulingReleasesPage,
   RestaurantLocationListPage,
@@ -71,11 +81,13 @@ import {
   EditorTemplatePage,
   TrackingAnalyticsPage,
   VideoGenerationCreatePage,
-  VideoGenerationLibraryPage,
+  VideoGenerationListPage,
   SettingsGeneralPage,
   SettingsAccountPage,
-  HowToGuidesPage,
-  DictionarySearchPage,
+  HowToGuidesListPage,
+  HowToGuideDetailPage,
+  DictionaryListPage,
+  DictionaryTermsPage,
   // Dashboard: FileManager
   FileManagerPage,
   // Dashboard: App
@@ -222,7 +234,9 @@ export default function Router() {
           children: [
             { element: <Navigate to="/dashboard/wine-inventory/list" replace />, index: true },
             { path: 'list', element: <WineInventoryListPage /> },
-            { path: 'add', element: <WineInventoryAddPage /> },
+            { path: 'create', element: <WineInventoryCreatePage /> },
+            { path: ':id/edit', element: <WineInventoryEditPage /> },
+            { path: ':id', element: <WineInventoryDetailsPage /> },
           ],
         },
         {
@@ -238,7 +252,10 @@ export default function Router() {
         {
           path: 'scheduling',
           children: [
-            { element: <Navigate to="/dashboard/scheduling/calendar" replace />, index: true },
+            { element: <Navigate to="/dashboard/scheduling/list" replace />, index: true },
+            { path: 'list', element: <SchedulingListPage /> },
+            { path: 'create', element: <SchedulingCreatePage /> },
+            { path: ':id/edit', element: <SchedulingEditPage /> },
             { path: 'calendar', element: <SchedulingCalendarPage /> },
             { path: 'releases', element: <SchedulingReleasesPage /> },
           ],
@@ -252,6 +269,16 @@ export default function Router() {
             { path: ':id', element: <RestaurantLocationDetailsPage /> },
             { path: ':id/edit', element: <RestaurantLocationEditPage /> },
             { path: 'map', element: <RestaurantLocationMapPage /> },
+          ],
+        },
+        {
+          path: 'users',
+          children: [
+            { element: <Navigate to="/dashboard/users/list" replace />, index: true },
+            { path: 'list', element: <UsersListPage /> },
+            { path: 'create', element: <UsersCreatePage /> },
+            { path: ':id', element: <UserDetailsPage /> },
+            { path: ':id/edit', element: <UsersEditPage /> },
           ],
         },
         {
@@ -279,9 +306,9 @@ export default function Router() {
         {
           path: 'video-generation',
           children: [
-            { element: <Navigate to="/dashboard/video-generation/create" replace />, index: true },
+            { element: <Navigate to="/dashboard/video-generation/library" replace />, index: true },
             { path: 'create', element: <VideoGenerationCreatePage /> },
-            { path: 'library', element: <VideoGenerationLibraryPage /> },
+            { path: 'library', element: <VideoGenerationListPage /> },
           ],
         },
         {
@@ -296,14 +323,16 @@ export default function Router() {
           path: 'how-to',
           children: [
             { element: <Navigate to="/dashboard/how-to/guides" replace />, index: true },
-            { path: 'guides', element: <HowToGuidesPage /> },
+            { path: 'guides', element: <HowToGuidesListPage /> },
+            { path: ':title', element: <HowToGuideDetailPage /> },
           ],
         },
         {
           path: 'dictionary',
           children: [
-            { element: <Navigate to="/dashboard/dictionary/search" replace />, index: true },
-            { path: 'search', element: <DictionarySearchPage /> },
+            { element: <Navigate to="/dashboard/dictionary/list" replace />, index: true },
+            { path: 'list', element: <DictionaryListPage /> },
+            { path: ':categoryId', element: <DictionaryTermsPage /> },
           ],
         },
         
@@ -329,10 +358,10 @@ export default function Router() {
         {
           path: 'user',
           children: [
-            { element: <Navigate to="/dashboard/user/profile" replace />, index: true },
+            { element: <Navigate to="/dashboard/user/list" replace />, index: true },
             { path: 'profile', element: <UserProfilePage /> },
             { path: 'cards', element: <UserCardsPage /> },
-            { path: 'list', element: <UserListPage /> },
+            { path: 'list', element: <UsersListPage /> },
             { path: 'new', element: <UserCreatePage /> },
             { path: ':name/edit', element: <UserEditPage /> },
             { path: 'account', element: <UserAccountPage /> },

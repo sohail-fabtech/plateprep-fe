@@ -114,6 +114,22 @@ export type IUserAccountGeneral = {
   role: string;
 };
 
+// User type for list page (similar to ITask, IRestaurantLocation)
+export type IUserFilterStatus = 'all' | 'active' | 'archived';
+
+export type IUser = {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  address?: string;
+  location?: string;
+  role: string;
+  status: string;
+  avatarUrl?: string;
+  isDeleted?: boolean;
+};
+
 export type IUserAccountBillingCreditCard = {
   id: string;
   cardNumber: string;

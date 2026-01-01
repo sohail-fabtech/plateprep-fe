@@ -1,16 +1,16 @@
 import { useState } from 'react';
-// @mui
 import {
   Stack,
   InputAdornment,
   TextField,
-  MenuItem,
   Button,
   IconButton,
   Checkbox,
   FormControlLabel,
   Typography,
   Divider,
+  Box,
+  MenuItem,
 } from '@mui/material';
 // components
 import Iconify from '../../../../components/iconify';
@@ -21,27 +21,35 @@ import MenuPopover from '../../../../components/menu-popover';
 type Props = {
   filterName: string;
   filterRole: string;
+  filterLocation: string;
   isFiltered: boolean;
   optionsRole: string[];
+  optionsLocation: string[];
   onResetFilter: VoidFunction;
   onFilterName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterRole: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onFilterLocation: (event: React.ChangeEvent<HTMLInputElement>) => void;
   columnVisibility: Record<string, boolean>;
   onToggleColumn: (columnId: string) => void;
   tableHead: { id: string; label?: string; tooltip?: string }[];
+  formInputSx?: object;
 };
 
 export default function UserTableToolbar({
   isFiltered,
   filterName,
   filterRole,
+  filterLocation,
   optionsRole,
+  optionsLocation,
   onFilterName,
   onFilterRole,
+  onFilterLocation,
   onResetFilter,
   columnVisibility,
   onToggleColumn,
   tableHead,
+  formInputSx,
 }: Props) {
   const [openPopover, setOpenPopover] = useState<HTMLElement | null>(null);
 
@@ -55,80 +63,174 @@ export default function UserTableToolbar({
 
   return (
     <>
-      <TextField
-        fullWidth
-        select
-        label="Role"
-        value={filterRole}
-        onChange={onFilterRole}
-        SelectProps={{
-          MenuProps: {
-            PaperProps: {
-              sx: {
-                maxHeight: 260,
+      <Stack
+        spacing={{ xs: 1.5, md: 2 }}
+        alignItems="center"
+        direction={{
+          xs: 'column',
+          sm: 'row',
+        }}
+        sx={{ px: { xs: 2, sm: 2.5 }, py: { xs: 2, md: 3 } }}
+      >
+        <TextField
+          fullWidth
+          select
+          label="Role"
+          value={filterRole}
+          onChange={onFilterRole}
+          SelectProps={{
+            MenuProps: {
+              PaperProps: {
+                sx: {
+                  maxHeight: 260,
+                },
               },
             },
-          },
-        }}
-        sx={{
-          maxWidth: { sm: 240 },
-          textTransform: 'capitalize',
-        }}
-      >
-        {optionsRole.map((option) => (
+          }}
+          sx={{
+            maxWidth: { sm: 240 },
+            textTransform: 'capitalize',
+            ...formInputSx,
+          }}
+        >
+          {optionsRole.map((option) => (
+            <MenuItem
+              key={option}
+              value={option}
+              sx={{
+                mx: 1,
+                borderRadius: 0.75,
+                typography: 'body2',
+                textTransform: 'capitalize',
+                fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+              }}
+            >
+              {option}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          fullWidth
+          select
+          label="Location"
+          value={filterLocation}
+          onChange={onFilterLocation}
+          SelectProps={{
+            MenuProps: {
+              PaperProps: {
+                sx: {
+                  maxHeight: 260,
+                },
+              },
+            },
+          }}
+          sx={{
+            maxWidth: { sm: 240 },
+            ...formInputSx,
+          }}
+        >
           <MenuItem
-            key={option}
-            value={option}
+            value="all"
             sx={{
               mx: 1,
               borderRadius: 0.75,
               typography: 'body2',
-              textTransform: 'capitalize',
+              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
             }}
           >
-            {option}
+            All Locations
           </MenuItem>
-        ))}
-      </TextField>
+          {optionsLocation.map((option) => (
+            <MenuItem
+              key={option}
+              value={option}
+              sx={{
+                mx: 1,
+                borderRadius: 0.75,
+                typography: 'body2',
+                fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+              }}
+            >
+              {option}
+            </MenuItem>
+          ))}
+        </TextField>
 
-      <TextField
-        fullWidth
-        value={filterName}
-        onChange={onFilterName}
-        placeholder="Search..."
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
-            </InputAdornment>
-          ),
-        }}
-      />
+        <TextField
+          fullWidth
+          value={filterName}
+          onChange={onFilterName}
+          placeholder="Search user name, email, or address..."
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={formInputSx}
+        />
 
-      <IconButton
-        onClick={handleOpenPopover}
-        sx={{
-          flexShrink: 0,
-          border: (theme) => `solid 1px ${theme.palette.divider}`,
-        }}
-      >
-        <Iconify icon="eva:options-2-outline" />
-      </IconButton>
-
-      {isFiltered && (
+        {/* Column Visibility Button - Icon + Text on mobile, Icon only on desktop */}
         <Button
-          color="error"
-          sx={{ flexShrink: 0 }}
-          onClick={onResetFilter}
-          startIcon={<Iconify icon="eva:trash-2-outline" />}
+          variant="outlined"
+          onClick={handleOpenPopover}
+          startIcon={<Iconify icon="eva:options-2-outline" />}
+          sx={{
+            flexShrink: 0,
+            width: { xs: '100%', sm: 'auto' },
+            minWidth: { xs: 'auto', sm: 44 },
+            height: { xs: 40, md: 44 },
+            fontSize: { xs: '0.8125rem', md: '0.875rem' },
+            fontWeight: 600,
+            borderColor: 'divider',
+            color: 'text.primary',
+            '&:hover': {
+              borderColor: 'text.primary',
+              bgcolor: 'action.hover',
+            },
+            '& .MuiButton-startIcon': {
+              margin: { xs: '0 8px 0 0', sm: 0 },
+            },
+          }}
         >
-          Clear
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            Columns
+          </Box>
         </Button>
-      )}
 
-      <MenuPopover open={openPopover} onClose={handleClosePopover} sx={{ width: 200, p: 0 }}>
-        <Stack sx={{ p: 1 }}>
-          <Typography variant="subtitle2" sx={{ px: 1, py: 1 }}>
+        {isFiltered && (
+          <Button
+            color="error"
+            variant="soft"
+            sx={{
+              flexShrink: 0,
+              fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
+              minWidth: { xs: 80, sm: 100 },
+              width: { xs: '100%', sm: 'auto' },
+              height: { xs: 40, md: 44 },
+              fontWeight: 600,
+            }}
+            onClick={onResetFilter}
+            startIcon={<Iconify icon="eva:trash-2-outline" />}
+          >
+            Clear
+          </Button>
+        )}
+      </Stack>
+
+      <MenuPopover open={openPopover} onClose={handleClosePopover} sx={{ width: 220, p: 0 }}>
+        <Stack sx={{ p: 1.5 }}>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              px: 1,
+              py: 1,
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+              fontWeight: 700,
+            }}
+          >
             Show Columns
           </Typography>
           <Divider sx={{ borderStyle: 'dashed' }} />
@@ -141,10 +243,17 @@ export default function UserTableToolbar({
                   <Checkbox
                     checked={columnVisibility[column.id]}
                     onChange={() => onToggleColumn(column.id)}
+                    size="small"
                   />
                 }
                 label={column.label}
-                sx={{ px: 1, py: 0.5 }}
+                sx={{
+                  px: 1,
+                  py: 0.5,
+                  '& .MuiFormControlLabel-label': {
+                    fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                  },
+                }}
               />
             ))}
         </Stack>

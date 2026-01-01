@@ -82,7 +82,7 @@ const navConfig = [
       },
       {
         title: 'Users',
-        path: PATH_DASHBOARD.user.root,
+        path: PATH_DASHBOARD.users.root,
         icon: ICONS.user,
       },
       {
@@ -112,12 +112,12 @@ const navConfig = [
       },
       {
         title: 'How to',
-        path: PATH_DASHBOARD.howTo,
+        path: PATH_DASHBOARD.howTo.root,
         icon: ICONS.howto,
       },
       {
         title: 'Dictionary',
-        path: PATH_DASHBOARD.dictionary,
+        path: PATH_DASHBOARD.dictionary.root,
         icon: ICONS.mail,
       },
     ],

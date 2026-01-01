@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 // @mui
-import { Box, Stack, Drawer } from '@mui/material';
+import { Box, Stack, Drawer, List } from '@mui/material';
 // hooks
 import useResponsive from '../../../hooks/useResponsive';
 // config
@@ -10,6 +10,7 @@ import { NAV } from '../../../config-global';
 import Logo from '../../../components/logo';
 import Scrollbar from '../../../components/scrollbar';
 import { NavSectionVertical } from '../../../components/nav-section';
+import { SkeletonNavItem } from '../../../components/skeleton';
 //
 import navConfig from './config-navigation';
 import NavToggleButton from './NavToggleButton';
@@ -26,12 +27,23 @@ export default function NavVertical({ openNav, onCloseNav }: Props) {
 
   const isDesktop = useResponsive('up', 'lg');
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     if (openNav) {
       onCloseNav();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  // Simulate loading state (can be replaced with actual API call)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500); // 500ms loading delay
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const renderContent = (
     <Scrollbar
@@ -56,7 +68,15 @@ export default function NavVertical({ openNav, onCloseNav }: Props) {
         <Logo />
       </Stack>
 
-      <NavSectionVertical data={navConfig} />
+      {loading ? (
+        <List disablePadding sx={{ px: 2 }}>
+          {[...Array(14)].map((_, index) => (
+            <SkeletonNavItem key={index} />
+          ))}
+        </List>
+      ) : (
+        <NavSectionVertical data={navConfig} />
+      )}
 
       <Box sx={{ flexGrow: 1 }} />
     </Scrollbar>

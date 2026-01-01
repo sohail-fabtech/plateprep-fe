@@ -45,8 +45,26 @@ export default function DynamicStepList({
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          mb: { xs: 1.5, md: 2 },
+          gap: 1,
+        }}
+      >
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 700,
+            fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' },
+            whiteSpace: { xs: 'nowrap', sm: 'normal' },
+            overflow: { xs: 'hidden', sm: 'visible' },
+            textOverflow: { xs: 'ellipsis', sm: 'clip' },
+            minWidth: 0,
+          }}
+        >
           {title}
         </Typography>
         <Stack direction="row" spacing={1}>
@@ -54,19 +72,53 @@ export default function DynamicStepList({
             <Button
               size="small"
               variant="outlined"
-              startIcon={<Iconify icon="eva:image-outline" />}
+              startIcon={<Iconify icon="eva:image-outline" width={16} />}
               onClick={onUploadImage}
+              sx={{
+                fontWeight: 600,
+                minWidth: { xs: 'auto', sm: 120 },
+                px: { xs: 1, sm: 1.5 },
+                fontSize: { xs: '0.6875rem', sm: '0.8125rem', md: '0.875rem' },
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                '& .MuiButton-startIcon': {
+                  marginRight: { xs: 0.5, sm: 0.75 },
+                  '& svg': {
+                    width: { xs: 14, sm: 16, md: 18 },
+                    height: { xs: 14, sm: 16, md: 18 },
+                  },
+                },
+              }}
             >
               Upload Image
             </Button>
           )}
           <Button
             size="small"
-            startIcon={<Iconify icon="eva:plus-fill" />}
+            startIcon={<Iconify icon="eva:plus-fill" width={16} />}
             onClick={handleAdd}
-            sx={{ fontWeight: 600 }}
+            sx={{ 
+              fontWeight: 600,
+              minWidth: { xs: 'auto', sm: 120 },
+              px: { xs: 1, sm: 1.5 },
+              fontSize: { xs: '0.6875rem', sm: '0.8125rem', md: '0.875rem' },
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              '& .MuiButton-startIcon': {
+                marginRight: { xs: 0.5, sm: 0.75 },
+                '& svg': {
+                  width: { xs: 14, sm: 16, md: 18 },
+                  height: { xs: 14, sm: 16, md: 18 },
+                },
+              },
+            }}
           >
-            Add Step
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Add Step
+            </Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+              Add
+            </Box>
           </Button>
         </Stack>
       </Box>
@@ -126,7 +178,18 @@ export default function DynamicStepList({
                       placeholder={placeholder}
                       value={item}
                       onChange={(e) => handleChange(index, e.target.value)}
-                      sx={{ flex: 1 }}
+                      sx={{ 
+                        flex: 1,
+                        '& .MuiInputBase-root': {
+                          fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                        },
+                        '& .MuiFormHelperText-root': {
+                          fontSize: { xs: '0.75rem', md: '0.75rem' },
+                        },
+                      }}
                     />
 
                     {/* Delete Button */}
