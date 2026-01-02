@@ -45,18 +45,18 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
   }));
 
   // Transform starch preparation steps to IPreparationStep[]
-  const starchSteps: IPreparationStep[] = apiResponse.starch_preparation.steps.map((step, index) => ({
+  const starchSteps: IPreparationStep[] = apiResponse.starch_preparation?.steps?.map((step, index) => ({
     id: String(step.id || index + 1),
     stepNumber: index + 1,
     description: step.step,
-  }));
+  })) || [];
 
   // Transform design your plate steps to IPreparationStep[]
-  const plateDesignSteps: IPreparationStep[] = apiResponse.design_your_plate.steps.map((step, index) => ({
+  const plateDesignSteps: IPreparationStep[] = apiResponse.design_your_plate?.steps?.map((step, index) => ({
     id: String(step.id || index + 1),
     stepNumber: index + 1,
     description: step.step,
-  }));
+  })) || [];
 
   // Transform tags (extract just the names)
   const tags: string[] = apiResponse.tags.map((tag) => tag.name);
@@ -78,13 +78,13 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
   // Build the IRecipe object
   const recipe: IRecipe = {
     id: String(apiResponse.id),
-    dishName: apiResponse.dish_name,
-    cuisineType: apiResponse.cusinie_type.category_name,
-    preparationTime: parseTimeString(apiResponse.preparation_time),
-    foodCost: parseNumber(apiResponse.food_cost),
-    station: apiResponse.station_to_prepare_dish,
+    dishName: apiResponse.dish_name || '',
+    cuisineType: apiResponse.cusinie_type?.category_name || 'N/A',
+    preparationTime: parseTimeString(apiResponse.preparation_time || '0'),
+    foodCost: parseNumber(apiResponse.food_cost || '0'),
+    station: apiResponse.station_to_prepare_dish || '',
     youtubeUrl: apiResponse.youtube_url || '',
-    description: apiResponse.description,
+    description: apiResponse.description || '',
     tags,
     imageFiles,
     videoFile: apiResponse.manual_video || apiResponse.video || '',
@@ -98,27 +98,27 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
     
     // Starch Preparation
     starchPreparation: {
-      type: apiResponse.starch_preparation.title,
+      type: apiResponse.starch_preparation?.title || '',
       steps: starchSteps,
       cookingTime: 30, // Default, can be calculated if available in API
     },
     
     // Costing (without servingsInCase - not in ICostingInfo type)
     costing: {
-      caseCost: parseNumber(apiResponse.caseCost),
-      caseWeightLb: parseNumber(apiResponse.caseWeightLb),
-      servingWeightOz: parseNumber(apiResponse.servingWeightOz),
-      costPerServing: parseNumber(apiResponse.costPerServing),
-      foodCostPct: parseNumber(apiResponse.foodCostPct),
-      salePrice: parseNumber(apiResponse.salePrice),
-      manualCostPerServing: parseNumber(apiResponse.manualCostPerServing),
+      caseCost: parseNumber(apiResponse.caseCost || '0'),
+      caseWeightLb: parseNumber(apiResponse.caseWeightLb || '0'),
+      servingWeightOz: parseNumber(apiResponse.servingWeightOz || '0'),
+      costPerServing: parseNumber(apiResponse.costPerServing || '0'),
+      foodCostPct: parseNumber(apiResponse.foodCostPct || '0'),
+      salePrice: parseNumber(apiResponse.salePrice || '0'),
+      manualCostPerServing: parseNumber(apiResponse.manualCostPerServing || '0'),
     },
     
     // Plate Design (with required platingSteps)
     plateDesign: {
       centerOfPlate: {
-        category: apiResponse.center_of_plate,
-        subcategory: apiResponse.main_dish,
+        category: apiResponse.center_of_plate || '',
+        subcategory: apiResponse.main_dish || '',
       },
       platingSteps: plateDesignSteps,
     },
@@ -129,7 +129,7 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
     isPublic: apiResponse.status.value === 'P',
     
     // Branch
-    branchId: apiResponse.branch.id,
+    branchId: apiResponse.branch?.id || '',
     
     // Comments (keep as arrays with IDs for individual editing)
     cookingDeviationComments: apiResponse.Cooking_Deviation_Comment.map((comment) => ({
@@ -149,8 +149,8 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
       flavor: wine.flavor,
       profile: wine.profile,
       reason_for_pairing: wine.reason_for_pairing,
-      proteins: wine.proteins,
-      region_name: wine.region_name,
+      proteins: wine.proteins || '',
+      region_name: wine.region_name || '',
     })),
     
     // Meta
@@ -166,15 +166,93 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
 /**
  * Transforms internal IRecipe format to API request format
  * Used when saving/updating recipes
+ * @param recipe - Recipe data in internal format
+ * @param menuCategories - Optional menu categories for cuisine type conversion
  */
-export function transformRecipeToApiRequest(recipe: Partial<IRecipe>): Partial<IRecipeApiResponse> {
+// API Request type (different from response - uses different field names)
+export interface IRecipeApiRequest {
+  dish_name?: string;
+  description?: string;
+  preparation_time?: string;
+  station_to_prepare_dish?: string;
+  youtube_url?: string;
+  manual_video?: string;
+  center_of_plate?: string;
+  main_dish?: string;
+  cusinie_type?: string;
+  availability?: string;
+  status?: string;
+  is_draft?: boolean;
+  is_schedule?: boolean;
+  caseCost?: string;
+  caseWeightLb?: string;
+  servingWeightOz?: string;
+  servingsInCase?: string;
+  costPerServing?: string;
+  foodCostPct?: string;
+  salePrice?: string;
+  manualCostPerServing?: string;
+  food_cost?: string;
+  ingredients?: Array<{
+    id?: number;
+    title: string;
+    quantity: string;
+    unit: string;
+  }>;
+  essential?: Array<{
+    id?: number;
+    title: string;
+    quantity: string;
+    unit: string;
+  }>;
+  steps?: Array<{
+    id?: number;
+    title: string;
+  }>;
+  tags?: Array<{
+    id?: number;
+    name: string;
+  }>;
+  starch_preparation?: {
+    id?: number;
+    title: string;
+    steps: Array<{
+      id?: number;
+      step: string;
+    }>;
+  };
+  starch_preparation_image?: string;
+  design_your_plate?: {
+    id?: number;
+    steps: Array<{
+      id?: number;
+      step: string;
+    }>;
+  };
+  plate_design_image?: string;
+  cooking_deviation_comment?: Array<{
+    id?: number;
+    step: string;
+  }>;
+  real_time_variable_comment?: Array<{
+    id?: number;
+    step: string;
+  }>;
+  recipe_image?: string[];
+  wine_pairing?: number[];
+}
+
+export function transformRecipeToApiRequest(
+  recipe: Partial<IRecipe>,
+  menuCategories?: Array<{ id: number; categoryName: string }>
+): IRecipeApiRequest {
   // Helper: Format number to string with 2 decimals
   const formatNumber = (value: number | undefined): string => {
     if (value === undefined) return '0.00';
     return value.toFixed(2);
   };
 
-  const apiRequest: Partial<IRecipeApiResponse> = {};
+  const apiRequest: IRecipeApiRequest = {};
 
   // Basic fields
   if (recipe.dishName !== undefined) apiRequest.dish_name = recipe.dishName;
@@ -185,11 +263,18 @@ export function transformRecipeToApiRequest(recipe: Partial<IRecipe>): Partial<I
     apiRequest.preparation_time = `${recipe.preparationTime} mint`;
   }
 
-  // Cuisine Type (needs to be object, but we only have the name - backend should handle this)
-  if (recipe.cuisineType !== undefined) {
-    // This would typically be handled by sending just the ID or name
-    // The backend should map it to the full object
-    // For now, we'll send it as-is and let the backend handle it
+  // Cuisine Type - Convert name to ID using menu categories
+  if (recipe.cuisineType !== undefined && menuCategories) {
+    const category = menuCategories.find(
+      (cat) => cat.categoryName.toLowerCase() === (recipe.cuisineType || '').toLowerCase()
+    );
+    if (category) {
+      // API expects cusinie_type as string ID
+      apiRequest.cusinie_type = String(category.id);
+    }
+  } else if (recipe.cuisineType !== undefined) {
+    // If menu categories not provided, backend should handle mapping the name to ID
+    // This maintains backward compatibility
   }
 
   // Center of Plate
@@ -198,6 +283,101 @@ export function transformRecipeToApiRequest(recipe: Partial<IRecipe>): Partial<I
   }
   if (recipe.plateDesign?.centerOfPlate?.subcategory !== undefined) {
     apiRequest.main_dish = recipe.plateDesign.centerOfPlate.subcategory;
+  }
+
+  // Ingredients array
+  if (recipe.ingredients !== undefined) {
+    apiRequest.ingredients = recipe.ingredients.map((ing) => ({
+      ...(ing.id && { id: parseInt(ing.id, 10) }),
+      title: ing.title,
+      quantity: String(ing.quantity),
+      unit: ing.unit || '',
+    }));
+  }
+
+  // Essential tools array
+  if (recipe.essentialIngredients !== undefined) {
+    apiRequest.essential = recipe.essentialIngredients.map((ess) => ({
+      ...(ess.id && { id: parseInt(ess.id, 10) }),
+      title: ess.title,
+      quantity: String(ess.quantity),
+      unit: ess.unit || '',
+    }));
+  }
+
+  // Preparation steps array
+  if (recipe.steps !== undefined) {
+    apiRequest.steps = recipe.steps.map((step) => ({
+      ...(step.id && { id: parseInt(step.id, 10) }),
+      title: step.description,
+    }));
+  }
+
+  // Tags array
+  if (recipe.tags !== undefined) {
+    // Tags are stored as strings in IRecipe, but API expects objects with id and name
+    // For updates, we'll need to preserve existing tag IDs if available
+    // For now, we'll create new tags (backend will handle duplicates)
+    apiRequest.tags = recipe.tags.map((tag) => ({
+      name: tag,
+    }));
+  }
+
+  // Starch preparation object
+  if (recipe.starchPreparation !== undefined) {
+    const starchPrep = recipe.starchPreparation;
+    // Only include if there are steps or a title
+    if (starchPrep.steps?.length > 0 || starchPrep.type) {
+      apiRequest.starch_preparation = {
+        title: starchPrep.type || '',
+        steps: (starchPrep.steps || []).map((step) => ({
+          ...(step.id && { id: parseInt(step.id, 10) }),
+          step: step.description,
+        })),
+      };
+    }
+  }
+
+  // Design your plate object
+  if (recipe.plateDesign?.platingSteps !== undefined) {
+    const plateDesign = recipe.plateDesign;
+    // Only include if there are steps
+    if (plateDesign.platingSteps?.length > 0) {
+      apiRequest.design_your_plate = {
+        steps: plateDesign.platingSteps.map((step) => ({
+          ...(step.id && { id: parseInt(step.id, 10) }),
+          step: step.description,
+        })),
+      };
+    }
+  }
+
+  // Cooking deviation comments array
+  if (recipe.cookingDeviationComments !== undefined) {
+    apiRequest.cooking_deviation_comment = recipe.cookingDeviationComments.map((comment) => ({
+      ...(comment.id && { id: parseInt(comment.id, 10) }),
+      step: comment.step,
+    }));
+  }
+
+  // Real-time variable comments array
+  if (recipe.realtimeVariableComments !== undefined) {
+    apiRequest.real_time_variable_comment = recipe.realtimeVariableComments.map((comment) => ({
+      ...(comment.id && { id: parseInt(comment.id, 10) }),
+      step: comment.step,
+    }));
+  }
+
+  // Wine pairings array (API expects array of wine IDs)
+  if (recipe.winePairings !== undefined) {
+    apiRequest.wine_pairing = recipe.winePairings
+      .map((wine) => (wine.id ? parseInt(wine.id, 10) : null))
+      .filter((id): id is number => id !== null);
+  }
+
+  // Recipe images array (API expects array of URLs)
+  if (recipe.imageFiles !== undefined) {
+    apiRequest.recipe_image = recipe.imageFiles;
   }
 
   // Costing
@@ -232,28 +412,27 @@ export function transformRecipeToApiRequest(recipe: Partial<IRecipe>): Partial<I
     apiRequest.food_cost = formatNumber(recipe.foodCost);
   }
 
-  // Status (map internal to API format)
+  // Status (map internal to API format - API expects string "P" or "PR")
   if (recipe.status !== undefined) {
     const statusValueMap: Record<string, string> = {
       'draft': 'D',
       'active': 'P',
+      'private': 'PR',
       'archived': 'A',
     };
-    const statusValue = statusValueMap[recipe.status] || 'D';
-    apiRequest.status = {
-      name: recipe.status.charAt(0).toUpperCase() + recipe.status.slice(1),
-      value: statusValue,
-    };
+    apiRequest.status = statusValueMap[recipe.status] || 'D';
   }
 
-  // Availability
+  // Availability (API expects string "A", "LS", or "OOS")
   if (recipe.isAvailable !== undefined) {
-    const availValue = recipe.isAvailable ? 'A' : 'O';
-    const availName = recipe.isAvailable ? 'Available' : 'Out of Stock';
-    apiRequest.availability = {
-      name: availName,
-      value: availValue,
-    };
+    apiRequest.availability = recipe.isAvailable ? 'A' : 'OOS';
+  }
+
+  // Draft and schedule flags
+  if (recipe.status === 'draft') {
+    apiRequest.is_draft = true;
+  } else if (recipe.status !== undefined) {
+    apiRequest.is_draft = false;
   }
 
   return apiRequest;

@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 // @mui
 import { useTheme, alpha } from '@mui/material/styles';
@@ -20,8 +20,6 @@ import {
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
-// _mock_
-import { _recipeList } from '../../_mock/arrays';
 // @types
 import { IRecipe } from '../../@types/recipe';
 // components
@@ -33,8 +31,9 @@ import { fCurrency } from '../../utils/formatNumber';
 import { useSnackbar } from '../../components/snackbar';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
-// utils
-import { fetchRecipeById, saveRecipe } from '../../utils/recipeAdapter';
+import { usePermissions } from '../../hooks/usePermissions';
+// services
+import { useRecipe, useUpdateRecipe, useMenuCategories } from '../../services';
 // sections
 import {
   IngredientItem,
@@ -73,51 +72,46 @@ export default function RecipeDetailsPage() {
   const { themeStretch } = useSettingsContext();
   const { enqueueSnackbar } = useSnackbar();
   const { user } = useAuthContext();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
 
   const [servings, setServings] = useState(1);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [recipeData, setRecipeData] = useState<IRecipe | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Check if user has edit permission (e.g., admin or manager role)
-  const canEdit = user?.role === 'admin' || user?.role === 'manager';
+  // Use TanStack Query hook to fetch recipe
+  const { data: recipeDataFromQuery, isLoading: loading, isError, error: queryError } = useRecipe(id);
+  const updateRecipeMutation = useUpdateRecipe();
+  
+  // Fetch menu categories for cuisine type selection
+  const { data: menuCategories = [], isLoading: isLoadingCategories } = useMenuCategories();
+  
+  const error = isError ? (queryError instanceof Error ? queryError.message : 'Failed to load recipe') : null;
 
-  // Fetch recipe data from API
+  // Sync query data to local state for optimistic updates
   useEffect(() => {
-    async function loadRecipe() {
-      if (!id) return;
-      
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Try to fetch from API first
-        // If API is not available, fall back to mock data
-        try {
-          const recipe = await fetchRecipeById(id);
-          setRecipeData(recipe);
-        } catch (apiError) {
-          console.warn('API not available, using mock data:', apiError);
-          // Fallback to mock data
-          const foundRecipe = _recipeList.find((item) => item.id === id);
-          if (foundRecipe) {
-            setRecipeData(foundRecipe);
-          } else {
-            setError('Recipe not found');
-          }
-        }
-      } catch (err) {
-        console.error('Error loading recipe:', err);
-        setError('Failed to load recipe');
-      } finally {
-        setLoading(false);
-      }
+    if (recipeDataFromQuery) {
+      setRecipeData(recipeDataFromQuery);
     }
+  }, [recipeDataFromQuery]);
 
-    loadRecipe();
-  }, [id]);
+  // Permission-based check for edit functionality
+  const canEdit = hasPermission('edit_recipe');
+
+  // Build cuisine type options from API data
+  const cuisineTypeOptions = useMemo(() => {
+    return menuCategories
+      .filter((category) => category.categoryName)
+      .map((category) => category.categoryName);
+  }, [menuCategories]);
+
+  // Find matching cuisine type category ID from recipe's cuisine type name
+  const findCuisineCategoryId = useCallback((cuisineTypeName: string): number | undefined => {
+    const category = menuCategories.find(
+      (cat) => cat.categoryName.toLowerCase() === cuisineTypeName.toLowerCase()
+    );
+    return category?.id;
+  }, [menuCategories]);
 
   // Handle field edit - MUST be before any conditional returns (Rules of Hooks)
   const handleFieldEdit = useCallback((fieldName: string) => {
@@ -189,20 +183,26 @@ export default function RecipeDetailsPage() {
               [keys[1]]: value,
             };
           }
+        } else if (fieldName === 'cuisineType') {
+          // For cuisine type, store the name (adapter will handle conversion to ID)
+          updatedFields.cuisineType = value as string;
         } else {
           (updatedFields as any)[fieldName] = value;
         }
         
-        // Call API to save (will use mock for now if API not available)
+        // Call API to save using TanStack Query mutation
         try {
           console.log('📤 [API SAVE ATTEMPT]', {
-            endpoint: `/api/recipes/${recipeData.id}/`,
+            endpoint: `/recipe/${recipeData.id}/`,
             method: 'PATCH',
             payload: updatedFields,
             timestamp: new Date().toISOString(),
           });
           
-          await saveRecipe(updatedFields, 'PATCH');
+          await updateRecipeMutation.mutateAsync({
+            id: recipeData.id,
+            data: updatedFields,
+          });
           
           console.log('✅ [API SAVE SUCCESS]', {
             fieldName,
@@ -240,118 +240,245 @@ export default function RecipeDetailsPage() {
   }, []);
 
   // Handle ingredient save
-  const handleIngredientSave = useCallback((id: string, data: { name: string; quantity: string; unit?: string }) => {
+  const handleIngredientSave = useCallback(async (id: string, data: { name: string; quantity: string; unit?: string }) => {
+    if (!recipeData) return;
+    
+    // Update local state optimistically
+    const updatedIngredients = recipeData.ingredients?.map((ing) =>
+      ing.id === id ? { ...ing, title: data.name, quantity: parseFloat(data.quantity), unit: data.unit || '' } : ing
+    ) || [];
+    
     setRecipeData((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        ingredients: prev.ingredients?.map((ing) =>
-          ing.id === id ? { ...ing, title: data.name, quantity: parseFloat(data.quantity), unit: data.unit || '' } : ing
-        ),
+        ingredients: updatedIngredients,
       };
     });
-    enqueueSnackbar('Ingredient updated successfully!', { variant: 'success' });
-    console.log('💾 [INGREDIENT SAVED]', { id, data, timestamp: new Date().toISOString() });
-  }, [enqueueSnackbar]);
+    
+    try {
+      // Send full ingredients array to API
+      await updateRecipeMutation.mutateAsync({
+        id: recipeData.id,
+        data: { ingredients: updatedIngredients },
+      });
+      enqueueSnackbar('Ingredient updated successfully!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating ingredient:', error);
+      enqueueSnackbar('Failed to update ingredient', { variant: 'error' });
+      // Revert optimistic update on error
+      setRecipeData((prev) => prev ? { ...prev, ingredients: recipeData.ingredients } : prev);
+    }
+  }, [recipeData, updateRecipeMutation, enqueueSnackbar]);
 
   // Handle essential save
-  const handleEssentialSave = useCallback((id: string, data: { name: string; quantity: string; unit?: string }) => {
+  const handleEssentialSave = useCallback(async (id: string, data: { name: string; quantity: string; unit?: string }) => {
+    if (!recipeData) return;
+    
+    // Update local state optimistically
+    const updatedEssentials = recipeData.essentialIngredients?.map((ess) =>
+      ess.id === id ? { ...ess, title: data.name, quantity: parseFloat(data.quantity), unit: data.unit || '' } : ess
+    ) || [];
+    
     setRecipeData((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        essentialIngredients: prev.essentialIngredients?.map((ess) =>
-          ess.id === id ? { ...ess, title: data.name, quantity: parseFloat(data.quantity) } : ess
-        ),
+        essentialIngredients: updatedEssentials,
       };
     });
-    enqueueSnackbar('Essential ingredient updated successfully!', { variant: 'success' });
-    console.log('💾 [ESSENTIAL SAVED]', { id, data, timestamp: new Date().toISOString() });
-  }, [enqueueSnackbar]);
+    
+    try {
+      // Send full essential ingredients array to API
+      await updateRecipeMutation.mutateAsync({
+        id: recipeData.id,
+        data: { essentialIngredients: updatedEssentials },
+      });
+      enqueueSnackbar('Essential ingredient updated successfully!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating essential ingredient:', error);
+      enqueueSnackbar('Failed to update essential ingredient', { variant: 'error' });
+      // Revert optimistic update on error
+      setRecipeData((prev) => prev ? { ...prev, essentialIngredients: recipeData.essentialIngredients } : prev);
+    }
+  }, [recipeData, updateRecipeMutation, enqueueSnackbar]);
 
   // Handle step save
-  const handleStepSave = useCallback((id: string, data: { text: string }) => {
+  const handleStepSave = useCallback(async (id: string, data: { text: string }) => {
+    if (!recipeData) return;
+    
+    // Update local state optimistically
+    const updatedSteps = recipeData.steps?.map((step) =>
+      step.id === id ? { ...step, description: data.text } : step
+    ) || [];
+    
     setRecipeData((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        steps: prev.steps?.map((step) =>
-          step.id === id ? { ...step, description: data.text } : step
-        ),
+        steps: updatedSteps,
       };
     });
-    enqueueSnackbar('Step updated successfully!', { variant: 'success' });
-    console.log('💾 [STEP SAVED]', { id, data, timestamp: new Date().toISOString() });
-  }, [enqueueSnackbar]);
+    
+    try {
+      // Send full steps array to API
+      await updateRecipeMutation.mutateAsync({
+        id: recipeData.id,
+        data: { steps: updatedSteps },
+      });
+      enqueueSnackbar('Step updated successfully!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating step:', error);
+      enqueueSnackbar('Failed to update step', { variant: 'error' });
+      // Revert optimistic update on error
+      setRecipeData((prev) => prev ? { ...prev, steps: recipeData.steps } : prev);
+    }
+  }, [recipeData, updateRecipeMutation, enqueueSnackbar]);
 
   // Handle starch step save
-  const handleStarchStepSave = useCallback((id: string, data: { text: string }) => {
+  const handleStarchStepSave = useCallback(async (id: string, data: { text: string }) => {
+    if (!recipeData || !recipeData.starchPreparation) return;
+    
+    // Update local state optimistically
+    const updatedStarchSteps = recipeData.starchPreparation.steps?.map((step) =>
+      step.id === id ? { ...step, description: data.text } : step
+    ) || [];
+    
+    const updatedStarchPrep = {
+      ...recipeData.starchPreparation,
+      steps: updatedStarchSteps,
+    };
+    
     setRecipeData((prev) => {
-      if (!prev ||!prev.starchPreparation) return prev;
+      if (!prev) return prev;
       return {
         ...prev,
-        starchPreparation: {
-          ...prev.starchPreparation,
-          steps: prev.starchPreparation.steps?.map((step) =>
-            step.id === id ? { ...step, description: data.text } : step
-          ),
-        },
+        starchPreparation: updatedStarchPrep,
       };
     });
-    enqueueSnackbar('Starch step updated successfully!', { variant: 'success' });
-    console.log('💾 [STARCH STEP SAVED]', { id, data, timestamp: new Date().toISOString() });
-  }, [enqueueSnackbar]);
+    
+    try {
+      // Send full starch preparation object to API
+      await updateRecipeMutation.mutateAsync({
+        id: recipeData.id,
+        data: { starchPreparation: updatedStarchPrep },
+      });
+      enqueueSnackbar('Starch step updated successfully!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating starch step:', error);
+      enqueueSnackbar('Failed to update starch step', { variant: 'error' });
+      // Revert optimistic update on error
+      setRecipeData((prev) => prev ? { ...prev, starchPreparation: recipeData.starchPreparation } : prev);
+    }
+  }, [recipeData, updateRecipeMutation, enqueueSnackbar]);
 
   // Handle plate design step save
-  const handlePlateDesignStepSave = useCallback((id: string, data: { text: string }) => {
+  const handlePlateDesignStepSave = useCallback(async (id: string, data: { text: string }) => {
+    if (!recipeData || !recipeData.plateDesign) return;
+    
+    // Update local state optimistically
+    const updatedPlatingSteps = recipeData.plateDesign.platingSteps?.map((step) =>
+      step.id === id ? { ...step, description: data.text } : step
+    ) || [];
+    
+    const updatedPlateDesign = {
+      ...recipeData.plateDesign,
+      platingSteps: updatedPlatingSteps,
+    };
+    
     setRecipeData((prev) => {
-      if (!prev || !prev.plateDesign) return prev;
+      if (!prev) return prev;
       return {
         ...prev,
-        plateDesign: {
-          ...prev.plateDesign,
-          platingSteps: prev.plateDesign.platingSteps?.map((step) =>
-            step.id === id ? { ...step, description: data.text } : step
-          ),
-        },
+        plateDesign: updatedPlateDesign,
       };
     });
-    enqueueSnackbar('Plate design step updated successfully!', { variant: 'success' });
-    console.log('💾 [PLATE DESIGN STEP SAVED]', { id, data, timestamp: new Date().toISOString() });
-  }, [enqueueSnackbar]);
+    
+    try {
+      // Send full plate design object to API
+      await updateRecipeMutation.mutateAsync({
+        id: recipeData.id,
+        data: { plateDesign: updatedPlateDesign },
+      });
+      enqueueSnackbar('Plate design step updated successfully!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating plate design step:', error);
+      enqueueSnackbar('Failed to update plate design step', { variant: 'error' });
+      // Revert optimistic update on error
+      setRecipeData((prev) => prev ? { ...prev, plateDesign: recipeData.plateDesign } : prev);
+    }
+  }, [recipeData, updateRecipeMutation, enqueueSnackbar]);
 
   // Handle cooking deviation comment save
-  const handleCookingCommentSave = useCallback((id: string, data: { text: string }) => {
+  const handleCookingCommentSave = useCallback(async (id: string, data: { text: string }) => {
+    if (!recipeData) return;
+    
+    // Update local state optimistically
+    const updatedComments = recipeData.cookingDeviationComments?.map((comment) =>
+      comment.id === id ? { ...comment, step: data.text } : comment
+    ) || [];
+    
     setRecipeData((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        cookingDeviationComments: prev.cookingDeviationComments?.map((comment) =>
-          comment.id === id ? { ...comment, step: data.text } : comment
-        ),
+        cookingDeviationComments: updatedComments,
       };
     });
-    enqueueSnackbar('Cooking deviation comment updated successfully!', { variant: 'success' });
-    console.log('💾 [COOKING COMMENT SAVED]', { id, data, timestamp: new Date().toISOString() });
-  }, [enqueueSnackbar]);
+    
+    try {
+      // Send full cooking deviation comments array to API
+      await updateRecipeMutation.mutateAsync({
+        id: recipeData.id,
+        data: { cookingDeviationComments: updatedComments },
+      });
+      enqueueSnackbar('Cooking deviation comment updated successfully!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating cooking deviation comment:', error);
+      enqueueSnackbar('Failed to update cooking deviation comment', { variant: 'error' });
+      // Revert optimistic update on error
+      setRecipeData((prev) => prev ? { ...prev, cookingDeviationComments: recipeData.cookingDeviationComments } : prev);
+    }
+  }, [recipeData, updateRecipeMutation, enqueueSnackbar]);
 
   // Handle realtime comment save
-  const handleRealtimeCommentSave = useCallback((id: string, data: { text: string }) => {
+  const handleRealtimeCommentSave = useCallback(async (id: string, data: { text: string }) => {
+    if (!recipeData) return;
+    
+    // Update local state optimistically
+    const updatedComments = recipeData.realtimeVariableComments?.map((comment) =>
+      comment.id === id ? { ...comment, step: data.text } : comment
+    ) || [];
+    
     setRecipeData((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        realtimeVariableComments: prev.realtimeVariableComments?.map((comment) =>
-          comment.id === id ? { ...comment, step: data.text } : comment
-        ),
+        realtimeVariableComments: updatedComments,
       };
     });
-    enqueueSnackbar('Realtime variable comment updated successfully!', { variant: 'success' });
-    console.log('💾 [REALTIME COMMENT SAVED]', { id, data, timestamp: new Date().toISOString() });
-  }, [enqueueSnackbar]);
+    
+    try {
+      // Send full real-time variable comments array to API
+      await updateRecipeMutation.mutateAsync({
+        id: recipeData.id,
+        data: { realtimeVariableComments: updatedComments },
+      });
+      enqueueSnackbar('Realtime variable comment updated successfully!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating realtime variable comment:', error);
+      enqueueSnackbar('Failed to update realtime variable comment', { variant: 'error' });
+      // Revert optimistic update on error
+      setRecipeData((prev) => prev ? { ...prev, realtimeVariableComments: recipeData.realtimeVariableComments } : prev);
+    }
+  }, [recipeData, updateRecipeMutation, enqueueSnackbar]);
 
   // Handle wine pairing save
-  const handleWinePairingSave = useCallback((id: string, data: {
+  // Handle wine pairing save
+  // Note: Wine pairings are managed via wine IDs array in the API
+  // Individual wine fields are updated via the wine API, not recipe API
+  // For now, we'll update the local state but note that full wine management requires separate endpoints
+  const handleWinePairingSave = useCallback(async (id: string, data: {
     name: string;
     type: string;
     flavor: string;
@@ -360,27 +487,46 @@ export default function RecipeDetailsPage() {
     proteins: string;
     region: string;
   }) => {
+    if (!recipeData) return;
+    
+    // Update local state optimistically
+    const updatedWines = recipeData.winePairings?.map((wine) =>
+      wine.id === id ? {
+        ...wine,
+        wine_name: data.name,
+        wine_type: data.type,
+        flavor: data.flavor,
+        profile: data.profile,
+        reason_for_pairing: data.description,
+        proteins: data.proteins,
+        region_name: data.region,
+      } : wine
+    ) || [];
+    
     setRecipeData((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        winePairings: prev.winePairings?.map((wine) =>
-          wine.id === id ? {
-            ...wine,
-            wine_name: data.name,
-            wine_type: data.type,
-            flavor: data.flavor,
-            profile: data.profile,
-            reason_for_pairing: data.description,
-            proteins: data.proteins,
-            region_name: data.region,
-          } : wine
-        ),
+        winePairings: updatedWines,
       };
     });
-    enqueueSnackbar('Wine pairing updated successfully!', { variant: 'success' });
-    console.log('💾 [WINE PAIRING SAVED]', { id, data, timestamp: new Date().toISOString() });
-  }, [enqueueSnackbar]);
+    
+    try {
+      // Note: Wine pairings API expects array of wine IDs
+      // Individual wine updates should be done via /api/wine/ endpoint
+      // For now, we'll send the wine IDs array to maintain the association
+      await updateRecipeMutation.mutateAsync({
+        id: recipeData.id,
+        data: { winePairings: updatedWines }, // This will be transformed to wine_pairing: [ids] in adapter
+      });
+      enqueueSnackbar('Wine pairing updated successfully!', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating wine pairing:', error);
+      enqueueSnackbar('Failed to update wine pairing', { variant: 'error' });
+      // Revert optimistic update on error
+      setRecipeData((prev) => prev ? { ...prev, winePairings: recipeData.winePairings } : prev);
+    }
+  }, [recipeData, updateRecipeMutation, enqueueSnackbar]);
 
   const recipe = recipeData;
 
@@ -542,8 +688,9 @@ export default function RecipeDetailsPage() {
                     <Card sx={{ p: 2, height: '100%', bgcolor: alpha(theme.palette.grey[500], 0.04) }}>
                       <EditableField
                         label="Cuisine Type"
-                        value={recipe.cuisineType}
-                        type="text"
+                        value={recipe.cuisineType || ''}
+                        type="select"
+                        options={cuisineTypeOptions}
                         canEdit={canEdit}
                         isEditing={editingField === 'cuisineType'}
                         onEdit={() => handleFieldEdit('cuisineType')}

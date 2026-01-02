@@ -217,6 +217,19 @@ export default function EditableField({
                 borderColor: theme.palette.primary.main,
               },
             }}
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  maxHeight: 300,
+                  '& .MuiMenuItem-root': {
+                    minHeight: 40,
+                    fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                    py: 1,
+                    px: 2,
+                  },
+                },
+              },
+            }}
           >
             {options.map((option) => (
               <MenuItem key={option} value={option}>

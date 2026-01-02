@@ -6,8 +6,12 @@ import {
   transformListApiResponseToRecipe,
   transformRecipeToApiRequest,
   IRecipeListItemApiResponse,
+  IRecipeApiRequest,
 } from '../../utils/recipeAdapter';
 import { QueryParams, PaginatedResponse } from '../common/types';
+import { getMenuCategories, IMenuCategory } from '../menuCategories/menuCategoryService';
+import { queryClient } from '../queryClient';
+import { menuCategoryKeys } from '../menuCategories/menuCategoryHooks';
 
 // ----------------------------------------------------------------------
 
@@ -93,10 +97,32 @@ export async function getRecipes(params?: RecipeQueryParams): Promise<RecipeList
 }
 
 /**
+ * Get menu categories from cache or fetch if not available
+ * This prevents repeated API calls by using TanStack Query cache
+ */
+async function getMenuCategoriesCached(): Promise<IMenuCategory[]> {
+  // Try to get from cache first
+  const cachedData = queryClient.getQueryData<IMenuCategory[]>(menuCategoryKeys.list());
+  if (cachedData) {
+    return cachedData;
+  }
+  
+  // If not in cache, fetch and cache it
+  // Use ensureQueryData to leverage TanStack Query's caching
+  return queryClient.ensureQueryData<IMenuCategory[]>({
+    queryKey: menuCategoryKeys.list(),
+    queryFn: () => getMenuCategories(),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+/**
  * Create new recipe
  */
 export async function createRecipe(recipe: Partial<IRecipe>): Promise<IRecipe> {
-  const apiRequest = transformRecipeToApiRequest(recipe);
+  // Get menu categories from cache or fetch if not available
+  const menuCategories = await getMenuCategoriesCached();
+  const apiRequest: IRecipeApiRequest = transformRecipeToApiRequest(recipe, menuCategories);
   const response = await axiosInstance.post<IRecipeApiResponse>('/recipe/', apiRequest);
   return transformApiResponseToRecipe(response.data);
 }
@@ -105,7 +131,9 @@ export async function createRecipe(recipe: Partial<IRecipe>): Promise<IRecipe> {
  * Update recipe (PATCH)
  */
 export async function updateRecipe(id: string | number, recipe: Partial<IRecipe>): Promise<IRecipe> {
-  const apiRequest = transformRecipeToApiRequest(recipe);
+  // Get menu categories from cache or fetch if not available
+  const menuCategories = await getMenuCategoriesCached();
+  const apiRequest: IRecipeApiRequest = transformRecipeToApiRequest(recipe, menuCategories);
   const response = await axiosInstance.patch<IRecipeApiResponse>(`/recipe/${id}/`, apiRequest);
   return transformApiResponseToRecipe(response.data);
 }
@@ -114,7 +142,9 @@ export async function updateRecipe(id: string | number, recipe: Partial<IRecipe>
  * Update recipe (PUT - full update)
  */
 export async function updateRecipeFull(id: string | number, recipe: Partial<IRecipe>): Promise<IRecipe> {
-  const apiRequest = transformRecipeToApiRequest(recipe);
+  // Get menu categories from cache or fetch if not available
+  const menuCategories = await getMenuCategoriesCached();
+  const apiRequest: IRecipeApiRequest = transformRecipeToApiRequest(recipe, menuCategories);
   const response = await axiosInstance.put<IRecipeApiResponse>(`/recipe/${id}/`, apiRequest);
   return transformApiResponseToRecipe(response.data);
 }

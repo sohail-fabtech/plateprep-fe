@@ -2,16 +2,16 @@
 
 export interface IRecipeApiResponse {
   id: number | string;
-  dish_name: string;
+  dish_name: string | null;
   cusinie_type: {
     id: number;
-    category_name: string;
-  };
-  preparation_time: string;
-  station_to_prepare_dish: string;
-  youtube_url: string;
-  description: string;
-  food_cost: string;
+    category_name: string | null;
+  } | null;
+  preparation_time: string | null;
+  station_to_prepare_dish: string | null;
+  youtube_url: string | null;
+  description: string | null;
+  food_cost: string | null;
   video: string | null;
   manual_video: string | null;
   video_id: string | null;
@@ -27,8 +27,8 @@ export interface IRecipeApiResponse {
   };
   
   // Center of Plate
-  center_of_plate: string;
-  main_dish: string;
+  center_of_plate: string | null;
+  main_dish: string | null;
   
   // Tags (array of objects)
   tags: Array<{
@@ -64,23 +64,23 @@ export interface IRecipeApiResponse {
     id: number;
     title: string;
     image: string | null;
-    image_url: string;
+    image_url: string | null;
     steps: Array<{
       id: number;
       step: string;
     }>;
-  };
+  } | null;
   
   // Design Your Plate
   design_your_plate: {
     id: number;
     image: string | null;
-    image_url: string;
+    image_url: string | null;
     steps: Array<{
       id: number;
       step: string;
     }>;
-  };
+  } | null;
   
   // Comments
   Cooking_Deviation_Comment: Array<{
@@ -94,32 +94,32 @@ export interface IRecipeApiResponse {
   }>;
   
   // Costing
-  caseCost: string;
-  caseWeightLb: string;
-  servingWeightOz: string;
-  servingsInCase: string;
-  costPerServing: string;
-  foodCostPct: string;
-  salePrice: string;
-  manualCostPerServing: string;
+  caseCost: string | null;
+  caseWeightLb: string | null;
+  servingWeightOz: string | null;
+  servingsInCase: string | null;
+  costPerServing: string | null;
+  foodCostPct: string | null;
+  salePrice: string | null;
+  manualCostPerServing: string | null;
   
   // Predefined Items
   predefined_ingredients: Array<{
     id: number;
     name: string;
-    type: string;
+    type: string | null;
   }>;
   
   predefined_starch: Array<{
     id: number;
     name: string;
-    type: string;
+    type: string | null;
   }>;
   
   predefined_vegetables: Array<{
     id: number;
     name: string;
-    type: string;
+    type: string | null;
   }>;
   
   // Images
@@ -136,8 +136,8 @@ export interface IRecipeApiResponse {
     flavor: string;
     profile: string;
     reason_for_pairing: string;
-    proteins: string;
-    region_name: string;
+    proteins: string | null;
+    region_name: string | null;
   }>;
   
   // Branch
@@ -147,17 +147,23 @@ export interface IRecipeApiResponse {
     branch_location: string;
     phone_number: string;
     email: string;
-    social_media: string;
+    social_media: {
+      facebook?: string;
+      instagram?: string;
+      twitter?: string;
+      [key: string]: string | undefined;
+    };
     restaurant_name: string;
+    total_social_links?: string[];
     created_at: string;
     updated_at: string;
-  };
+  } | null;
   
   // Rating
   rating: {
     average_rating: number;
     total_count: number;
-  };
+  } | null;
   
   // Meta
   resturant: number;
