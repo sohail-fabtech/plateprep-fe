@@ -20,9 +20,20 @@ type Props = {
   onDelete: VoidFunction;
   onRecover?: VoidFunction;
   filterStatus?: string;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canArchive?: boolean;
 };
 
-export default function RecipeCard({ recipe, onDelete, onRecover, filterStatus = 'all' }: Props) {
+export default function RecipeCard({ 
+  recipe, 
+  onDelete, 
+  onRecover, 
+  filterStatus = 'all',
+  canEdit = true,
+  canDelete = true,
+  canArchive = true,
+}: Props) {
   const theme = useTheme();
   
   const navigate = useNavigate();
@@ -198,80 +209,86 @@ export default function RecipeCard({ recipe, onDelete, onRecover, filterStatus =
           <Stack direction="row" spacing={{ xs: 0.75, sm: 1 }}>
             {isArchived ? (
               // Recover button for archived tab
-              <Button
-                fullWidth
-                variant="outlined"
-                color="success"
-                startIcon={<Iconify icon="eva:refresh-fill" width={{ xs: 16, md: 18 }} />}
-                onClick={handleRecover}
-                sx={{
-                  fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
-                  height: { xs: 36, sm: 40, md: 42 },
-                  fontWeight: 600,
-                }}
-              >
-                Recover
-              </Button>
+              canEdit && (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="success"
+                  startIcon={<Iconify icon="eva:refresh-fill" width={{ xs: 16, md: 18 }} />}
+                  onClick={handleRecover}
+                  sx={{
+                    fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
+                    height: { xs: 36, sm: 40, md: 42 },
+                    fontWeight: 600,
+                  }}
+                >
+                  Recover
+                </Button>
+              )
             ) : (
               // Edit button for other tabs
+              canEdit && (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="inherit"
+                  disabled={shouldDisableButtons}
+                  startIcon={<Iconify icon="eva:edit-fill" width={{ xs: 16, md: 18 }} />}
+                  onClick={handleEdit}
+                  sx={{
+                    fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
+                    height: { xs: 36, sm: 40, md: 42 },
+                    fontWeight: 600,
+                    cursor: shouldDisableButtons ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Edit
+                </Button>
+              )
+            )}
+
+            {(isArchived ? canDelete : canArchive) && (
               <Button
                 fullWidth
-                variant="outlined"
-                color="inherit"
+                variant="contained"
                 disabled={shouldDisableButtons}
-                startIcon={<Iconify icon="eva:edit-fill" width={{ xs: 16, md: 18 }} />}
-                onClick={handleEdit}
+                onClick={handleOpenConfirm}
+                startIcon={
+                  <Iconify 
+                    icon={isArchived ? "eva:trash-2-outline" : "eva:archive-fill"} 
+                    width={{ xs: 16, md: 18 }} 
+                  />
+                }
                 sx={{
                   fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
                   height: { xs: 36, sm: 40, md: 42 },
                   fontWeight: 600,
+                  boxShadow: 'none',
                   cursor: shouldDisableButtons ? 'not-allowed' : 'pointer',
+                  ...(isArchived
+                    ? {
+                        // Delete - Red/Error color
+                        bgcolor: 'error.main',
+                        color: 'error.contrastText',
+                        '&:hover': {
+                          bgcolor: 'error.dark',
+                          boxShadow: 'none',
+                        },
+                      }
+                    : {
+                        // Archive - Soft gray
+                        bgcolor: theme.palette.grey[500],
+                        color: '#fff',
+                        '&:hover': {
+                          bgcolor: theme.palette.grey[600],
+                          boxShadow: 'none',
+                        },
+                      }),
                 }}
               >
-                Edit
+                {isArchived ? 'Delete' : 'Archive'}
               </Button>
             )}
-
-            <Button
-              fullWidth
-              variant="contained"
-              disabled={shouldDisableButtons}
-              onClick={handleOpenConfirm}
-              startIcon={
-                <Iconify 
-                  icon={isArchived ? "eva:trash-2-outline" : "eva:archive-fill"} 
-                  width={{ xs: 16, md: 18 }} 
-                />
-              }
-              sx={{
-                fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
-                height: { xs: 36, sm: 40, md: 42 },
-                fontWeight: 600,
-                boxShadow: 'none',
-                cursor: shouldDisableButtons ? 'not-allowed' : 'pointer',
-                ...(isArchived
-                  ? {
-                      // Delete - Red/Error color
-                      bgcolor: 'error.main',
-                      color: 'error.contrastText',
-                      '&:hover': {
-                        bgcolor: 'error.dark',
-                        boxShadow: 'none',
-                      },
-                    }
-                  : {
-                      // Archive - Soft gray
-                      bgcolor: theme.palette.grey[500],
-                      color: '#fff',
-                      '&:hover': {
-                        bgcolor: theme.palette.grey[600],
-                        boxShadow: 'none',
-                      },
-                    }),
-              }}
-            >
-              {isArchived ? 'Delete' : 'Archive'}
-            </Button>
           </Stack>
         </Stack>
       </Card>

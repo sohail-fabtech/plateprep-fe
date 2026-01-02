@@ -27,6 +27,8 @@ import { useSettingsContext } from '../../components/settings';
 import { SkeletonRecipeCard } from '../../components/skeleton';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
+import PermissionGuard from '../../auth/PermissionGuard';
+import { usePermissions } from '../../hooks/usePermissions';
 // sections
 import RecipeCard from '../../sections/@dashboard/recipe/RecipeCard';
 import { RecipeTableToolbar } from '../../sections/@dashboard/recipe/list';
@@ -57,7 +59,39 @@ const ITEMS_PER_PAGE = 12;
 export default function RecipesListPage() {
   const { themeStretch } = useSettingsContext();
   const { user } = useAuthContext();
+  const { hasPermission } = usePermissions();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Permission-based tab visibility
+  const visibleTabs = useMemo(() => {
+    const canView = hasPermission('view_recipe');
+    const canEdit = hasPermission('edit_recipe');
+    const canDelete = hasPermission('delete_recipe');
+
+    if (!canView) return [];
+
+    const tabs: string[] = [];
+
+    // If only view permission (no edit, no delete), show only active tab
+    if (canView && !canEdit && !canDelete) {
+      return ['active'];
+    }
+
+    // If edit permission, show all, draft, active, private
+    if (canEdit) {
+      tabs.push('all', 'draft', 'active', 'private');
+    } else {
+      // If no edit permission but has view, show only active
+      tabs.push('active');
+    }
+
+    // If delete permission, add archived tab
+    if (canDelete) {
+      tabs.push('archived');
+    }
+
+    return tabs;
+  }, [hasPermission]);
 
   const [filterName, setFilterName] = useState('');
   const [filterCuisine, setFilterCuisine] = useState<string>('');
@@ -233,10 +267,20 @@ export default function RecipesListPage() {
   const handleResetFilter = () => {
     setFilterName('');
     setFilterCuisine('');
-    setFilterStatus('all');
+    // Reset to first visible tab or 'active' if no tabs visible
+    setFilterStatus(visibleTabs.length > 0 ? visibleTabs[0] : 'active');
     setFilterBranch('');
     setPage(1);
   };
+
+  // Ensure current filterStatus is valid based on permissions
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.includes(filterStatus)) {
+      // If current status is not in visible tabs, switch to first visible tab
+      setFilterStatus(visibleTabs[0]);
+      setPage(1);
+    }
+  }, [visibleTabs, filterStatus]);
 
   return (
     <>
@@ -253,37 +297,40 @@ export default function RecipesListPage() {
             { name: 'List' },
           ]}
           action={
-            <Button
-              component={RouterLink}
-              to={PATH_DASHBOARD.recipes.new}
-              variant="contained"
-              startIcon={<Iconify icon="eva:plus-fill" />}
-            >
-              New Recipe
-            </Button>
+            <PermissionGuard permission="create_recipe">
+              <Button
+                component={RouterLink}
+                to={PATH_DASHBOARD.recipes.new}
+                variant="contained"
+                startIcon={<Iconify icon="eva:plus-fill" />}
+              >
+                New Recipe
+              </Button>
+            </PermissionGuard>
           }
         />
 
-        <Card sx={{ mb: { xs: 2, md: 3 } }}>
-          <Tabs
-            value={filterStatus}
-            onChange={handleFilterStatus}
-            sx={{
-              px: { xs: 1.5, sm: 2 },
-              bgcolor: 'background.neutral',
-              '& .MuiTab-root': {
-                fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                fontWeight: 600,
-                minHeight: { xs: 44, md: 48 },
-              },
-            }}
-          >
-            {STATUS_OPTIONS.map((tab) => (
-              <Tab key={tab} label={tab} value={tab} sx={{ textTransform: 'capitalize' }} />
-            ))}
-          </Tabs>
+        <PermissionGuard permission="view_recipe">
+          <Card sx={{ mb: { xs: 2, md: 3 } }}>
+            <Tabs
+              value={filterStatus}
+              onChange={handleFilterStatus}
+              sx={{
+                px: { xs: 1.5, sm: 2 },
+                bgcolor: 'background.neutral',
+                '& .MuiTab-root': {
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                  fontWeight: 600,
+                  minHeight: { xs: 44, md: 48 },
+                },
+              }}
+            >
+              {visibleTabs.map((tab) => (
+                <Tab key={tab} label={tab} value={tab} sx={{ textTransform: 'capitalize' }} />
+              ))}
+            </Tabs>
 
-          <Divider />
+            <Divider />
 
             <RecipeTableToolbar
               isFiltered={isFiltered}
@@ -300,6 +347,7 @@ export default function RecipesListPage() {
               formInputSx={FORM_INPUT_SX}
             />
           </Card>
+        </PermissionGuard>
 
           {/* Subtle loading indicator for background refetching */}
           {isFetching && !isLoading && (
@@ -314,93 +362,98 @@ export default function RecipesListPage() {
             />
           )}
 
-        {isLoading ? (
-          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-            {[...Array(ITEMS_PER_PAGE)].map((_, index) => (
-              <Grid key={index} item xs={12} sm={6} md={4} lg={3}>
-                <SkeletonRecipeCard />
-              </Grid>
-            ))}
-          </Grid>
-        ) : isError ? (
-          <Box sx={{ py: { xs: 6, md: 10 } }}>
-            <Alert severity="error">
-              {error instanceof Error ? error.message : 'Failed to load recipes. Please try again.'}
-            </Alert>
-          </Box>
-        ) : isNotFound ? (
-          <Box sx={{ py: { xs: 6, md: 10 }, textAlign: 'center' }}>
-            <Typography 
-              variant="h6" 
-              paragraph
-              sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }, fontWeight: 700 }}
-            >
-              No results found
-            </Typography>
-
-            <Typography 
-              variant="body2"
-              sx={{ fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' } }}
-            >
-              No recipes match your search criteria.&nbsp;
-              <Box 
-                component="span" 
-                sx={{ 
-                  color: 'primary.main', 
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  '&:hover': { textDecoration: 'underline' },
-                }} 
-                onClick={handleResetFilter}
-              >
-                Try resetting filters
-              </Box>
-            </Typography>
-          </Box>
-        ) : data && data.results.length > 0 ? (
-          <>
+        <PermissionGuard permission="view_recipe">
+          {isLoading ? (
             <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-              {data.results.map((recipe) => (
-                <Grid key={recipe.id} item xs={12} sm={6} md={4} lg={3}>
-                  <RecipeCard 
-                    recipe={recipe} 
-                    onDelete={() => handleDeleteRow(recipe.id)}
-                    onRecover={() => handleRecoverRow(recipe.id)}
-                    filterStatus={filterStatus}
-                  />
+              {[...Array(ITEMS_PER_PAGE)].map((_, index) => (
+                <Grid key={index} item xs={12} sm={6} md={4} lg={3}>
+                  <SkeletonRecipeCard />
                 </Grid>
               ))}
             </Grid>
+          ) : isError ? (
+            <Box sx={{ py: { xs: 6, md: 10 } }}>
+              <Alert severity="error">
+                {error instanceof Error ? error.message : 'Failed to load recipes. Please try again.'}
+              </Alert>
+            </Box>
+          ) : isNotFound ? (
+            <Box sx={{ py: { xs: 6, md: 10 }, textAlign: 'center' }}>
+              <Typography 
+                variant="h6" 
+                paragraph
+                sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }, fontWeight: 700 }}
+              >
+                No results found
+              </Typography>
 
-            {totalPages > 1 && (
-              <Box sx={{ mt: { xs: 4, md: 5 }, display: 'flex', justifyContent: 'center' }}>
-                <Pagination
-                  count={totalPages}
-                  page={page}
-                  onChange={handleChangePage}
-                  color="primary"
-                  size="large"
-                />
-              </Box>
-            )}
-          </>
-        ) : (
-          <Box sx={{ py: { xs: 6, md: 10 }, textAlign: 'center' }}>
-            <Typography 
-              variant="h6" 
-              paragraph
-              sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }, fontWeight: 700 }}
-            >
-              No recipes found
-            </Typography>
-            <Typography 
-              variant="body2"
-              sx={{ fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' } }}
-            >
-              Get started by creating a new recipe.
-            </Typography>
-          </Box>
-        )}
+              <Typography 
+                variant="body2"
+                sx={{ fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' } }}
+              >
+                No recipes match your search criteria.&nbsp;
+                <Box 
+                  component="span" 
+                  sx={{ 
+                    color: 'primary.main', 
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    '&:hover': { textDecoration: 'underline' },
+                  }} 
+                  onClick={handleResetFilter}
+                >
+                  Try resetting filters
+                </Box>
+              </Typography>
+            </Box>
+          ) : data && data.results.length > 0 ? (
+            <>
+              <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+                {data.results.map((recipe) => (
+                  <Grid key={recipe.id} item xs={12} sm={6} md={4} lg={3}>
+                    <RecipeCard 
+                      recipe={recipe} 
+                      onDelete={() => handleDeleteRow(recipe.id)}
+                      onRecover={() => handleRecoverRow(recipe.id)}
+                      filterStatus={filterStatus}
+                      canEdit={hasPermission('edit_recipe')}
+                      canDelete={hasPermission('delete_recipe')}
+                      canArchive={hasPermission('delete_recipe')}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+
+              {totalPages > 1 && (
+                <Box sx={{ mt: { xs: 4, md: 5 }, display: 'flex', justifyContent: 'center' }}>
+                  <Pagination
+                    count={totalPages}
+                    page={page}
+                    onChange={handleChangePage}
+                    color="primary"
+                    size="large"
+                  />
+                </Box>
+              )}
+            </>
+          ) : (
+            <Box sx={{ py: { xs: 6, md: 10 }, textAlign: 'center' }}>
+              <Typography 
+                variant="h6" 
+                paragraph
+                sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }, fontWeight: 700 }}
+              >
+                No recipes found
+              </Typography>
+              <Typography 
+                variant="body2"
+                sx={{ fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' } }}
+              >
+                Get started by creating a new recipe.
+              </Typography>
+            </Box>
+          )}
+        </PermissionGuard>
       </Container>
     </>
   );
