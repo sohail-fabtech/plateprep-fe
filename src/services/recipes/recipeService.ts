@@ -120,9 +120,42 @@ export async function updateRecipeFull(id: string | number, recipe: Partial<IRec
 }
 
 /**
- * Delete recipe
+ * Delete recipe (soft delete/archive)
+ * Sets is_deleted=True
  */
 export async function deleteRecipe(id: string | number): Promise<void> {
   await axiosInstance.delete(`/recipe/${id}/`);
+}
+
+/**
+ * Restore archived recipe
+ * Sets is_deleted=False
+ */
+export interface RestoreRecipeResponse {
+  message: string;
+}
+
+export async function restoreRecipe(id: string | number): Promise<RestoreRecipeResponse> {
+  const response = await axiosInstance.patch<RestoreRecipeResponse>('/recipe/restore/', {
+    pk: typeof id === 'string' ? parseInt(id, 10) : id,
+  });
+  return response.data;
+}
+
+/**
+ * Permanently delete recipe
+ * Removes recipe from database (cannot be undone)
+ */
+export interface PermanentlyDeleteRecipeResponse {
+  message: string;
+}
+
+export async function permanentlyDeleteRecipe(id: string | number): Promise<PermanentlyDeleteRecipeResponse> {
+  const response = await axiosInstance.delete<PermanentlyDeleteRecipeResponse>('/recipe/delete/', {
+    params: {
+      pk: typeof id === 'string' ? parseInt(id, 10) : id,
+    },
+  });
+  return response.data;
 }
 

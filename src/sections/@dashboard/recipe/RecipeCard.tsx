@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 // @mui
 import { useTheme } from '@mui/material/styles';
-import { Box, Card, Stack, Button, Typography } from '@mui/material';
+import { Box, Card, Stack, Button, Typography, CircularProgress } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../../routes/paths';
 // @types
@@ -23,6 +23,7 @@ type Props = {
   canEdit?: boolean;
   canDelete?: boolean;
   canArchive?: boolean;
+  isLoading?: boolean;
 };
 
 export default function RecipeCard({ 
@@ -33,12 +34,25 @@ export default function RecipeCard({
   canEdit = true,
   canDelete = true,
   canArchive = true,
+  isLoading = false,
 }: Props) {
   const theme = useTheme();
   
   const navigate = useNavigate();
 
   const [openConfirm, setOpenConfirm] = useState(false);
+  const [openRecoverConfirm, setOpenRecoverConfirm] = useState(false);
+  const wasLoadingRef = useRef(false);
+
+  // Close dialogs when loading completes
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading) {
+      // Loading just completed, close dialogs
+      setOpenConfirm(false);
+      setOpenRecoverConfirm(false);
+    }
+    wasLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   const { id, dishName, cuisineType, description, imageFiles, status, isAvailable } = recipe;
   
@@ -53,6 +67,16 @@ export default function RecipeCard({
   const handleEdit = () => {
     if (shouldDisableButtons) return; // Prevent navigation if deleted (and not in archived tab)
     navigate(PATH_DASHBOARD.recipes.edit(id));
+  };
+
+  const handleOpenRecoverConfirm = () => {
+    if (isLoading) return; // Prevent opening dialog during loading
+    setOpenRecoverConfirm(true);
+  };
+
+  const handleCloseRecoverConfirm = () => {
+    if (isLoading) return; // Prevent closing dialog during loading
+    setOpenRecoverConfirm(false);
   };
 
   const handleRecover = () => {
@@ -71,6 +95,7 @@ export default function RecipeCard({
   };
 
   const handleCloseConfirm = () => {
+    if (isLoading) return; // Prevent closing dialog during loading
     setOpenConfirm(false);
   };
 
@@ -214,8 +239,9 @@ export default function RecipeCard({
                   fullWidth
                   variant="outlined"
                   color="success"
+                  disabled={shouldDisableButtons}
                   startIcon={<Iconify icon="eva:refresh-fill" width={{ xs: 16, md: 18 }} />}
-                  onClick={handleRecover}
+                  onClick={handleOpenRecoverConfirm}
                   sx={{
                     fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
                     height: { xs: 36, sm: 40, md: 42 },
@@ -293,19 +319,26 @@ export default function RecipeCard({
         </Stack>
       </Card>
 
+      {/* Archive/Delete Confirm Dialog */}
       <ConfirmDialog
         open={openConfirm}
         onClose={handleCloseConfirm}
-        title={isArchived ? "Delete" : "Archive"}
+        title={isArchived ? "Permanent Delete" : "Archive"}
         content={
           isArchived
-            ? "Are you sure want to delete?"
+            ? `Are you sure you want to permanently delete "${dishName}"? This action cannot be undone.`
             : `Are you sure you want to archive "${dishName}"?`
         }
         action={
           <Button 
             variant="contained" 
+            disabled={isLoading}
             onClick={onDelete}
+            startIcon={
+              isLoading ? (
+                <CircularProgress size={16} sx={{ color: 'inherit' }} />
+              ) : undefined
+            }
             sx={{
               boxShadow: 'none',
               ...(isArchived
@@ -313,7 +346,7 @@ export default function RecipeCard({
                     bgcolor: 'error.main',
                     color: 'error.contrastText',
                     '&:hover': { 
-                      bgcolor: 'error.main',
+                      bgcolor: isLoading ? 'error.main' : 'error.dark',
                       boxShadow: 'none',
                     },
                   }
@@ -321,15 +354,49 @@ export default function RecipeCard({
                     bgcolor: theme.palette.grey[500],
                     color: '#fff',
                     '&:hover': { 
-                      bgcolor: theme.palette.grey[500],
+                      bgcolor: isLoading ? theme.palette.grey[500] : theme.palette.grey[600],
                       boxShadow: 'none',
                     },
                   }),
             }}
           >
-            {isArchived ? 'Delete' : 'Archive'}
+            {isLoading ? (isArchived ? 'Deleting...' : 'Archiving...') : (isArchived ? 'Delete' : 'Archive')}
           </Button>
         }
+        cancelButtonDisabled={isLoading}
+      />
+
+      {/* Recover Confirm Dialog */}
+      <ConfirmDialog
+        open={openRecoverConfirm}
+        onClose={handleCloseRecoverConfirm}
+        title="Recover Recipe"
+        content={`Are you sure you want to recover "${dishName}"?`}
+        action={
+          <Button 
+            variant="contained" 
+            color="success"
+            disabled={isLoading}
+            onClick={handleRecover}
+            startIcon={
+              isLoading ? (
+                <CircularProgress size={16} sx={{ color: 'inherit' }} />
+              ) : undefined
+            }
+            sx={{
+              boxShadow: 'none',
+              bgcolor: 'success.main',
+              color: 'success.contrastText',
+              '&:hover': { 
+                bgcolor: isLoading ? 'success.main' : 'success.dark',
+                boxShadow: 'none',
+              },
+            }}
+          >
+            {isLoading ? 'Recovering...' : 'Recover'}
+          </Button>
+        }
+        cancelButtonDisabled={isLoading}
       />
     </>
   );

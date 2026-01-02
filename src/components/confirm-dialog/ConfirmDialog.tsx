@@ -11,10 +11,11 @@ export default function ConfirmDialog({
   action,
   open,
   onClose,
+  cancelButtonDisabled = false,
   ...other
 }: ConfirmDialogProps) {
   return (
-    <Dialog fullWidth maxWidth="xs" open={open} onClose={onClose} {...other}>
+    <Dialog fullWidth maxWidth="xs" open={open} onClose={cancelButtonDisabled ? undefined : onClose} {...other}>
       <DialogTitle sx={{ pb: 2 }}>{title}</DialogTitle>
 
       {content && <DialogContent sx={{ typography: 'body2' }}> {content} </DialogContent>}
@@ -22,7 +23,7 @@ export default function ConfirmDialog({
       <DialogActions>
         {action}
 
-        <Button variant="outlined" color="inherit" onClick={onClose}>
+        <Button variant="outlined" color="inherit" onClick={onClose} disabled={cancelButtonDisabled}>
           Cancel
         </Button>
       </DialogActions>

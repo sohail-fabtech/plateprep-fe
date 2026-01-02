@@ -9,6 +9,8 @@ export {
   useUpdateRecipe,
   useUpdateRecipeFull,
   useDeleteRecipe,
+  useRestoreRecipe,
+  usePermanentlyDeleteRecipe,
   recipeKeys,
 } from './recipes/recipeHooks';
 

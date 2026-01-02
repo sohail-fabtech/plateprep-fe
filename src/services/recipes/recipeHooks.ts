@@ -7,6 +7,8 @@ import {
   updateRecipe,
   updateRecipeFull,
   deleteRecipe,
+  restoreRecipe,
+  permanentlyDeleteRecipe,
   RecipeQueryParams,
   RecipeListResponse,
 } from './recipeService';
@@ -93,13 +95,43 @@ export function useUpdateRecipeFull() {
 }
 
 /**
- * Hook to delete a recipe
+ * Hook to delete a recipe (soft delete/archive)
  */
 export function useDeleteRecipe() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string | number) => deleteRecipe(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: recipeKeys.lists() });
+      queryClient.removeQueries({ queryKey: recipeKeys.detail(id) });
+    },
+  });
+}
+
+/**
+ * Hook to restore an archived recipe
+ */
+export function useRestoreRecipe() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string | number) => restoreRecipe(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: recipeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: recipeKeys.detail(id) });
+    },
+  });
+}
+
+/**
+ * Hook to permanently delete a recipe
+ */
+export function usePermanentlyDeleteRecipe() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string | number) => permanentlyDeleteRecipe(id),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: recipeKeys.lists() });
       queryClient.removeQueries({ queryKey: recipeKeys.detail(id) });

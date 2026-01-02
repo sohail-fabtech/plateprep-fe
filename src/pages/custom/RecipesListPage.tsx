@@ -19,12 +19,22 @@ import {
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // services
-import { useRecipes, RecipeQueryParams, RecipeListResponse, useMenuCategories, useBranches } from '../../services';
+import {
+  useRecipes,
+  RecipeQueryParams,
+  RecipeListResponse,
+  useMenuCategories,
+  useBranches,
+  useDeleteRecipe,
+  useRestoreRecipe,
+  usePermanentlyDeleteRecipe,
+} from '../../services';
 // components
 import Iconify from '../../components/iconify';
 import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 import { useSettingsContext } from '../../components/settings';
 import { SkeletonRecipeCard } from '../../components/skeleton';
+import { useSnackbar } from '../../components/snackbar';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
 import PermissionGuard from '../../auth/PermissionGuard';
@@ -60,7 +70,16 @@ export default function RecipesListPage() {
   const { themeStretch } = useSettingsContext();
   const { user } = useAuthContext();
   const { hasPermission } = usePermissions();
+  const { enqueueSnackbar } = useSnackbar();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Mutation hooks
+  const archiveMutation = useDeleteRecipe();
+  const restoreMutation = useRestoreRecipe();
+  const permanentDeleteMutation = usePermanentlyDeleteRecipe();
+
+  // Track loading state per recipe ID
+  const [loadingRecipeId, setLoadingRecipeId] = useState<string | null>(null);
 
   // Permission-based tab visibility
   const visibleTabs = useMemo(() => {
@@ -246,16 +265,57 @@ export default function RecipesListPage() {
     setFilterBranch(event.target.value);
   };
 
-  const handleDeleteRow = (id: string) => {
-    // Delete will be handled by the delete mutation hook
-    // This is just for UI feedback - actual deletion should use useDeleteRecipe hook
-    console.log('Delete recipe:', id);
+  const handleArchiveRow = async (id: string) => {
+    setLoadingRecipeId(id);
+    try {
+      await archiveMutation.mutateAsync(id);
+      enqueueSnackbar('Recipe archived successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error archiving recipe:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to archive recipe. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingRecipeId(null);
+    }
   };
 
-  const handleRecoverRow = (id: string) => {
-    // Recover will be handled by the recover mutation hook
-    // This is just for UI feedback - actual recovery should use useRecoverRecipe hook
-    console.log('Recover recipe:', id);
+  const handleRestoreRow = async (id: string) => {
+    setLoadingRecipeId(id);
+    try {
+      await restoreMutation.mutateAsync(id);
+      enqueueSnackbar('Recipe restored successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error restoring recipe:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to restore recipe. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingRecipeId(null);
+    }
+  };
+
+  const handlePermanentDeleteRow = async (id: string) => {
+    // Note: Confirmation is handled by ConfirmDialog in RecipeCard
+    // This function is called after user confirms in the dialog
+    setLoadingRecipeId(id);
+    try {
+      await permanentDeleteMutation.mutateAsync(id);
+      enqueueSnackbar('Recipe deleted permanently', { variant: 'success' });
+    } catch (error) {
+      console.error('Error permanently deleting recipe:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete recipe. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingRecipeId(null);
+    }
   };
 
   const handleChangePage = (event: React.ChangeEvent<unknown>, newPage: number) => {
@@ -413,12 +473,17 @@ export default function RecipesListPage() {
                   <Grid key={recipe.id} item xs={12} sm={6} md={4} lg={3}>
                     <RecipeCard 
                       recipe={recipe} 
-                      onDelete={() => handleDeleteRow(recipe.id)}
-                      onRecover={() => handleRecoverRow(recipe.id)}
+                      onDelete={
+                        filterStatus === 'archived'
+                          ? () => handlePermanentDeleteRow(recipe.id)
+                          : () => handleArchiveRow(recipe.id)
+                      }
+                      onRecover={() => handleRestoreRow(recipe.id)}
                       filterStatus={filterStatus}
                       canEdit={hasPermission('edit_recipe')}
                       canDelete={hasPermission('delete_recipe')}
                       canArchive={hasPermission('delete_recipe')}
+                      isLoading={loadingRecipeId === recipe.id}
                     />
                   </Grid>
                 ))}
