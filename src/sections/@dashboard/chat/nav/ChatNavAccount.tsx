@@ -40,7 +40,7 @@ export default function ChatNavAccount() {
   return (
     <>
       <CustomAvatar
-        src={user?.photoURL}
+        src={(user?.photoURL ?? undefined) as string | undefined}
         alt={user?.displayName}
         name={user?.displayName}
         BadgeProps={{

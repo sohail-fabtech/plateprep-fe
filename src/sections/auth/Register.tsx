@@ -6,7 +6,7 @@ import LoginLayout from '../../layouts/login';
 // routes
 import { PATH_AUTH } from '../../routes/paths';
 //
-import AuthWithSocial from './AuthWithSocial';
+// import AuthWithSocial from './AuthWithSocial'; // Commented out - Coming in future
 import AuthRegisterForm from './AuthRegisterForm';
 
 // ----------------------------------------------------------------------
@@ -23,7 +23,7 @@ export default function Register() {
       ]}
       illustration="/assets/images/auth/login.jpg"
     >
-      <Stack spacing={2} sx={{ mb: 5, position: 'relative' }}>
+      <Stack spacing={1.5} sx={{ mb: 3, position: 'relative' }}>
         <Typography 
           variant="h4"
           sx={{
@@ -60,7 +60,8 @@ export default function Register() {
         .
       </Typography>
 
-      <AuthWithSocial />
+      {/* Social Register - Coming in future */}
+      {/* <AuthWithSocial /> */}
     </LoginLayout>
   );
 }

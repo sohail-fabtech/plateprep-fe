@@ -144,7 +144,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     ...attributes,
                     displayName: attributes.name,
                     role: 'admin',
-                  },
+                  } as AuthUserType,
                 },
               });
             }

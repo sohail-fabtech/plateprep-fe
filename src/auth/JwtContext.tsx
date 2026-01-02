@@ -1,7 +1,13 @@
-import { createContext, useEffect, useReducer, useCallback, useMemo } from 'react';
+import { createContext, useEffect, useReducer, useCallback, useMemo, useState } from 'react';
 // utils
 import axios from '../utils/axios';
 import localStorageAvailable from '../utils/localStorageAvailable';
+import { mapProfileToLegacyFormat } from '../utils/profileMapper';
+import { hasSubscription } from '../utils/subscription';
+// services
+import { queryClient } from '../services';
+// routes
+import { PATH_DASHBOARD } from '../routes/paths';
 //
 import { isValidToken, setSession } from './utils';
 import { ActionMapType, AuthStateType, AuthUserType, JWTContextType } from './types';
@@ -89,6 +95,7 @@ type AuthProviderProps = {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const storageAvailable = localStorageAvailable();
 
@@ -99,18 +106,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (accessToken && isValidToken(accessToken)) {
         setSession(accessToken);
 
-        const response = await axios.get('/api/auth/me');
+        setProfileLoading(true);
+        try {
+          const profileResponse = await axios.get('/user-detail/profile/');
+          const profile = mapProfileToLegacyFormat(profileResponse.data);
 
-        const { user } = response.data;
-
-        dispatch({
-          type: Types.INITIAL,
-          payload: {
-            isAuthenticated: true,
-            user,
-          },
-        });
+          dispatch({
+            type: Types.INITIAL,
+            payload: {
+              isAuthenticated: true,
+              user: profile,
+            },
+          });
+        } catch (error) {
+          console.error('Error fetching profile:', error);
+          // Clear cache if profile fetch fails (invalid token, etc.)
+          queryClient.clear();
+          dispatch({
+            type: Types.INITIAL,
+            payload: {
+              isAuthenticated: false,
+              user: null,
+            },
+          });
+        } finally {
+          setProfileLoading(false);
+        }
       } else {
+        // Clear cache if no valid token exists
+        queryClient.clear();
         dispatch({
           type: Types.INITIAL,
           payload: {
@@ -121,6 +145,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (error) {
       console.error(error);
+      // Clear cache on initialization error
+      queryClient.clear();
       dispatch({
         type: Types.INITIAL,
         payload: {
@@ -128,6 +154,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           user: null,
         },
       });
+      setProfileLoading(false);
     }
   }, [storageAvailable]);
 
@@ -137,58 +164,106 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // LOGIN
   const login = useCallback(async (email: string, password: string) => {
-    const response = await axios.post('/api/auth/sign-in', {
+    // Clear all cached queries before login to ensure fresh data
+    queryClient.clear();
+
+    const response = await axios.post('/login/', {
       email,
       password,
     });
-    const { accessToken, user } = response.data;
+    const { access, refresh } = response.data;
 
-    setSession(accessToken);
+    setSession(access, refresh);
 
-    dispatch({
-      type: Types.LOGIN,
-      payload: {
-        user,
-      },
-    });
+    setProfileLoading(true);
+    try {
+      const profileResponse = await axios.get('/user-detail/profile/');
+      const profile = mapProfileToLegacyFormat(profileResponse.data);
+
+      dispatch({
+        type: Types.LOGIN,
+        payload: {
+          user: profile,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      throw error;
+    } finally {
+      setProfileLoading(false);
+    }
   }, []);
 
   // REGISTER
   const register = useCallback(
-    async (email: string, password: string, firstName: string, lastName: string) => {
-      const response = await axios.post('/api/account/register', {
-        email,
-        password,
-        firstName,
-        lastName,
-      });
-      const { accessToken, user } = response.data;
+    async (payload: {
+      first_name: string;
+      last_name: string;
+      email: string;
+      password: string;
+      resturant: {
+        resturant_name: string;
+        street_address?: string;
+        city?: string;
+        state?: string;
+        zipcode?: string;
+        country?: string;
+        phone?: string;
+        email?: string;
+        social_media?: Record<string, any>;
+      };
+    }) => {
+      // Clear all cached queries before register to ensure fresh data
+      queryClient.clear();
 
-      localStorage.setItem('accessToken', accessToken);
+      const response = await axios.post('/register/', payload);
+      const { access_token, refresh_token } = response.data;
 
-      dispatch({
-        type: Types.REGISTER,
-        payload: {
-          user,
-        },
-      });
+      setSession(access_token, refresh_token);
+
+      setProfileLoading(true);
+      try {
+        const profileResponse = await axios.get('/user-detail/profile/');
+        const profile = mapProfileToLegacyFormat(profileResponse.data);
+
+        dispatch({
+          type: Types.REGISTER,
+          payload: {
+            user: profile,
+          },
+        });
+
+        // Check if restaurant plan is empty - redirect to subscription page
+        if (!hasSubscription(profile)) {
+          window.location.href = PATH_DASHBOARD.subscription;
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        throw error;
+      } finally {
+        setProfileLoading(false);
+      }
     },
     []
   );
 
   // LOGOUT
   const logout = useCallback(() => {
+    // Clear all cached queries on logout to prevent data leakage
+    queryClient.clear();
+    
     setSession(null);
     dispatch({
       type: Types.LOGOUT,
     });
   }, []);
 
-  const memoizedValue = useMemo(
+  const memoizedValue: JWTContextType = useMemo(
     () => ({
       isInitialized: state.isInitialized,
       isAuthenticated: state.isAuthenticated,
       user: state.user,
+      profileLoading,
       method: 'jwt',
       login,
       loginWithGoogle: () => {},
@@ -197,7 +272,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       register,
       logout,
     }),
-    [state.isAuthenticated, state.isInitialized, state.user, login, logout, register]
+    [state.isAuthenticated, state.isInitialized, state.user, profileLoading, login, logout, register]
   );
 
   return <AuthContext.Provider value={memoizedValue}>{children}</AuthContext.Provider>;

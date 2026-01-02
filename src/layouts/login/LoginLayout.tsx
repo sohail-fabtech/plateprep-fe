@@ -133,7 +133,15 @@ export default function LoginLayout({
       </StyledSection>
 
       <StyledContent>
-        <Stack sx={{ width: '100%', maxWidth: { xs: '100%', md: 480, lg: 520 } }}>
+        <Stack 
+          sx={{ 
+            width: '100%', 
+            maxWidth: { xs: '100%', md: 480, lg: 520 },
+            py: { xs: 4, md: 0 }, // Padding on mobile, none on desktop (handled by StyledContent)
+            my: { xs: 0, md: 'auto' }, // Center vertically on large screens
+            minHeight: { xs: 'auto', md: 'fit-content' },
+          }}
+        >
           {children}
         </Stack>
       </StyledContent>

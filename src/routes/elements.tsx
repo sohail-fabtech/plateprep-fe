@@ -19,6 +19,9 @@ export const RegisterPage = Loadable(lazy(() => import('../pages/auth/RegisterPa
 export const VerifyCodePage = Loadable(lazy(() => import('../pages/auth/VerifyCodePage')));
 export const NewPasswordPage = Loadable(lazy(() => import('../pages/auth/NewPasswordPage')));
 export const ResetPasswordPage = Loadable(lazy(() => import('../pages/auth/ResetPasswordPage')));
+export const ForgotPasswordConfirmPage = Loadable(
+  lazy(() => import('../pages/auth/ForgotPasswordConfirmPage'))
+);
 
 // DASHBOARD: GENERAL
 export const GeneralAppPage = Loadable(lazy(() => import('../pages/dashboard/GeneralAppPage')));
@@ -132,6 +135,9 @@ export const DictionaryTermsPage = Loadable(lazy(() => import('../pages/custom/D
 // TEST RENDER PAGE BY ROLE
 export const PermissionDeniedPage = Loadable(
   lazy(() => import('../pages/dashboard/PermissionDeniedPage'))
+);
+export const SubscriptionPage = Loadable(
+  lazy(() => import('../pages/dashboard/SubscriptionPage'))
 );
 
 // BLANK PAGE

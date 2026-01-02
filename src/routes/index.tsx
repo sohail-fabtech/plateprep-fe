@@ -17,6 +17,7 @@ import {
   VerifyCodePage,
   NewPasswordPage,
   ResetPasswordPage,
+  ForgotPasswordConfirmPage,
   // Dashboard: General
   GeneralAppPage,
   GeneralFilePage,
@@ -98,6 +99,7 @@ import {
   //
   BlankPage,
   PermissionDeniedPage,
+  SubscriptionPage,
   //
   Page500,
   Page403,
@@ -173,6 +175,11 @@ import {
 
 export default function Router() {
   return useRoutes([
+    // Forgot Password Confirm (outside auth, matches API URL format)
+    {
+      element: <CompactLayout />,
+      children: [{ path: 'forgot-password/:id/:token', element: <ForgotPasswordConfirmPage /> }],
+    },
     // Auth
     {
       path: 'auth',
@@ -408,6 +415,7 @@ export default function Router() {
         { path: 'calendar', element: <CalendarPage /> },
         { path: 'kanban', element: <KanbanPage /> },
         { path: 'permission-denied', element: <PermissionDeniedPage /> },
+        { path: 'subscription', element: <SubscriptionPage /> },
         { path: 'blank', element: <BlankPage /> },
       ],
     },

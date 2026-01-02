@@ -1,17 +1,23 @@
-import { Stack, InputAdornment, TextField, MenuItem, Button } from '@mui/material';
+import { Stack, InputAdornment, TextField, MenuItem, Button, Typography } from '@mui/material';
+import { ReactNode } from 'react';
 // components
 import Iconify from '../../../../components/iconify';
+import BranchSelect from '../../../../components/branch-select/BranchSelect';
 
 // ----------------------------------------------------------------------
 
 type Props = {
   filterName: string;
   filterCuisine: string;
+  filterBranch: string | number | '';
   isFiltered: boolean;
   optionsCuisine: string[];
+  isLoadingCuisine?: boolean;
+  showBranchFilter?: boolean;
   onResetFilter: VoidFunction;
   onFilterName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterCuisine: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onFilterBranch: (event: React.ChangeEvent<HTMLInputElement>) => void;
   formInputSx?: object;
 };
 
@@ -19,9 +25,13 @@ export default function RecipeTableToolbar({
   isFiltered,
   filterName,
   filterCuisine,
+  filterBranch,
   optionsCuisine,
+  isLoadingCuisine = false,
+  showBranchFilter = false,
   onFilterName,
   onFilterCuisine,
+  onFilterBranch,
   onResetFilter,
   formInputSx,
 }: Props) {
@@ -35,13 +45,42 @@ export default function RecipeTableToolbar({
       }}
       sx={{ px: { xs: 2, sm: 2.5 }, py: { xs: 2, md: 3 } }}
     >
+      {showBranchFilter && (
+        <BranchSelect
+          value={filterBranch}
+          onChange={onFilterBranch}
+          label="Location"
+          formInputSx={formInputSx}
+        />
+      )}
+
       <TextField
         fullWidth
         select
         label="Cuisine Type"
         value={filterCuisine}
         onChange={onFilterCuisine}
+        disabled={isLoadingCuisine}
+        placeholder="Select cuisine type"
         SelectProps={{
+          displayEmpty: true,
+          // renderValue: (selected: unknown): ReactNode => {
+          //   if (!selected || selected === '') {
+          //     return (
+          //       <Typography
+          //         component="span"
+          //         sx={{
+          //           color: 'text.disabled',
+          //           fontStyle: 'italic',
+          //           fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+          //         }}
+          //       >
+          //         Select cuisine type
+          //       </Typography>
+          //     );
+          //   }
+          //   return String(selected);
+          // },
           MenuProps: {
             PaperProps: {
               sx: {
@@ -56,21 +95,35 @@ export default function RecipeTableToolbar({
           ...formInputSx,
         }}
       >
-        {optionsCuisine.map((option) => (
-          <MenuItem
-            key={option}
-            value={option}
-            sx={{
-              mx: 1,
-              borderRadius: 0.75,
-              typography: 'body2',
-              textTransform: 'capitalize',
-              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-            }}
-          >
-            {option}
+        {optionsCuisine.length === 0 ? (
+          <MenuItem disabled>
+            <Typography
+              sx={{
+                fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                color: 'text.disabled',
+                fontStyle: 'italic',
+              }}
+            >
+              {isLoadingCuisine ? 'Loading...' : 'No cuisine types available'}
+            </Typography>
           </MenuItem>
-        ))}
+        ) : (
+          optionsCuisine.map((option) => (
+            <MenuItem
+              key={option}
+              value={option}
+              sx={{
+                mx: 1,
+                borderRadius: 0.75,
+                typography: 'body2',
+                textTransform: 'capitalize',
+                fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+              }}
+            >
+              {option}
+            </MenuItem>
+          ))
+        )}
       </TextField>
 
       <TextField

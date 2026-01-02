@@ -86,7 +86,7 @@ export type IRecipe = {
   // Availability and Status
   isAvailable: boolean;
   isPublic: boolean;
-  status: 'draft' | 'active' | 'archived';
+  status: 'draft' | 'active' | 'private' | 'archived';
   
   // Location and Organization
   branchId: string;

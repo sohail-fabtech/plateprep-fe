@@ -60,17 +60,25 @@ export const StyledContent = styled('div')(({ theme }) => ({
   width: '100%',
   height: '100vh',
   display: 'flex',
-  alignItems: 'center',
+  alignItems: 'flex-start', // Start from top to allow proper scrolling
   justifyContent: 'center',
   padding: theme.spacing(3, 2),
-  overflowY: 'auto',
+  overflowY: 'auto', // Allow scrolling on mobile
   overflowX: 'hidden',
+  WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
   [theme.breakpoints.up('md')]: {
     width: '50%',
     flexShrink: 0,
     padding: theme.spacing(4, 6),
+    overflowY: 'auto', // Allow scrolling if content exceeds viewport
+    maxHeight: '100vh', // Prevent page-level overflow
+    alignItems: 'center', // Center vertically on large screens when content is short
+    paddingTop: theme.spacing(4), // Top padding
+    paddingBottom: theme.spacing(4), // Bottom padding
   },
   [theme.breakpoints.up('lg')]: {
     padding: theme.spacing(6, 8),
+    paddingTop: theme.spacing(6),
+    paddingBottom: theme.spacing(6),
   },
 }));

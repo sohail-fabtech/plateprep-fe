@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 // @mui
 import { Box, Stack, Drawer, List } from '@mui/material';
 // hooks
 import useResponsive from '../../../hooks/useResponsive';
+import { usePermissions } from '../../../hooks/usePermissions';
 // config
 import { NAV } from '../../../config-global';
 // components
@@ -24,6 +25,7 @@ type Props = {
 
 export default function NavVertical({ openNav, onCloseNav }: Props) {
   const { pathname } = useLocation();
+  const { hasPermission, profile } = usePermissions();
 
   const isDesktop = useResponsive('up', 'lg');
 
@@ -44,6 +46,22 @@ export default function NavVertical({ openNav, onCloseNav }: Props) {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Filter navigation items based on permissions
+  const filteredNavConfig = useMemo(() => {
+    if (!profile) return navConfig;
+
+    return navConfig.map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        // If no permission specified, show item
+        if (!item.permission) return true;
+
+        // Check if user has the required permission
+        return hasPermission(item.permission);
+      }),
+    }));
+  }, [profile, hasPermission]);
 
   const renderContent = (
     <Scrollbar
@@ -75,7 +93,7 @@ export default function NavVertical({ openNav, onCloseNav }: Props) {
           ))}
         </List>
       ) : (
-        <NavSectionVertical data={navConfig} />
+        <NavSectionVertical data={filteredNavConfig} />
       )}
 
       <Box sx={{ flexGrow: 1 }} />

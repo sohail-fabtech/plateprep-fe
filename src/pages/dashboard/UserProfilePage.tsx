@@ -95,7 +95,7 @@ export default function UserProfilePage() {
             position: 'relative',
           }}
         >
-          <ProfileCover name={user?.displayName} role={_userAbout.role} cover={_userAbout.cover} />
+          <ProfileCover name={(user?.displayName || '') as string} role={_userAbout.role} cover={_userAbout.cover} />
 
           <Tabs
             value={currentTab}

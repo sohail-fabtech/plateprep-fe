@@ -5,6 +5,8 @@ import LoadingScreen from '../components/loading-screen';
 //
 import Login from '../pages/auth/LoginPage';
 import { useAuthContext } from './useAuthContext';
+import { usePermissions } from '../hooks/usePermissions';
+import { PATH_DASHBOARD } from '../routes/paths';
 
 // ----------------------------------------------------------------------
 
@@ -13,13 +15,14 @@ type AuthGuardProps = {
 };
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated, isInitialized } = useAuthContext();
+  const { isAuthenticated, isInitialized, profileLoading } = useAuthContext();
+  const { canAccessRoute } = usePermissions();
 
   const { pathname } = useLocation();
 
   const [requestedLocation, setRequestedLocation] = useState<string | null>(null);
 
-  if (!isInitialized) {
+  if (!isInitialized || profileLoading) {
     return <LoadingScreen />;
   }
 
@@ -28,6 +31,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       setRequestedLocation(pathname);
     }
     return <Login />;
+  }
+
+  // Check route permissions
+  if (!canAccessRoute(pathname)) {
+    return <Navigate to={PATH_DASHBOARD.permissionDenied} replace />;
   }
 
   if (requestedLocation && pathname !== requestedLocation) {

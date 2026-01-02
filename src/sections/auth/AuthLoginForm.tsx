@@ -11,6 +11,8 @@ import { LoadingButton } from '@mui/lab';
 import { PATH_AUTH } from '../../routes/paths';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
+// utils
+import { parseLoginError } from '../../utils/loginErrorHandler';
 // components
 import Iconify from '../../components/iconify';
 import FormProvider, { RHFTextField } from '../../components/hook-form';
@@ -34,8 +36,8 @@ export default function AuthLoginForm() {
   });
 
   const defaultValues = {
-    email: 'demo@minimals.cc',
-    password: '@2Minimal',
+    email: '',
+    password: '',
   };
 
   const methods = useForm<FormValuesProps>({
@@ -55,11 +57,33 @@ export default function AuthLoginForm() {
       await login(data.email, data.password);
     } catch (error) {
       console.error(error);
-      reset();
-      setError('afterSubmit', {
-        ...error,
-        message: error.message,
-      });
+      const parsedError = parseLoginError(error);
+
+      // Clear previous errors
+      reset({ email: data.email, password: '' }, { keepErrors: false });
+
+      // Set field-specific errors
+      if (parsedError.email) {
+        setError('email', {
+          type: 'manual',
+          message: parsedError.email,
+        });
+      }
+
+      if (parsedError.password) {
+        setError('password', {
+          type: 'manual',
+          message: parsedError.password,
+        });
+      }
+
+      // Set general error (for non-field errors like 401, 404)
+      if (parsedError.general) {
+        setError('afterSubmit', {
+          type: 'manual',
+          message: parsedError.general,
+        });
+      }
     }
   };
 

@@ -260,6 +260,90 @@ export function transformRecipeToApiRequest(recipe: Partial<IRecipe>): Partial<I
 }
 
 /**
+ * Minimal recipe list item interface (for list API responses)
+ */
+export interface IRecipeListItemApiResponse {
+  id: number;
+  dish_name: string;
+  description: string | null;
+  is_draft: boolean;
+  is_deleted: boolean;
+  status?: string; // "P" for Public, "PR" for Private
+  recipe_image: Array<{
+    id: number;
+    image_url: string | null;
+  }>;
+}
+
+/**
+ * Transform minimal list API response to IRecipe format
+ * Used for list endpoints that return simplified recipe data
+ */
+export function transformListApiResponseToRecipe(apiResponse: IRecipeListItemApiResponse): IRecipe {
+  // Extract image URLs
+  const imageFiles: string[] = (apiResponse.recipe_image || [])
+    .map((img) => img.image_url)
+    .filter((url): url is string => url !== null && url !== undefined);
+
+  // Map status based on API response
+  // Priority: is_deleted > is_draft > status field
+  let status: 'draft' | 'active' | 'private' | 'archived';
+  if (apiResponse.is_deleted) {
+    status = 'archived';
+  } else if (apiResponse.is_draft) {
+    status = 'draft';
+  } else if (apiResponse.status === 'PR') {
+    status = 'private';
+  } else if (apiResponse.status === 'P') {
+    status = 'active';
+  } else {
+    // Default fallback
+    status = apiResponse.is_draft ? 'draft' : 'active';
+  }
+
+  // Build minimal IRecipe object with defaults for missing fields
+  // Only include fields that exist in IRecipe type
+  const recipe: IRecipe = {
+    id: String(apiResponse.id),
+    dishName: apiResponse.dish_name || '',
+    cuisineType: 'N/A', // Not available in list response - show placeholder
+    preparationTime: 0,
+    foodCost: 0,
+    station: '',
+    youtubeUrl: '',
+    description: apiResponse.description || '',
+    tags: [],
+    imageFiles,
+    videoFile: '',
+    ingredients: [],
+    essentialIngredients: [],
+    steps: [],
+    starchPreparation: {
+      type: '',
+      steps: [],
+      cookingTime: 0,
+    },
+    costing: {
+      caseCost: 0,
+      caseWeightLb: 0,
+      costPerServing: 0,
+      servingWeightOz: 0,
+      salePrice: 0,
+      foodCostPct: 0,
+    },
+    status,
+    isAvailable: !apiResponse.is_deleted, // Available if not deleted
+    isPublic: !apiResponse.is_draft, // Public if not draft
+    branchId: '', // Not available in list response
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: '',
+  };
+
+  return recipe;
+}
+
+/**
  * Fetches recipe from API and transforms it to internal format
  */
 export async function fetchRecipeById(id: string | number): Promise<IRecipe> {

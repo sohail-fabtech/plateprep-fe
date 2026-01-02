@@ -106,7 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               displayName: user?.name,
               photoURL: user?.picture,
               role: 'admin',
-            },
+            } as AuthUserType,
           },
         });
       } else {
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             displayName: user?.name,
             photoURL: user?.picture,
             role: 'admin',
-          },
+          } as AuthUserType,
         },
       });
     }

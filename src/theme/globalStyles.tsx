@@ -39,6 +39,46 @@ export default function GlobalStyles() {
               WebkitAppearance: 'none',
             },
           },
+          // Override browser autofill background color
+          '&:-webkit-autofill': {
+            WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+            WebkitTextFillColor: 'inherit !important',
+            caretColor: 'inherit !important',
+            transition: 'background-color 5000s ease-in-out 0s',
+          },
+          '&:-webkit-autofill:hover': {
+            WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+            WebkitTextFillColor: 'inherit !important',
+          },
+          '&:-webkit-autofill:focus': {
+            WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+            WebkitTextFillColor: 'inherit !important',
+          },
+          '&:-webkit-autofill:active': {
+            WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+            WebkitTextFillColor: 'inherit !important',
+          },
+        },
+        // Also apply to textarea
+        textarea: {
+          '&:-webkit-autofill': {
+            WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+            WebkitTextFillColor: 'inherit !important',
+            caretColor: 'inherit !important',
+            transition: 'background-color 5000s ease-in-out 0s',
+          },
+          '&:-webkit-autofill:hover': {
+            WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+            WebkitTextFillColor: 'inherit !important',
+          },
+          '&:-webkit-autofill:focus': {
+            WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+            WebkitTextFillColor: 'inherit !important',
+          },
+          '&:-webkit-autofill:active': {
+            WebkitBoxShadow: '0 0 0 1000px transparent inset !important',
+            WebkitTextFillColor: 'inherit !important',
+          },
         },
         img: {
           display: 'block',

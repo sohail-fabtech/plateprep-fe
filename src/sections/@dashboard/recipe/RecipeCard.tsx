@@ -18,27 +18,40 @@ import ConfirmDialog from '../../../components/confirm-dialog';
 type Props = {
   recipe: IRecipe;
   onDelete: VoidFunction;
+  onRecover?: VoidFunction;
   filterStatus?: string;
 };
 
-export default function RecipeCard({ recipe, onDelete, filterStatus = 'all' }: Props) {
+export default function RecipeCard({ recipe, onDelete, onRecover, filterStatus = 'all' }: Props) {
   const theme = useTheme();
   
   const navigate = useNavigate();
 
   const [openConfirm, setOpenConfirm] = useState(false);
 
-  const { id, dishName, cuisineType, imageFiles, status, isAvailable } = recipe;
+  const { id, dishName, cuisineType, description, imageFiles, status, isAvailable } = recipe;
   
   const isArchived = filterStatus === 'archived';
+  const isDeleted = !isAvailable; // isAvailable is false when is_deleted is true
+  
+  // In archived tab, buttons should be enabled
+  const shouldDisableButtons = isDeleted && !isArchived;
 
   const coverImage = imageFiles && imageFiles.length > 0 ? imageFiles[0] : '/assets/images/placeholder.jpg';
 
   const handleEdit = () => {
+    if (shouldDisableButtons) return; // Prevent navigation if deleted (and not in archived tab)
     navigate(PATH_DASHBOARD.recipes.edit(id));
   };
 
+  const handleRecover = () => {
+    if (onRecover) {
+      onRecover();
+    }
+  };
+
   const handleView = () => {
+    if (shouldDisableButtons || isArchived) return; // Prevent navigation if deleted or archived
     navigate(PATH_DASHBOARD.recipes.view(id));
   };
 
@@ -89,6 +102,8 @@ export default function RecipeCard({ recipe, onDelete, filterStatus = 'all' }: P
               color={
                 (status === 'active' && 'success') ||
                 (status === 'draft' && 'warning') ||
+                (status === 'private' && 'info') ||
+                (status === 'archived' && 'error') ||
                 'default'
               }
               sx={{
@@ -104,18 +119,36 @@ export default function RecipeCard({ recipe, onDelete, filterStatus = 'all' }: P
             </Label>
           )}
 
+          {cuisineType && cuisineType !== 'N/A' && (
+            <Label
+              variant="soft"
+              color="default"
+              sx={{
+                bottom: { xs: 12, sm: 16 }, // Position below status label (12px + 24px label height + 8px gap)
+                left: { xs: 12, sm: 16 },
+                zIndex: 9,
+                position: 'absolute',
+                textTransform: 'capitalize',
+                fontSize: { xs: '0.6875rem', sm: '0.75rem' },
+              }}
+            >
+              {cuisineType}
+            </Label>
+          )}
+
           <Image
             alt={dishName}
             src={coverImage}
             ratio="1/1"
             sx={{
               borderRadius: 1.5,
-              cursor: 'pointer',
+              cursor: shouldDisableButtons || isArchived ? 'not-allowed' : 'pointer',
+              opacity: shouldDisableButtons || isArchived ? 0.6 : 1,
               transition: theme.transitions.create('opacity', {
                 duration: theme.transitions.duration.shorter,
               }),
               '&:hover': {
-                opacity: 0.9,
+                opacity: shouldDisableButtons || isArchived ? 0.6 : 0.9,
               },
             }}
             onClick={handleView}
@@ -127,12 +160,13 @@ export default function RecipeCard({ recipe, onDelete, filterStatus = 'all' }: P
             variant="subtitle1"
             noWrap
             sx={{
-              cursor: 'pointer',
+              cursor: shouldDisableButtons || isArchived ? 'not-allowed' : 'pointer',
+              opacity: shouldDisableButtons || isArchived ? 0.6 : 1,
               transition: theme.transitions.create('color', {
                 duration: theme.transitions.duration.shortest,
               }),
               '&:hover': {
-                color: theme.palette.primary.main,
+                color: shouldDisableButtons || isArchived ? 'inherit' : theme.palette.primary.main,
               },
               fontSize: { xs: '0.9375rem', sm: '1rem', md: '1.0625rem' },
               fontWeight: 600,
@@ -142,37 +176,66 @@ export default function RecipeCard({ recipe, onDelete, filterStatus = 'all' }: P
             {dishName}
           </Typography>
 
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
+          {description && (
             <Typography
               variant="body2"
               sx={{
                 color: theme.palette.text.secondary,
                 fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                lineHeight: 1.5,
+                minHeight: { xs: '2.5rem', sm: '2.75rem' },
               }}
             >
-              {cuisineType}
+              {description}
             </Typography>
-          </Stack>
+          )}
 
           <Stack direction="row" spacing={{ xs: 0.75, sm: 1 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              color="inherit"
-              startIcon={<Iconify icon="eva:edit-fill" width={{ xs: 16, md: 18 }} />}
-              onClick={handleEdit}
-              sx={{
-                fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
-                height: { xs: 36, sm: 40, md: 42 },
-                fontWeight: 600,
-              }}
-            >
-              Edit
-            </Button>
+            {isArchived ? (
+              // Recover button for archived tab
+              <Button
+                fullWidth
+                variant="outlined"
+                color="success"
+                startIcon={<Iconify icon="eva:refresh-fill" width={{ xs: 16, md: 18 }} />}
+                onClick={handleRecover}
+                sx={{
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
+                  height: { xs: 36, sm: 40, md: 42 },
+                  fontWeight: 600,
+                }}
+              >
+                Recover
+              </Button>
+            ) : (
+              // Edit button for other tabs
+              <Button
+                fullWidth
+                variant="outlined"
+                color="inherit"
+                disabled={shouldDisableButtons}
+                startIcon={<Iconify icon="eva:edit-fill" width={{ xs: 16, md: 18 }} />}
+                onClick={handleEdit}
+                sx={{
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
+                  height: { xs: 36, sm: 40, md: 42 },
+                  fontWeight: 600,
+                  cursor: shouldDisableButtons ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Edit
+              </Button>
+            )}
 
             <Button
               fullWidth
               variant="contained"
+              disabled={shouldDisableButtons}
               onClick={handleOpenConfirm}
               startIcon={
                 <Iconify 
@@ -185,13 +248,14 @@ export default function RecipeCard({ recipe, onDelete, filterStatus = 'all' }: P
                 height: { xs: 36, sm: 40, md: 42 },
                 fontWeight: 600,
                 boxShadow: 'none',
+                cursor: shouldDisableButtons ? 'not-allowed' : 'pointer',
                 ...(isArchived
                   ? {
                       // Delete - Red/Error color
                       bgcolor: 'error.main',
                       color: 'error.contrastText',
                       '&:hover': {
-                        bgcolor: 'error.main',
+                        bgcolor: 'error.dark',
                         boxShadow: 'none',
                       },
                     }
@@ -200,7 +264,7 @@ export default function RecipeCard({ recipe, onDelete, filterStatus = 'all' }: P
                       bgcolor: theme.palette.grey[500],
                       color: '#fff',
                       '&:hover': {
-                        bgcolor: theme.palette.grey[500],
+                        bgcolor: theme.palette.grey[600],
                         boxShadow: 'none',
                       },
                     }),

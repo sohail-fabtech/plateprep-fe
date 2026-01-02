@@ -10,3 +10,4 @@ export { default as SkeletonNavItem } from './SkeletonNavItem';
 export { default as SkeletonDictionaryCategoryCard } from './SkeletonDictionaryCategoryCard';
 export { default as SkeletonDictionaryTermCard } from './SkeletonDictionaryTermCard';
 export { default as SkeletonVideoGenerationCard } from './SkeletonVideoGenerationCard';
+export { default as SkeletonRecipeCard } from './SkeletonRecipeCard';

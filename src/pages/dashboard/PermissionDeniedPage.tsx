@@ -51,7 +51,7 @@ export default function PermissionDeniedPage() {
           ]}
         />
 
-        <ToggleButtonGroup
+        {/* <ToggleButtonGroup
           exclusive
           value={role}
           onChange={handleChangeRole}
@@ -65,7 +65,7 @@ export default function PermissionDeniedPage() {
           <ToggleButton value="user" aria-label="user role">
             isUser
           </ToggleButton>
-        </ToggleButtonGroup>
+        </ToggleButtonGroup> */}
 
         <RoleBasedGuard hasContent roles={[role]}>
           <Box gap={3} display="grid" gridTemplateColumns="repeat(2, 1fr)">

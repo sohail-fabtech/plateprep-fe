@@ -20,6 +20,7 @@ export type NavListProps = {
   caption?: string;
   disabled?: boolean;
   roles?: string[];
+  permission?: string;
   children?: any;
 };
 

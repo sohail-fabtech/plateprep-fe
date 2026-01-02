@@ -18,6 +18,7 @@ export const PATH_AUTH = {
   verify: path(ROOTS_AUTH, '/verify'),
   resetPassword: path(ROOTS_AUTH, '/reset-password'),
   newPassword: path(ROOTS_AUTH, '/new-password'),
+  forgotPasswordConfirm: (id: string, token: string) => `/forgot-password/${id}/${token}`,
 };
 
 export const PATH_PAGE = {
@@ -41,6 +42,7 @@ export const PATH_DASHBOARD = {
   fileManager: path(ROOTS_DASHBOARD, '/files-manager'),
   permissionDenied: path(ROOTS_DASHBOARD, '/permission-denied'),
   blank: path(ROOTS_DASHBOARD, '/blank'),
+  subscription: path(ROOTS_DASHBOARD, '/subscription'),
   
   // Custom modules
   dashboard: path(ROOTS_DASHBOARD, '/dashboard-overview'),

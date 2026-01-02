@@ -29,6 +29,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Provider as ReduxProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/lib/integration/react';
+import { QueryClientProvider } from '@tanstack/react-query';
 // @mui
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers';
@@ -46,6 +47,8 @@ import SnackbarProvider from './components/snackbar';
 import ScrollToTop from './components/scroll-to-top';
 import { MotionLazyContainer } from './components/animate';
 import { ThemeSettings, SettingsProvider } from './components/settings';
+// services
+import { queryClient } from './services';
 
 // Check our docs
 // https://docs.minimals.cc/authentication/ts-version
@@ -59,6 +62,7 @@ import { AuthProvider } from './auth/JwtContext';
 
 export default function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <HelmetProvider>
         <ReduxProvider store={store}>
@@ -86,5 +90,6 @@ export default function App() {
         </ReduxProvider>
       </HelmetProvider>
     </AuthProvider>
+    </QueryClientProvider>
   );
 }

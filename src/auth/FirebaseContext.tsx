@@ -100,7 +100,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 ...user,
                 ...profile,
                 role: 'admin',
-              },
+              } as unknown as AuthUserType,
             },
           });
         } else {
