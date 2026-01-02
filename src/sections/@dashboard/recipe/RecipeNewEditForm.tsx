@@ -27,6 +27,10 @@ import {
   useTheme,
   alpha,
   IconButton,
+  Dialog,
+  DialogContent,
+  LinearProgress,
+  CircularProgress,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../../routes/paths';
@@ -49,6 +53,8 @@ import {
 } from '../../../services';
 // sections
 import { ImageUploadZone, VideoUploadZone, DynamicIngredientList, DynamicStepList } from './form';
+// components
+import DialogAnimate from '../../../components/animate/DialogAnimate';
 
 // ----------------------------------------------------------------------
 
@@ -365,6 +371,8 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
   const onSubmit = async (data: FormValuesProps) => {
     try {
+      setIsProcessing(true);
+      
       // Step 1: Upload files to S3 using presigned URLs
       const uploadedImageUrls: string[] = [];
       let uploadedVideoUrl: string | null = null;
@@ -373,11 +381,46 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
       // Upload recipe images
       if (imageFiles.length > 0) {
-        enqueueSnackbar('Uploading images...', { variant: 'info' });
-        for (const file of imageFiles) {
+        setProcessingMessage('Uploading images...');
+        const existingImageCount = values.images.filter((url) => 
+          url.startsWith('http') && !url.startsWith('blob:')
+        ).length;
+        
+        // Initialize all progress trackers
+        const initialProgress = imageFiles.map((file, i) => ({
+          fileIndex: existingImageCount + i,
+          fileName: file.name,
+          progress: 0,
+          status: 'uploading' as const,
+        }));
+        setImageUploadProgress(initialProgress);
+        
+        for (let i = 0; i < imageFiles.length; i++) {
+          const file = imageFiles[i];
+          const fileIndex = existingImageCount + i;
+
           const fileKey = generateFileKey('recipe_images', file.name);
-          const s3Url = await uploadFileWithPresignedUrl(file, fileKey, file.type);
+          const s3Url = await uploadFileWithPresignedUrl(
+            file,
+            fileKey,
+            file.type,
+            (progress) => {
+              setImageUploadProgress((prev) =>
+                prev.map((p) =>
+                  p.fileIndex === fileIndex ? { ...p, progress } : p
+                )
+              );
+            }
+          );
+          
           uploadedImageUrls.push(s3Url);
+          
+          // Mark as completed
+          setImageUploadProgress((prev) =>
+            prev.map((p) =>
+              p.fileIndex === fileIndex ? { ...p, progress: 100, status: 'completed' } : p
+            )
+          );
         }
       }
 
@@ -389,21 +432,34 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
       // Upload video if new file selected
       if (videoFile) {
-        enqueueSnackbar('Uploading video...', { variant: 'info' });
+        setProcessingMessage('Uploading video...');
+        setIsVideoUploading(true);
+        setVideoUploadProgress(0);
+        
         const fileKey = generateFileKey('recipe_videos', videoFile.name);
-        uploadedVideoUrl = await uploadFileWithPresignedUrl(videoFile, fileKey, videoFile.type);
+        uploadedVideoUrl = await uploadFileWithPresignedUrl(
+          videoFile,
+          fileKey,
+          videoFile.type,
+          (progress) => {
+            setVideoUploadProgress(progress);
+          }
+        );
+        
+        setIsVideoUploading(false);
+        setVideoUploadProgress(100);
       }
 
       // Upload starch preparation image if new file selected
       if (starchImageFile) {
-        enqueueSnackbar('Uploading starch preparation image...', { variant: 'info' });
+        setProcessingMessage('Uploading starch preparation image...');
         const fileKey = generateFileKey('starch_preparation', starchImageFile.name);
         uploadedStarchImageUrl = await uploadFileWithPresignedUrl(starchImageFile, fileKey, starchImageFile.type);
       }
 
       // Upload plate design image if new file selected
       if (plateImageFile) {
-        enqueueSnackbar('Uploading plate design image...', { variant: 'info' });
+        setProcessingMessage('Uploading plate design image...');
         const fileKey = generateFileKey('plate_design', plateImageFile.name);
         uploadedPlateImageUrl = await uploadFileWithPresignedUrl(plateImageFile, fileKey, plateImageFile.type);
       }
@@ -439,6 +495,8 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       }
 
       // Step 5: Create or update recipe
+      setProcessingMessage(isEdit ? 'Updating recipe...' : 'Creating recipe...');
+      
       if (isEdit && currentRecipe?.id) {
         // Update existing recipe
         await updateRecipeMutation.mutateAsync({
@@ -452,9 +510,14 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
         enqueueSnackbar('Recipe created successfully!', { variant: 'success' });
       }
 
+      setIsProcessing(false);
       navigate(PATH_DASHBOARD.recipes.list);
     } catch (error) {
       console.error('Error saving recipe:', error);
+      setIsProcessing(false);
+      setImageUploadProgress([]);
+      setIsVideoUploading(false);
+      setVideoUploadProgress(0);
       const errorMessage = error instanceof Error 
         ? error.message 
         : 'Failed to save recipe. Please try again.';
@@ -472,6 +535,18 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [starchImageFile, setStarchImageFile] = useState<File | null>(null);
   const [plateImageFile, setPlateImageFile] = useState<File | null>(null);
+
+  // Upload progress tracking
+  const [imageUploadProgress, setImageUploadProgress] = useState<Array<{
+    fileIndex: number;
+    fileName: string;
+    progress: number;
+    status: 'uploading' | 'completed' | 'error';
+  }>>([]);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
 
   const handleImageUpload = (files: File[]) => {
     // Store File objects for later upload
@@ -548,6 +623,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   }, [values, setValue]);
 
   return (
+    <>
     <DragDropContext onDragEnd={handleDragEnd}>
       <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={4}>
@@ -571,6 +647,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   fullyPlatedIndex={values.fullyPlatedImageIndex}
                   error={!!error}
                   helperText={error?.message}
+                  uploadProgress={imageUploadProgress}
                 />
               )}
             />
@@ -1313,5 +1390,28 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       </Grid>
     </FormProvider>
     </DragDropContext>
+
+    {/* Processing Dialog */}
+    <DialogAnimate
+      open={isProcessing}
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          p: 0,
+        },
+      }}
+    >
+      <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+        <CircularProgress size={64} sx={{ mb: 3, color: 'primary.main' }} />
+        <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+          {processingMessage || 'Processing...'}
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          Please wait while we process your recipe
+        </Typography>
+      </DialogContent>
+    </DialogAnimate>
+    </>
   );
 }

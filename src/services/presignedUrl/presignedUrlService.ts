@@ -71,39 +71,53 @@ export function constructS3Url(presignedUrl: string, s3Key: string): string {
 }
 
 /**
- * Upload file to S3 using presigned URL
+ * Upload file to S3 using presigned URL with progress tracking
  * @param presignedUrl - Presigned URL from getPresignedUrl
  * @param file - File to upload
  * @param contentType - Content type of the file (e.g., "image/jpeg", "video/mp4")
  * @param s3Key - The filename (e.g., "1767382810316.mov") - used to construct correct URL
+ * @param onProgress - Optional progress callback (0-100)
  * @returns S3 URL (without query parameters, with only filename)
  */
 export async function uploadFileToS3(
   presignedUrl: string,
   file: File,
   contentType?: string,
-  s3Key?: string
+  s3Key?: string,
+  onProgress?: (progress: number) => void
 ): Promise<string> {
-  const response = await fetch(presignedUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': contentType || file.type || 'application/octet-stream',
-    },
-    body: file,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable && onProgress) {
+        const progress = Math.round((e.loaded / e.total) * 100);
+        onProgress(progress);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (onProgress) onProgress(100);
+        // Construct the correct S3 URL using the key
+        if (s3Key) {
+          resolve(constructS3Url(presignedUrl, s3Key));
+        } else {
+          resolve(presignedUrl.split('?')[0]);
+        }
+      } else {
+        reject(new Error(`Failed to upload file to S3: ${xhr.status} ${xhr.statusText}`));
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Failed to upload file to S3: Network error'));
+    });
+
+    xhr.open('PUT', presignedUrl);
+    xhr.setRequestHeader('Content-Type', contentType || file.type || 'application/octet-stream');
+    xhr.send(file);
   });
-
-  if (!response.ok) {
-    throw new Error(`Failed to upload file to S3: ${response.status} ${response.statusText}`);
-  }
-
-  // Construct the correct S3 URL using the key to ensure full path is included
-  if (s3Key) {
-    return constructS3Url(presignedUrl, s3Key);
-  }
-  
-  // Fallback: Extract the S3 URL (remove query parameters)
-  // Note: This might not include the full key path, so prefer using s3Key parameter
-  return presignedUrl.split('?')[0];
 }
 
 /**
@@ -111,18 +125,20 @@ export async function uploadFileToS3(
  * @param file - File to upload
  * @param fileKey - Filename only (e.g., "1767382810316.mov") - backend expects no folder path
  * @param contentType - Optional content type (defaults to file.type)
+ * @param onProgress - Optional progress callback (0-100)
  * @returns S3 URL of the uploaded file (with only filename, no folder path)
  */
 export async function uploadFileWithPresignedUrl(
   file: File,
   fileKey: string,
-  contentType?: string
+  contentType?: string,
+  onProgress?: (progress: number) => void
 ): Promise<string> {
   // Step 1: Get presigned URL (response includes the key)
   const { presigned_url, key } = await getPresignedUrl(fileKey);
 
   // Step 2: Upload file to S3 (pass the key to ensure correct URL construction)
-  const s3Url = await uploadFileToS3(presigned_url, file, contentType, key || fileKey);
+  const s3Url = await uploadFileToS3(presigned_url, file, contentType, key || fileKey, onProgress);
 
   return s3Url;
 }

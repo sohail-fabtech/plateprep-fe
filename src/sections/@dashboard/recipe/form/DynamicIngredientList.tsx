@@ -103,7 +103,8 @@ export default function DynamicIngredientList({ items, onChange, title, showUnit
         {(provided) => (
           <Stack spacing={{ xs: 1, md: 1.5 }} ref={provided.innerRef} {...provided.droppableProps}>
             {items.map((item, index) => {
-              const itemId = `${droppableId}-${item.name}-${index}`;
+              // Use stable ID based on index only to prevent re-rendering on input change
+              const itemId = `${droppableId}-${index}`;
               return (
               <Draggable key={itemId} draggableId={itemId} index={index}>
                 {(dragProvided, snapshot) => (

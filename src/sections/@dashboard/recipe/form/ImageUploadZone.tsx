@@ -2,13 +2,20 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from 'notistack';
 // @mui
-import { Box, Typography, Stack, IconButton, Card, alpha, Chip, useTheme, MenuItem, MenuList, Divider } from '@mui/material';
+import { Box, Typography, Stack, IconButton, Card, alpha, Chip, useTheme, MenuItem, MenuList, Divider, LinearProgress } from '@mui/material';
 // components
 import Iconify from '../../../../components/iconify';
 import Image from '../../../../components/image';
 import MenuPopover from '../../../../components/menu-popover';
 
 // ----------------------------------------------------------------------
+
+type UploadProgress = {
+  fileIndex: number;
+  fileName: string;
+  progress: number;
+  status: 'uploading' | 'completed' | 'error';
+};
 
 type Props = {
   images: string[];
@@ -20,6 +27,7 @@ type Props = {
   fullyPlatedIndex?: number;
   error?: boolean;
   helperText?: string;
+  uploadProgress?: UploadProgress[];
 };
 
 export default function ImageUploadZone({
@@ -32,6 +40,7 @@ export default function ImageUploadZone({
   fullyPlatedIndex,
   error,
   helperText,
+  uploadProgress = [],
 }: Props) {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
@@ -259,7 +268,18 @@ export default function ImageUploadZone({
               },
             }}
           >
-            {images.map((image, index) => (
+            {(() => {
+              // Sort images: primary first, then others
+              const sortedImages = images.map((img, idx) => ({ img, idx }));
+              sortedImages.sort((a, b) => {
+                if (primaryIndex !== undefined) {
+                  if (a.idx === primaryIndex) return -1;
+                  if (b.idx === primaryIndex) return 1;
+                }
+                return 0;
+              });
+              
+              return sortedImages.map(({ img: image, idx: index }) => (
               <Card
                 key={index}
                 sx={{
@@ -287,6 +307,74 @@ export default function ImageUploadZone({
                       height: 1,
                     }}
                   />
+
+                  {/* Upload Progress Overlay */}
+                  {(() => {
+                    const progress = uploadProgress.find(p => p.fileIndex === index);
+                    if (progress && progress.status === 'uploading') {
+                      return (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            bgcolor: alpha(theme.palette.grey[900], 0.7),
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 10,
+                            p: 2,
+                          }}
+                        >
+                          <Iconify
+                            icon="eva:cloud-upload-outline"
+                            width={32}
+                            sx={{ color: theme.palette.common.white, mb: 1 }}
+                          />
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: theme.palette.common.white,
+                              mb: 1,
+                              textAlign: 'center',
+                              fontSize: { xs: '0.625rem', md: '0.75rem' },
+                            }}
+                          >
+                            {progress.fileName.length > 15
+                              ? `${progress.fileName.substring(0, 15)}...`
+                              : progress.fileName}
+                          </Typography>
+                          <LinearProgress
+                            variant="determinate"
+                            value={progress.progress}
+                            sx={{
+                              width: '100%',
+                              height: 6,
+                              borderRadius: 3,
+                              bgcolor: alpha(theme.palette.common.white, 0.2),
+                              '& .MuiLinearProgress-bar': {
+                                borderRadius: 3,
+                              },
+                            }}
+                          />
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: theme.palette.common.white,
+                              mt: 0.5,
+                              fontSize: { xs: '0.625rem', md: '0.6875rem' },
+                            }}
+                          >
+                            {Math.round(progress.progress)}%
+                          </Typography>
+                        </Box>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Badges */}
                   <Stack
@@ -407,7 +495,8 @@ export default function ImageUploadZone({
                   </Box>
                 </Box>
               </Card>
-            ))}
+            ));
+            })()}
           </Box>
         </Box>
       )}
