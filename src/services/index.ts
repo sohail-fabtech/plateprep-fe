@@ -5,6 +5,7 @@ export { queryClient } from './queryClient';
 export {
   useRecipe,
   useRecipes,
+  useDraftRecipes,
   useCreateRecipe,
   useUpdateRecipe,
   useUpdateRecipeFull,
@@ -51,6 +52,48 @@ export { useMenuCategories, menuCategoryKeys } from './menuCategories/menuCatego
 // Export Menu Category types
 export type { IMenuCategory } from './menuCategories/menuCategoryService';
 
+// Export Predefined Items hooks
+export {
+  usePredefinedIngredients,
+  useAllPredefinedIngredients,
+  usePredefinedStarch,
+  useAllPredefinedStarch,
+  usePredefinedVegetables,
+  useAllPredefinedVegetables,
+  predefinedItemKeys,
+} from './predefinedItems/predefinedItemHooks';
+
+// Export Predefined Items types
+export type {
+  IPredefinedItem,
+  PredefinedItemQueryParams,
+  PredefinedItemListResponse,
+} from './predefinedItems/predefinedItemService';
+
 // Export common types
 export type { ApiResponse, PaginatedResponse, QueryParams, MutationOptions } from './common/types';
+
+// Export Presigned URL hooks
+export {
+  useGetPresignedUrl,
+  useUploadFileToS3,
+  useUploadFileWithPresignedUrl,
+  useUploadMultipleFiles,
+  presignedUrlKeys,
+} from './presignedUrl/presignedUrlHooks';
+
+// Export Presigned URL service functions
+export {
+  getPresignedUrl,
+  uploadFileToS3,
+  uploadFileWithPresignedUrl,
+  uploadMultipleFiles,
+  generateFileKey,
+} from './presignedUrl/presignedUrlService';
+
+// Export Presigned URL types
+export type {
+  IPresignedUrlRequest,
+  IPresignedUrlResponse,
+} from './presignedUrl/presignedUrlService';
 

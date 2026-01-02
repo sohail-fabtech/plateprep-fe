@@ -10,6 +10,7 @@ export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
   previous: string | null;
+  page?: number; // Optional, as some APIs may not include it
   results: T[];
 }
 

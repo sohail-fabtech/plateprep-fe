@@ -189,3 +189,41 @@ export async function permanentlyDeleteRecipe(id: string | number): Promise<Perm
   return response.data;
 }
 
+/**
+ * Fetch list of draft recipes with pagination
+ */
+export async function getDraftRecipes(params?: RecipeQueryParams): Promise<RecipeListResponse> {
+  // Build query params, only including defined values
+  const queryParams: Record<string, string | number | boolean> = {};
+  
+  if (params?.page) queryParams.page = params.page;
+  if (params?.page_size) queryParams.page_size = params.page_size;
+  if (params?.search) queryParams.search = params.search;
+  if (params?.dish_name) queryParams.dish_name = params.dish_name;
+  if (params?.cusinie_type && params.cusinie_type !== 'all') queryParams.cusinie_type = params.cusinie_type;
+  if (params?.status) queryParams.status = params.status;
+  if (params?.branch) queryParams.branch = params.branch;
+  if (params?.ordering) queryParams.ordering = params.ordering;
+
+  const response = await axiosInstance.get<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    page: number;
+    results: IRecipeListItemApiResponse[];
+  }>('/recipe/get-draft/', {
+    params: queryParams,
+  });
+
+  // Handle case where results might be undefined or null
+  const results = response.data?.results || [];
+  
+  return {
+    count: response.data?.count || 0,
+    next: response.data?.next || null,
+    previous: response.data?.previous || null,
+    page: response.data?.page || 1,
+    results: results.map(transformListApiResponseToRecipe),
+  };
+}
+

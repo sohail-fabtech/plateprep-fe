@@ -64,10 +64,20 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
   // Transform images (extract URLs)
   const imageFiles: string[] = apiResponse.recipe_image.map((img) => img.image_url);
 
-  // Transform predefined items (extract names)
-  const predefinedIngredients: string[] = apiResponse.predefined_ingredients.map((item) => item.name);
-  const predefinedStarch: string[] = apiResponse.predefined_starch.map((item) => item.name);
-  const predefinedVegetable: string[] = apiResponse.predefined_vegetables.map((item) => item.name);
+  // Transform predefined items (keep as objects with id and name for form use)
+  // These are stored on the recipe object for form population
+  const predefinedIngredients = apiResponse.predefined_ingredients.map((item) => ({
+    id: item.id,
+    name: item.name || '',
+  }));
+  const predefinedStarch = apiResponse.predefined_starch.map((item) => ({
+    id: item.id,
+    name: item.name || '',
+  }));
+  const predefinedVegetables = apiResponse.predefined_vegetables.map((item) => ({
+    id: item.id,
+    name: item.name || '',
+  }));
 
   // Map status from API format (P/D/A) to internal format (active/draft/archived)
   const status = STATUS_MAP[apiResponse.status.value] || 'draft';
@@ -160,6 +170,11 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
     updatedBy: `User-${apiResponse.resturant}`, // Placeholder
   };
 
+  // Add predefined items to recipe object (for form use)
+  (recipe as any).predefinedIngredients = predefinedIngredients;
+  (recipe as any).predefinedStarch = predefinedStarch;
+  (recipe as any).predefinedVegetables = predefinedVegetables;
+
   return recipe;
 }
 
@@ -240,6 +255,9 @@ export interface IRecipeApiRequest {
   }>;
   recipe_image?: string[];
   wine_pairing?: number[];
+  predefined_ingredients?: number[];
+  predefined_starch?: number[];
+  predefined_vegetables?: number[];
 }
 
 export function transformRecipeToApiRequest(
@@ -247,9 +265,13 @@ export function transformRecipeToApiRequest(
   menuCategories?: Array<{ id: number; categoryName: string }>
 ): IRecipeApiRequest {
   // Helper: Format number to string with 2 decimals
-  const formatNumber = (value: number | undefined): string => {
-    if (value === undefined) return '0.00';
-    return value.toFixed(2);
+  const formatNumber = (value: number | string | undefined | null): string => {
+    if (value === undefined || value === null) return '0.00';
+    // Convert string to number if needed
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    // Check if it's a valid number
+    if (isNaN(numValue) || !isFinite(numValue)) return '0.00';
+    return numValue.toFixed(2);
   };
 
   const apiRequest: IRecipeApiRequest = {};
@@ -287,53 +309,79 @@ export function transformRecipeToApiRequest(
 
   // Ingredients array
   if (recipe.ingredients !== undefined) {
-    apiRequest.ingredients = recipe.ingredients.map((ing) => ({
-      ...(ing.id && { id: parseInt(ing.id, 10) }),
-      title: ing.title,
-      quantity: String(ing.quantity),
-      unit: ing.unit || '',
-    }));
+    // Only include if array is not empty (empty array means no change in update)
+    if (recipe.ingredients.length > 0) {
+      apiRequest.ingredients = recipe.ingredients.map((ing) => ({
+        ...(ing.id && !isNaN(parseInt(ing.id, 10)) && { id: parseInt(ing.id, 10) }),
+        title: ing.title || '',
+        quantity: String(ing.quantity || ''),
+        unit: ing.unit || '',
+      }));
+    } else {
+      // Empty array - API will handle deletion/clearing
+      apiRequest.ingredients = [];
+    }
   }
 
   // Essential tools array
   if (recipe.essentialIngredients !== undefined) {
-    apiRequest.essential = recipe.essentialIngredients.map((ess) => ({
-      ...(ess.id && { id: parseInt(ess.id, 10) }),
-      title: ess.title,
-      quantity: String(ess.quantity),
-      unit: ess.unit || '',
-    }));
+    if (recipe.essentialIngredients.length > 0) {
+      apiRequest.essential = recipe.essentialIngredients.map((ess) => ({
+        ...(ess.id && !isNaN(parseInt(ess.id, 10)) && { id: parseInt(ess.id, 10) }),
+        title: ess.title || '',
+        quantity: String(ess.quantity || ''),
+        unit: ess.unit || '',
+      }));
+    } else {
+      apiRequest.essential = [];
+    }
   }
 
   // Preparation steps array
   if (recipe.steps !== undefined) {
-    apiRequest.steps = recipe.steps.map((step) => ({
-      ...(step.id && { id: parseInt(step.id, 10) }),
-      title: step.description,
-    }));
+    if (recipe.steps.length > 0) {
+      apiRequest.steps = recipe.steps.map((step) => ({
+        ...(step.id && !isNaN(parseInt(step.id, 10)) && { id: parseInt(step.id, 10) }),
+        title: step.description || '',
+      }));
+    } else {
+      apiRequest.steps = [];
+    }
   }
 
   // Tags array
   if (recipe.tags !== undefined) {
-    // Tags are stored as strings in IRecipe, but API expects objects with id and name
-    // For updates, we'll need to preserve existing tag IDs if available
-    // For now, we'll create new tags (backend will handle duplicates)
-    apiRequest.tags = recipe.tags.map((tag) => ({
-      name: tag,
-    }));
+    if (recipe.tags.length > 0) {
+      // Tags are stored as strings in IRecipe, but API expects objects with id and name
+      // For updates, we'll need to preserve existing tag IDs if available
+      // For now, we'll create new tags (backend will handle duplicates)
+      apiRequest.tags = recipe.tags.map((tag) => ({
+        name: String(tag || ''),
+      }));
+    } else {
+      apiRequest.tags = [];
+    }
   }
 
   // Starch preparation object
   if (recipe.starchPreparation !== undefined) {
     const starchPrep = recipe.starchPreparation;
-    // Only include if there are steps or a title
+    // Include if there are steps or a title, or if explicitly set to empty
     if (starchPrep.steps?.length > 0 || starchPrep.type) {
+      const starchPrepAny = starchPrep as any;
       apiRequest.starch_preparation = {
+        ...(starchPrepAny.id && !isNaN(parseInt(String(starchPrepAny.id), 10)) && { id: parseInt(String(starchPrepAny.id), 10) }),
         title: starchPrep.type || '',
         steps: (starchPrep.steps || []).map((step) => ({
-          ...(step.id && { id: parseInt(step.id, 10) }),
-          step: step.description,
+          ...(step.id && !isNaN(parseInt(step.id, 10)) && { id: parseInt(step.id, 10) }),
+          step: step.description || '',
         })),
+      };
+    } else if (starchPrep.steps?.length === 0 && !starchPrep.type) {
+      // Empty object - API will handle clearing
+      apiRequest.starch_preparation = {
+        title: '',
+        steps: [],
       };
     }
   }
@@ -341,31 +389,45 @@ export function transformRecipeToApiRequest(
   // Design your plate object
   if (recipe.plateDesign?.platingSteps !== undefined) {
     const plateDesign = recipe.plateDesign;
-    // Only include if there are steps
+    // Include if there are steps, or if explicitly set to empty
     if (plateDesign.platingSteps?.length > 0) {
+      const plateDesignAny = plateDesign as any;
       apiRequest.design_your_plate = {
+        ...(plateDesignAny.id && !isNaN(parseInt(String(plateDesignAny.id), 10)) && { id: parseInt(String(plateDesignAny.id), 10) }),
         steps: plateDesign.platingSteps.map((step) => ({
-          ...(step.id && { id: parseInt(step.id, 10) }),
-          step: step.description,
+          ...(step.id && !isNaN(parseInt(step.id, 10)) && { id: parseInt(step.id, 10) }),
+          step: step.description || '',
         })),
+      };
+    } else if (plateDesign.platingSteps?.length === 0) {
+      // Empty steps array
+      apiRequest.design_your_plate = {
+        steps: [],
       };
     }
   }
 
-  // Cooking deviation comments array
+  // Cooking deviation comments array (no ID support - always replaces all)
   if (recipe.cookingDeviationComments !== undefined) {
-    apiRequest.cooking_deviation_comment = recipe.cookingDeviationComments.map((comment) => ({
-      ...(comment.id && { id: parseInt(comment.id, 10) }),
-      step: comment.step,
-    }));
+    if (recipe.cookingDeviationComments.length > 0) {
+      apiRequest.cooking_deviation_comment = recipe.cookingDeviationComments.map((comment) => ({
+        step: comment.step || '',
+      }));
+    } else {
+      apiRequest.cooking_deviation_comment = [];
+    }
   }
 
   // Real-time variable comments array
   if (recipe.realtimeVariableComments !== undefined) {
-    apiRequest.real_time_variable_comment = recipe.realtimeVariableComments.map((comment) => ({
-      ...(comment.id && { id: parseInt(comment.id, 10) }),
-      step: comment.step,
-    }));
+    if (recipe.realtimeVariableComments.length > 0) {
+      apiRequest.real_time_variable_comment = recipe.realtimeVariableComments.map((comment) => ({
+        ...(comment.id && !isNaN(parseInt(comment.id, 10)) && { id: parseInt(comment.id, 10) }),
+        step: comment.step || '',
+      }));
+    } else {
+      apiRequest.real_time_variable_comment = [];
+    }
   }
 
   // Wine pairings array (API expects array of wine IDs)
@@ -377,7 +439,26 @@ export function transformRecipeToApiRequest(
 
   // Recipe images array (API expects array of URLs)
   if (recipe.imageFiles !== undefined) {
-    apiRequest.recipe_image = recipe.imageFiles;
+    // Filter out empty/null URLs
+    apiRequest.recipe_image = recipe.imageFiles.filter((url) => url && url.trim() !== '');
+  }
+
+  // Predefined items (arrays of IDs)
+  // The form sends arrays of IDs (numbers), so we pass them directly to the API
+  if ((recipe as any).predefinedIngredients !== undefined && Array.isArray((recipe as any).predefinedIngredients)) {
+    apiRequest.predefined_ingredients = (recipe as any).predefinedIngredients
+      .map((id: string | number) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((id: number) => !isNaN(id) && id > 0);
+  }
+  if ((recipe as any).predefinedStarch !== undefined && Array.isArray((recipe as any).predefinedStarch)) {
+    apiRequest.predefined_starch = (recipe as any).predefinedStarch
+      .map((id: string | number) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((id: number) => !isNaN(id) && id > 0);
+  }
+  if ((recipe as any).predefinedVegetables !== undefined && Array.isArray((recipe as any).predefinedVegetables)) {
+    apiRequest.predefined_vegetables = (recipe as any).predefinedVegetables
+      .map((id: string | number) => (typeof id === 'string' ? parseInt(id, 10) : id))
+      .filter((id: number) => !isNaN(id) && id > 0);
   }
 
   // Costing
@@ -424,15 +505,51 @@ export function transformRecipeToApiRequest(
   }
 
   // Availability (API expects string "A", "LS", or "OOS")
-  if (recipe.isAvailable !== undefined) {
+  // Handle explicit availability value if provided
+  if ((recipe as any).availability !== undefined) {
+    const avail = (recipe as any).availability;
+    if (typeof avail === 'string' && ['A', 'LS', 'OOS'].includes(avail)) {
+      apiRequest.availability = avail;
+    } else if (recipe.isAvailable !== undefined) {
+      apiRequest.availability = recipe.isAvailable ? 'A' : 'OOS';
+    }
+  } else if (recipe.isAvailable !== undefined) {
     apiRequest.availability = recipe.isAvailable ? 'A' : 'OOS';
   }
 
   // Draft and schedule flags
-  if (recipe.status === 'draft') {
+  // Handle is_draft explicitly if provided, otherwise derive from status
+  if ((recipe as any).is_draft !== undefined) {
+    apiRequest.is_draft = Boolean((recipe as any).is_draft);
+  } else if (recipe.status === 'draft') {
     apiRequest.is_draft = true;
   } else if (recipe.status !== undefined) {
     apiRequest.is_draft = false;
+  }
+
+  // Handle is_schedule flag
+  if ((recipe as any).is_schedule !== undefined) {
+    apiRequest.is_schedule = Boolean((recipe as any).is_schedule);
+  }
+
+  // Manual video (separate from video field)
+  if (recipe.videoFile !== undefined) {
+    apiRequest.manual_video = recipe.videoFile || undefined;
+  }
+
+  // Starch preparation image (separate field)
+  if ((recipe as any).starchPreparationImage !== undefined) {
+    apiRequest.starch_preparation_image = (recipe as any).starchPreparationImage || undefined;
+  }
+
+  // Plate design image (separate field)
+  if ((recipe as any).plateDesignImage !== undefined) {
+    apiRequest.plate_design_image = (recipe as any).plateDesignImage || undefined;
+  }
+
+  // Handle servingsInCase if available
+  if ((recipe.costing as any)?.servingsInCase !== undefined) {
+    apiRequest.servingsInCase = formatNumber((recipe.costing as any).servingsInCase);
   }
 
   return apiRequest;

@@ -1,14 +1,14 @@
 import { Helmet } from 'react-helmet-async';
 import { useParams } from 'react-router-dom';
 // @mui
-import { Container } from '@mui/material';
+import { Container, CircularProgress, Alert, Box } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
-// _mock_
-import { _recipeList } from '../../_mock/arrays';
 // components
 import { useSettingsContext } from '../../components/settings';
 import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
+// services
+import { useRecipe } from '../../services';
 // sections
 import RecipeNewEditForm from '../../sections/@dashboard/recipe/RecipeNewEditForm';
 
@@ -16,10 +16,10 @@ import RecipeNewEditForm from '../../sections/@dashboard/recipe/RecipeNewEditFor
 
 export default function RecipeEditPage() {
   const { themeStretch } = useSettingsContext();
-
   const { id } = useParams();
 
-  const currentRecipe = _recipeList.find((recipe) => recipe.id === id);
+  // Fetch recipe using TanStack Query
+  const { data: currentRecipe, isLoading, isError, error } = useRecipe(id);
 
   return (
     <>
@@ -39,11 +39,21 @@ export default function RecipeEditPage() {
               name: 'Recipes',
               href: PATH_DASHBOARD.recipes.list,
             },
-            { name: currentRecipe?.dishName },
+            { name: currentRecipe?.dishName || 'Loading...' },
           ]}
         />
 
-        <RecipeNewEditForm isEdit currentRecipe={currentRecipe} />
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+            <CircularProgress />
+          </Box>
+        ) : isError ? (
+          <Alert severity="error">
+            {error instanceof Error ? error.message : 'Failed to load recipe. Please try again.'}
+          </Alert>
+        ) : currentRecipe ? (
+          <RecipeNewEditForm isEdit currentRecipe={currentRecipe} />
+        ) : null}
       </Container>
     </>
   );

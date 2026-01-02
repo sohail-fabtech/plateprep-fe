@@ -3,6 +3,7 @@ import { IRecipe } from '../../@types/recipe';
 import {
   getRecipeById,
   getRecipes,
+  getDraftRecipes,
   createRecipe,
   updateRecipe,
   updateRecipeFull,
@@ -44,6 +45,17 @@ export function useRecipes(params?: RecipeQueryParams) {
   return useQuery<RecipeListResponse>({
     queryKey: recipeKeys.list(params),
     queryFn: () => getRecipes(params),
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching new page
+  });
+}
+
+/**
+ * Hook to fetch list of draft recipes with pagination
+ */
+export function useDraftRecipes(params?: RecipeQueryParams) {
+  return useQuery<RecipeListResponse>({
+    queryKey: [...recipeKeys.lists(), 'draft', params],
+    queryFn: () => getDraftRecipes(params),
     placeholderData: (previousData) => previousData, // Keep previous data while fetching new page
   });
 }
