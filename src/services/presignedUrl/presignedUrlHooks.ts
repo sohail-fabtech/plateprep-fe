@@ -34,11 +34,13 @@ export function useUploadFileToS3() {
       presignedUrl,
       file,
       contentType,
+      s3Key,
     }: {
       presignedUrl: string;
       file: File;
       contentType?: string;
-    }) => uploadFileToS3(presignedUrl, file, contentType),
+      s3Key?: string;
+    }) => uploadFileToS3(presignedUrl, file, contentType, s3Key),
   });
 }
 
