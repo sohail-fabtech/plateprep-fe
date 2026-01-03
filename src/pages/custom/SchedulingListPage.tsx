@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 // @mui
 import {
@@ -13,13 +13,13 @@ import {
   Typography,
   TableRow,
   TableCell,
+  Alert,
+  LinearProgress,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // @types
 import { IScheduling } from '../../@types/scheduling';
-// _mock_
-import { _schedulingList } from '../../_mock/arrays';
 // components
 import Iconify from '../../components/iconify';
 import Scrollbar from '../../components/scrollbar';
@@ -33,9 +33,25 @@ import {
   TableHeadCustom,
   TablePaginationCustom,
 } from '../../components/table';
+import { SubscriptionDialog } from '../../components/subscription-dialog';
 // sections
 import { SchedulingTableRow, SchedulingTableToolbar } from '../../sections/@dashboard/scheduling/list';
 import { useSnackbar } from '../../components/snackbar';
+// hooks
+import { useDebounce } from '../../hooks/useDebounce';
+import { usePermissions } from '../../hooks/usePermissions';
+import { useSubscription } from '../../hooks/useSubscription';
+// auth
+import PermissionGuard from '../../auth/PermissionGuard';
+// services
+import {
+  useScheduleDishes,
+  useDeleteScheduleDish,
+  ScheduleDishQueryParams,
+  IScheduleDish,
+} from '../../services';
+// skeleton
+import { SchedulingTableSkeleton } from '../../sections/@dashboard/scheduling/list';
 
 // ----------------------------------------------------------------------
 
@@ -117,10 +133,23 @@ export default function SchedulingListPage() {
   const { themeStretch } = useSettingsContext();
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
-
-  const [tableData, setTableData] = useState<IScheduling[]>(_schedulingList);
+  const { hasPermission } = usePermissions();
+  const { hasSubscription } = useSubscription();
 
   const [filterName, setFilterName] = useState('');
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const [loadingDeleteId, setLoadingDeleteId] = useState<number | null>(null);
+
+  // Debounce search input (500ms delay)
+  const debouncedFilterName = useDebounce(filterName, 500);
+
+  // Delete mutation
+  const deleteMutation = useDeleteScheduleDish();
+
+  // Reset to page 0 when search changes
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedFilterName, setPage]);
 
   // Initialize column visibility from localStorage
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -151,6 +180,49 @@ export default function SchedulingListPage() {
     }
   }, [dense]);
 
+  // Build API query params
+  const queryParams: ScheduleDishQueryParams = useMemo(() => {
+    const params: ScheduleDishQueryParams = {
+      page: page + 1, // API uses 1-based pagination
+      page_size: rowsPerPage,
+      ordering: orderBy ? `${order === 'desc' ? '-' : ''}${orderBy}` : '-created_at',
+    };
+
+    // Search parameter - use debounced value
+    if (debouncedFilterName) {
+      params.dish = debouncedFilterName;
+    }
+
+    return params;
+  }, [debouncedFilterName, page, rowsPerPage, order, orderBy]);
+
+  // Fetch scheduled dishes using API
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+  } = useScheduleDishes(queryParams);
+
+  // Transform API data to IScheduling format
+  const tableData: IScheduling[] = useMemo(() => {
+    if (!data?.results) return [];
+    return data.results.map((schedule) => ({
+      id: schedule.id,
+      dish: schedule.dish,
+      created_at: schedule.createdAt,
+      is_deleted: false,
+      schedule_datetime: schedule.scheduleDatetime,
+      scheduleDatetime: schedule.scheduleDatetime,
+      season: schedule.season,
+      status: schedule.status,
+      job: schedule.job,
+      holiday: schedule.holiday,
+      creator: schedule.creator,
+    }));
+  }, [data]);
+
   const dataFiltered = applySortFilter({
     tableData,
     comparator: getComparator(order, orderBy),
@@ -161,7 +233,7 @@ export default function SchedulingListPage() {
 
   const isFiltered = filterName !== '';
 
-  const isNotFound = !dataFiltered.length && !!filterName;
+  const isNotFound = !isLoading && !isError && dataFiltered.length === 0 && !!filterName;
 
   const denseHeight = dense ? 52 : 72;
 
@@ -170,10 +242,17 @@ export default function SchedulingListPage() {
     setFilterName(event.target.value);
   };
 
-  const handleDeleteRow = (id: number) => {
-    const deleteRow = tableData.filter((row) => row.id !== id);
-    setTableData(deleteRow);
-    enqueueSnackbar('Scheduling deleted successfully!', { variant: 'success' });
+  const handleDeleteRow = async (id: number) => {
+    try {
+      setLoadingDeleteId(id);
+      await deleteMutation.mutateAsync(id);
+      enqueueSnackbar('Schedule deleted successfully!', { variant: 'success' });
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to delete schedule. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingDeleteId(null);
+    }
   };
 
   const handleStatusUpdate = (id: number) => {
@@ -199,6 +278,17 @@ export default function SchedulingListPage() {
         <title> Scheduling: List | Minimal UI</title>
       </Helmet>
 
+      <SubscriptionDialog
+        open={subscriptionDialogOpen}
+        message="You need an active subscription to create schedules. Please subscribe to continue."
+        buttonText="Subscribe Now"
+        onClose={() => setSubscriptionDialogOpen(false)}
+        onButtonClick={() => {
+          setSubscriptionDialogOpen(false);
+          navigate(PATH_DASHBOARD.subscription);
+        }}
+      />
+
       <Container maxWidth={themeStretch ? false : 'xl'}>
         <CustomBreadcrumbs
           heading="Scheduling List"
@@ -208,113 +298,156 @@ export default function SchedulingListPage() {
             { name: 'List' },
           ]}
           action={
-            <Button
-              component={RouterLink}
-              to={PATH_DASHBOARD.scheduling.create}
-              variant="contained"
-              startIcon={<Iconify icon="eva:plus-fill" />}
-            >
-              New Schedule
-            </Button>
+            // <PermissionGuard permission="create_schedule_dish">
+              <Button
+                variant="contained"
+                startIcon={<Iconify icon="eva:plus-fill" />}
+                onClick={() => {
+                  if (!hasSubscription()) {
+                    setSubscriptionDialogOpen(true);
+                  } else {
+                    navigate(PATH_DASHBOARD.scheduling.create);
+                  }
+                }}
+                sx={{
+                  fontSize: { xs: '0.6875rem', sm: '0.8125rem', md: '0.875rem' },
+                  fontWeight: 600,
+                  px: { xs: 1.5, sm: 2 },
+                  py: { xs: 0.75, sm: 1 },
+                  '& .MuiButton-startIcon': {
+                    marginRight: { xs: 0.5, sm: 0.75 },
+                    '& svg': {
+                      width: { xs: 16, sm: 18, md: 20 },
+                      height: { xs: 16, sm: 18, md: 20 },
+                    },
+                  },
+                }}
+              >
+                New Schedule
+              </Button>
+            // </PermissionGuard>
           }
         />
 
-        <Card sx={{ mb: { xs: 2, md: 3 }, overflow: 'hidden' }}>
-          <SchedulingTableToolbar
-            isFiltered={isFiltered}
-            filterName={filterName}
-            onFilterName={handleFilterName}
-            onResetFilter={handleResetFilter}
-            columnVisibility={columnVisibility}
-            onToggleColumn={handleToggleColumn}
-            tableHead={TABLE_HEAD}
-            formInputSx={FORM_INPUT_SX}
-          />
+        {/* <PermissionGuard permission="view_schedule_dish"> */}
+          <Card sx={{ mb: { xs: 2, md: 3 }, overflow: 'hidden' }}>
+            <SchedulingTableToolbar
+              isFiltered={isFiltered}
+              filterName={filterName}
+              onFilterName={handleFilterName}
+              onResetFilter={handleResetFilter}
+              columnVisibility={columnVisibility}
+              onToggleColumn={handleToggleColumn}
+              tableHead={TABLE_HEAD}
+              formInputSx={FORM_INPUT_SX}
+            />
 
-          <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
-            <Scrollbar sx={{ maxWidth: '100%' }}>
-              <Table sx={{ minWidth: { xs: 800, md: 960 } }}>
-                <TableHeadCustom
-                  order={order}
-                  orderBy={orderBy}
-                  headLabel={TABLE_HEAD.map((head) => ({
-                    ...head,
-                    ...(head.id && !columnVisibility[head.id] ? { width: 0, minWidth: 0 } : {}),
-                  })).filter((head) => !head.id || columnVisibility[head.id])}
-                  onSort={onSort}
-                  sx={{
-                    '& .MuiTableCell-root': {
-                      px: { xs: 1.5, md: 2 },
-                      fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5,
-                    },
-                    '& .MuiTableSortLabel-root': {
-                      cursor: 'pointer !important',
-                    },
-                    '& .MuiBox-root': {
-                      cursor: 'pointer !important',
-                    },
-                  }}
-                />
+            {/* Linear Progress for fetching */}
+            {isFetching && <LinearProgress />}
 
-                <TableBody>
-                  {dataFiltered
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row) => (
-                      <SchedulingTableRow
-                        key={row.id}
-                        row={row}
-                        onDeleteRow={() => handleDeleteRow(row.id)}
-                        onStatusUpdate={() => handleStatusUpdate(row.id)}
+            {/* Error State */}
+            {isError && (
+              <Alert severity="error" sx={{ m: 2 }}>
+                {error instanceof Error ? error.message : 'Failed to load schedules. Please try again.'}
+              </Alert>
+            )}
+
+            <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
+              <Scrollbar sx={{ maxWidth: '100%' }}>
+                <Table sx={{ minWidth: { xs: 800, md: 960 } }}>
+                  <TableHeadCustom
+                    order={order}
+                    orderBy={orderBy}
+                    headLabel={TABLE_HEAD.map((head) => ({
+                      ...head,
+                      ...(head.id && !columnVisibility[head.id] ? { width: 0, minWidth: 0 } : {}),
+                    })).filter((head) => !head.id || columnVisibility[head.id])}
+                    onSort={onSort}
+                    sx={{
+                      '& .MuiTableCell-root': {
+                        px: { xs: 1.5, md: 2 },
+                        fontSize: { xs: '0.75rem', sm: '0.8125rem', md: '0.875rem' },
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      },
+                      '& .MuiTableSortLabel-root': {
+                        cursor: 'pointer !important',
+                      },
+                      '& .MuiBox-root': {
+                        cursor: 'pointer !important',
+                      },
+                    }}
+                  />
+
+                  <TableBody>
+                    {isLoading ? (
+                      <SchedulingTableSkeleton
                         columnVisibility={columnVisibility}
                         dense={dense}
+                        rowsPerPage={rowsPerPage}
                       />
-                    ))}
+                    ) : (
+                      <>
+                        {dataFiltered
+                          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                          .map((row) => (
+                            <SchedulingTableRow
+                              key={row.id}
+                              row={row}
+                              onDeleteRow={() => handleDeleteRow(row.id)}
+                              onStatusUpdate={() => handleStatusUpdate(row.id)}
+                              columnVisibility={columnVisibility}
+                              dense={dense}
+                              isLoading={loadingDeleteId === row.id}
+                            />
+                          ))}
 
-                  <TableEmptyRows height={denseHeight} emptyRows={emptyRows(page, rowsPerPage, dataFiltered.length)} />
+                        <TableEmptyRows height={denseHeight} emptyRows={emptyRows(page, rowsPerPage, dataFiltered.length)} />
 
-                  {isNotFound && (
-                    <TableRow>
-                      <TableCell colSpan={7} sx={{ py: 10 }}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              mb: 1,
-                              fontSize: { xs: '1rem', md: '1.125rem' },
-                              fontWeight: 600,
-                            }}
-                          >
-                            {isFiltered
-                              ? 'Try adjusting your search or filter to find what you are looking for.'
-                              : 'Get started by creating your first scheduling.'}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </Scrollbar>
-          </TableContainer>
+                        {isNotFound && (
+                          <TableRow>
+                            <TableCell colSpan={7} sx={{ py: 10 }}>
+                              <Box sx={{ textAlign: 'center' }}>
+                                <Typography
+                                  variant="h6"
+                                  sx={{
+                                    mb: 1,
+                                    fontSize: { xs: '1rem', md: '1.125rem' },
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {isFiltered
+                                    ? 'Try adjusting your search or filter to find what you are looking for.'
+                                    : 'Get started by creating your first scheduling.'}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    )}
+                  </TableBody>
+                </Table>
+              </Scrollbar>
+            </TableContainer>
 
-          <TablePaginationCustom
-            count={dataFiltered.length}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            onPageChange={onChangePage}
-            onRowsPerPageChange={onChangeRowsPerPage}
-            dense={dense}
-            onChangeDense={onChangeDense}
-            sx={{
-              '& .MuiTablePagination-root': {
-                borderTop: (theme) => `solid 1px ${theme.palette.divider}`,
-              },
-            }}
-          />
-        </Card>
+            <TablePaginationCustom
+              count={data?.count || dataFiltered.length}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              onPageChange={onChangePage}
+              onRowsPerPageChange={onChangeRowsPerPage}
+              dense={dense}
+              onChangeDense={onChangeDense}
+              sx={{
+                '& .MuiTablePagination-root': {
+                  borderTop: (theme) => `solid 1px ${theme.palette.divider}`,
+                },
+              }}
+            />
+          </Card>
+        {/* </PermissionGuard> */}
       </Container>
     </>
   );
@@ -351,8 +484,9 @@ function applySortFilter({
         bValue = b.status.name.toLowerCase();
         break;
       case 'holiday':
-        aValue = a.holiday?.name?.toLowerCase() || '';
-        bValue = b.holiday?.name?.toLowerCase() || '';
+        // Holiday is number | null in API, not an object
+        aValue = typeof a.holiday === 'number' ? String(a.holiday) : '';
+        bValue = typeof b.holiday === 'number' ? String(b.holiday) : '';
         break;
       default:
         // For flat properties, use the original comparator

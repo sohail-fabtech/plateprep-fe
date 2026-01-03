@@ -1,8 +1,9 @@
-import { IScheduling } from '../../@types/scheduling';
+// Mock data removed - using real API data now
+// import { IScheduling } from '../../@types/scheduling';
 
 // ----------------------------------------------------------------------
 
-export const _schedulingList: IScheduling[] = [
+export const _schedulingList: any[] = [
   {
     id: 15,
     dish: {

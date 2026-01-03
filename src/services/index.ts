@@ -192,3 +192,32 @@ export {
 export type { DictionaryItemQueryParams, DictionaryItemListResponse } from './dictionaryItems/dictionaryItemHooks';
 export type { IDictionaryItem, CreateDictionaryItemRequest, UpdateDictionaryItemRequest } from './dictionaryItems/dictionaryItemService';
 
+// Export Schedule Dish hooks
+export {
+  useScheduleDishes,
+  useScheduleDish,
+  useScheduleDishMutation,
+  useUpdateScheduleDish,
+  useDeleteScheduleDish,
+  scheduleDishKeys,
+} from './scheduleDish/scheduleDishHooks';
+
+// Export Schedule Dish types
+export type { ScheduleDishQueryParams, ScheduleDishListResponse } from './scheduleDish/scheduleDishHooks';
+export type {
+  IScheduleDish,
+  ScheduleDishRequest,
+  UpdateScheduleDishRequest,
+  ScheduleDishResponse,
+} from './scheduleDish/scheduleDishService';
+
+// Export Holiday hooks
+export {
+  useHolidays,
+  holidayKeys,
+} from './holidays/holidayHooks';
+
+// Export Holiday types
+export type { HolidayQueryParams, HolidayListResponse } from './holidays/holidayHooks';
+export type { IHoliday } from './holidays/holidayService';
+

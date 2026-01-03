@@ -10,3 +10,10 @@ export { default as TableHeadCustom } from './TableHeadCustom';
 export { default as TableSelectedAction } from './TableSelectedAction';
 export { default as TablePaginationCustom } from './TablePaginationCustom';
 export { default as DataGridWithVisibility } from './DataGridWithVisibility';
+
+// Export table cell styles
+export {
+  defaultTableCellStyles,
+  ellipsisTableCellStyles,
+  wrapTableCellStyles,
+} from './tableCellStyles';

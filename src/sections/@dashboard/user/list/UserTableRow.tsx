@@ -22,6 +22,9 @@ import Iconify from '../../../../components/iconify';
 import MenuPopover from '../../../../components/menu-popover';
 import ConfirmDialog from '../../../../components/confirm-dialog';
 import { Button } from '@mui/material';
+import { defaultTableCellStyles } from '../../../../components/table';
+// utils
+import { truncateText } from '../../../../utils/truncateText';
 
 // ----------------------------------------------------------------------
 
@@ -138,7 +141,7 @@ export default function UserTableRow({
     <>
       <TableRow hover sx={{ ...(dense && { height: 52 }) }}>
         {columnVisibility.id && (
-          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
             <Typography
               variant="body2"
               sx={{
@@ -152,7 +155,7 @@ export default function UserTableRow({
         )}
 
         {columnVisibility.name && (
-          <TableCell sx={{ px: { xs: 1.5, md: 2 }, maxWidth: 200, ...(dense && { py: 1 }) }}>
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, maxWidth: 200, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Avatar
                 alt={name}
@@ -176,15 +179,16 @@ export default function UserTableRow({
                   whiteSpace: 'nowrap',
                   minWidth: 0,
                 }}
+                title={name || ''}
               >
-                {name}
+                {truncateText(name, 30)}
               </Typography>
             </Stack>
           </TableCell>
         )}
 
         {columnVisibility.email && (
-          <TableCell sx={{ px: { xs: 1.5, md: 2 }, maxWidth: 200, ...(dense && { py: 1 }) }}>
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, maxWidth: 200, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
             <Typography
               variant="body2"
               sx={{
@@ -193,14 +197,15 @@ export default function UserTableRow({
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
               }}
+              title={email || ''}
             >
-              {email || '-'}
+              {email ? truncateText(email, 30) : '-'}
             </Typography>
           </TableCell>
         )}
 
         {columnVisibility.phoneNumber && (
-          <TableCell sx={{ px: { xs: 1.5, md: 2 }, width: 150, minWidth: 150, ...(dense && { py: 1 }) }}>
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, width: 150, minWidth: 150, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
             <Typography
               variant="body2"
               sx={{
@@ -216,38 +221,41 @@ export default function UserTableRow({
         )}
 
         {columnVisibility.address && (
-          <TableCell sx={{ px: { xs: 1.5, md: 2 }, width: 300, minWidth: 300, ...(dense && { py: 1 }) }}>
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, width: 300, minWidth: 300, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
             <Typography
               variant="body2"
               sx={{
                 fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: dense ? 1 : 2,
-                WebkitBoxOrient: 'vertical',
+                whiteSpace: 'nowrap',
               }}
+              title={address || ''}
             >
-              {address || '-'}
+              {address ? truncateText(address, 40) : '-'}
             </Typography>
           </TableCell>
         )}
 
         {columnVisibility.location && (
-          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
             <Typography
               variant="body2"
               sx={{
                 fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
+              title={location || ''}
             >
-              {location || '-'}
+              {location ? truncateText(location, 30) : '-'}
             </Typography>
           </TableCell>
         )}
 
         {columnVisibility.role && (
-          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
             <Label color={getRoleColor(role)} sx={{ fontSize: { xs: '0.6875rem', md: '0.75rem' } }}>
               {role}
             </Label>
@@ -255,7 +263,7 @@ export default function UserTableRow({
         )}
 
         {columnVisibility.archiveStatus && (
-          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
             <Label
               variant="soft"
               color={isArchived ? 'error' : 'success'}
@@ -270,7 +278,7 @@ export default function UserTableRow({
           </TableCell>
         )}
 
-        <TableCell align="right" sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
+        <TableCell align="right" sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }), ...defaultTableCellStyles }}>
           <IconButton
             onClick={handleOpenPopover}
             disabled={isLoading || shouldDisableMenu}

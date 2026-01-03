@@ -21,10 +21,12 @@ export type IScheduling = {
   created_at: string;
   is_deleted: boolean;
   schedule_datetime: string;
-  season: string;
+  scheduleDatetime: string; // Added for compatibility
+  season: string | null;
   status: ISchedulingStatus;
-  job: string;
-  holiday?: ISchedulingHoliday;
+  job: string | null;
+  holiday: number | null; // Changed to number | null to match API
+  holidayOption?: ISchedulingHoliday; // Optional for display
   creator: number;
 };
 

@@ -29,8 +29,21 @@ import { IScheduling, ISchedulingForm, IDishOption, IHolidayOption } from '../..
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFSelect } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
+import { ProcessingDialog } from '../../../components/processing-dialog';
 // validation
 import SchedulingValidationSchema from './SchedulingValidation';
+// services
+import {
+  useRecipes,
+  useHolidays,
+  useScheduleDishMutation,
+  useUpdateScheduleDish,
+  useScheduleDish,
+  RecipeQueryParams,
+} from '../../../services';
+// hooks
+import { usePermissions } from '../../../hooks/usePermissions';
+import { useSubscription } from '../../../hooks/useSubscription';
 
 // ----------------------------------------------------------------------
 
@@ -57,87 +70,95 @@ const FORM_INPUT_SX = {
   },
 };
 
-// Mock API data - Replace with actual API calls
-const MOCK_DISHES: IDishOption[] = [
-  { id: 131, dish_name: 'test' },
-  { id: 132, dish_name: 'Garden Breeze' },
-  { id: 133, dish_name: 'Spicy Thai Curry' },
-  { id: 134, dish_name: 'Mediterranean Delight' },
-];
-
-const MOCK_HOLIDAYS: IHolidayOption[] = [
-  { id: 11, holiday: 'UFC Events', created_at: '2025-10-03T09:31:49.135470Z', updated_at: '2025-10-03T09:31:49.135489Z', is_deleted: false },
-  { id: 10, holiday: 'Super Bowl Sunday', created_at: '2025-10-03T09:31:32.723579Z', updated_at: '2025-10-03T09:31:32.723598Z', is_deleted: false },
-  { id: 9, holiday: 'Labor Day', created_at: '2025-10-03T09:31:11.348579Z', updated_at: '2025-10-03T09:31:11.348599Z', is_deleted: false },
-  { id: 8, holiday: 'Memorial Day', created_at: '2025-10-03T09:31:01.219719Z', updated_at: '2025-10-03T09:31:01.219749Z', is_deleted: false },
-  { id: 7, holiday: '4th of July', created_at: '2025-10-03T09:30:40.701224Z', updated_at: '2025-10-03T09:30:40.701244Z', is_deleted: false },
-  { id: 6, holiday: 'Mothers day', created_at: '2025-10-03T09:30:22.887950Z', updated_at: '2025-10-03T09:30:22.887969Z', is_deleted: false },
-  { id: 5, holiday: 'Thanksgiving', created_at: '2025-10-03T09:29:57.474172Z', updated_at: '2025-10-03T09:29:57.474193Z', is_deleted: false },
-  { id: 4, holiday: 'Easter', created_at: '2025-10-03T09:29:40.074395Z', updated_at: '2025-10-03T09:29:40.074415Z', is_deleted: false },
-  { id: 3, holiday: 'NY Eve', created_at: '2025-10-03T09:29:29.899164Z', updated_at: '2025-10-03T09:29:29.899185Z', is_deleted: false },
-  { id: 2, holiday: 'Christmas', created_at: '2025-10-03T09:28:06.690754Z', updated_at: '2025-10-03T09:28:06.690776Z', is_deleted: false },
-];
-
 export default function SchedulingNewEditForm({ isEdit = false, currentScheduling }: Props) {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
+  const { hasPermission } = usePermissions();
+  const { hasSubscription } = useSubscription();
 
-  const [dishes, setDishes] = useState<IDishOption[]>(MOCK_DISHES);
-  const [holidays, setHolidays] = useState<IHolidayOption[]>(MOCK_HOLIDAYS);
-  const [loadingDishes, setLoadingDishes] = useState(false);
-  const [loadingHolidays, setLoadingHolidays] = useState(false);
+  // Processing dialog state
+  const [processingDialog, setProcessingDialog] = useState<{
+    open: boolean;
+    state: 'processing' | 'success' | 'error';
+    message: string;
+  }>({
+    open: false,
+    state: 'processing',
+    message: '',
+  });
 
-  // Fetch dishes from API
-  useEffect(() => {
-    const fetchDishes = async () => {
-      try {
-        setLoadingDishes(true);
-        // TODO: Replace with actual API call
-        // const response = await fetch('/api/dishes/');
-        // const data = await response.json();
-        // setDishes(data);
-        setDishes(MOCK_DISHES);
-      } catch (error) {
-        console.error('Error fetching dishes:', error);
-        setDishes(MOCK_DISHES);
-      } finally {
-        setLoadingDishes(false);
-      }
-    };
-    fetchDishes();
-  }, []);
+  // Fetch recipes (non-public, non-deleted) for dropdown
+  // API requires non-public dishes, so we fetch all and filter out public ones
+  const recipeQueryParams: RecipeQueryParams = useMemo(() => ({
+    page: 1,
+    page_size: 1000,
+    is_deleted: false,
+  }), []);
 
-  // Fetch holidays from API (with pagination support)
-  useEffect(() => {
-    const fetchHolidays = async () => {
-      try {
-        setLoadingHolidays(true);
-        // TODO: Replace with actual API call
-        // const response = await fetch('/api/select-holiday/');
-        // const data = await response.json();
-        // setHolidays(data.results);
-        setHolidays(MOCK_HOLIDAYS);
-      } catch (error) {
-        console.error('Error fetching holidays:', error);
-        setHolidays(MOCK_HOLIDAYS);
-      } finally {
-        setLoadingHolidays(false);
-      }
-    };
-    fetchHolidays();
-  }, []);
+  const { data: recipesData, isLoading: isLoadingRecipes } = useRecipes(recipeQueryParams);
+
+  // Fetch holidays
+  const { data: holidaysData, isLoading: isLoadingHolidays } = useHolidays({ page_size: 1000 });
+
+  // Mutations
+  const scheduleMutation = useScheduleDishMutation();
+  const updateMutation = useUpdateScheduleDish();
+
+  // Fetch schedule detail if editing
+  const { data: scheduleDetail } = useScheduleDish(isEdit && currentScheduling ? currentScheduling.id : undefined);
+
+  // Transform recipes to IDishOption format
+  const dishes: IDishOption[] = useMemo(() => {
+    if (!recipesData?.results) return [];
+    // Filter out public recipes (isPublic !== true) as API requires non-public dishes
+    // Also filter out deleted recipes
+    return recipesData.results
+      .filter((recipe) => {
+        // Exclude public recipes (status === 'active' means status === 'P' in API)
+        // API requires non-public dishes, so we exclude 'active' status
+        // Also exclude archived/deleted recipes
+        return recipe.status !== 'active' && recipe.status !== 'archived';
+      })
+      .map((recipe) => ({
+        id: typeof recipe.id === 'string' ? parseInt(recipe.id, 10) : Number(recipe.id),
+        dish_name: recipe.dishName,
+      }))
+      .filter((dish) => !isNaN(dish.id) && dish.id > 0); // Filter out invalid IDs
+  }, [recipesData]);
+
+  // Transform holidays to IHolidayOption format
+  const holidays: IHolidayOption[] = useMemo(() => {
+    if (!holidaysData?.results) return [];
+    return holidaysData.results
+      .filter((holiday) => !holiday.isDeleted)
+      .map((holiday) => ({
+        id: holiday.id,
+        holiday: holiday.holiday,
+        created_at: holiday.createdAt,
+        updated_at: holiday.updatedAt,
+        is_deleted: holiday.isDeleted,
+      }));
+  }, [holidaysData]);
+
+  // Use scheduleDetail if editing, otherwise use currentScheduling
+  const scheduleData = isEdit && scheduleDetail ? scheduleDetail : currentScheduling;
 
   const defaultValues = useMemo<ISchedulingForm>(
-    () => ({
-      dishId: currentScheduling?.dish.id || null,
-      scheduleDatetime: currentScheduling?.schedule_datetime
-        ? new Date(currentScheduling.schedule_datetime)
-        : null,
-      season: currentScheduling?.season || '',
-      holidayId: currentScheduling?.holiday?.id || null,
-    }),
-    [currentScheduling]
+    () => {
+      const scheduleDatetimeValue = scheduleData?.scheduleDatetime || (scheduleData as any)?.schedule_datetime;
+      const holidayValue = scheduleData?.holiday;
+      
+      return {
+        dishId: scheduleData?.dish.id || null,
+        scheduleDatetime: scheduleDatetimeValue
+          ? new Date(scheduleDatetimeValue)
+          : null,
+        season: scheduleData?.season || '',
+        holidayId: (typeof holidayValue === 'number' ? holidayValue : null),
+      };
+    },
+    [scheduleData]
   );
 
   const methods = useForm<ISchedulingForm>({
@@ -165,14 +186,123 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
   }, [isEdit, currentScheduling, reset, defaultValues]);
 
   const onSubmit = async (data: ISchedulingForm) => {
+    // Permission check
+    if (!hasPermission(isEdit ? 'edit_schedule_dish' : 'create_schedule_dish')) {
+      enqueueSnackbar('You do not have permission to perform this action.', { variant: 'error' });
+      return;
+    }
+
+    // Subscription check
+    if (!hasSubscription()) {
+      enqueueSnackbar('You need an active subscription to perform this action.', { variant: 'error' });
+      navigate(PATH_DASHBOARD.subscription);
+      return;
+    }
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log('SCHEDULING DATA', data);
-      enqueueSnackbar(!isEdit ? 'Schedule created successfully!' : 'Schedule updated successfully!');
-      navigate(PATH_DASHBOARD.scheduling.list);
-    } catch (error) {
-      console.error(error);
-      enqueueSnackbar('Something went wrong!', { variant: 'error' });
+      setProcessingDialog({
+        open: true,
+        state: 'processing',
+        message: isEdit ? 'Updating schedule...' : 'Creating schedule...',
+      });
+
+      if (isEdit && scheduleData) {
+        // Update existing schedule
+        const updatePayload: any = {};
+
+        if (data.dishId !== scheduleData.dish.id) {
+          updatePayload.dish = data.dishId;
+        }
+
+        if (data.scheduleDatetime) {
+          const datetimeStr = data.scheduleDatetime.toISOString();
+          if (datetimeStr !== scheduleData.scheduleDatetime) {
+            updatePayload.schedule_datetime = datetimeStr;
+          }
+        }
+
+        const currentHolidayId = typeof scheduleData.holiday === 'number' ? scheduleData.holiday : null;
+        if (data.holidayId !== currentHolidayId) {
+          updatePayload.holiday = data.holidayId;
+        }
+
+        if (data.season !== scheduleData.season) {
+          updatePayload.season = data.season || null;
+        }
+
+        await updateMutation.mutateAsync({
+          id: scheduleData.id,
+          data: updatePayload,
+        });
+      } else {
+        // Create new schedule
+        if (!data.dishId || !data.scheduleDatetime || !data.holidayId) {
+          throw new Error('Dish, schedule datetime, and holiday are required.');
+        }
+
+        await scheduleMutation.mutateAsync({
+          dish: data.dishId,
+          schedule_datetime: data.scheduleDatetime.toISOString(),
+          holiday: data.holidayId,
+          season: data.season || null,
+        });
+      }
+
+      setProcessingDialog({
+        open: true,
+        state: 'success',
+        message: isEdit ? 'Schedule updated successfully!' : 'Schedule created successfully!',
+      });
+
+      setTimeout(() => {
+        setProcessingDialog({ open: false, state: 'processing', message: '' });
+        navigate(PATH_DASHBOARD.scheduling.list);
+      }, 1500);
+    } catch (error: any) {
+      let errorMessage = isEdit ? 'Failed to update schedule. Please try again.' : 'Failed to create schedule. Please try again.';
+
+      if (error?.response?.data) {
+        const errorData = error.response.data;
+
+        // Handle field-specific errors
+        if (errorData.dish) {
+          if (Array.isArray(errorData.dish)) {
+            errorMessage = errorData.dish[0];
+          } else if (typeof errorData.dish === 'string') {
+            errorMessage = errorData.dish;
+          }
+        } else if (errorData.schedule_datetime) {
+          if (Array.isArray(errorData.schedule_datetime)) {
+            errorMessage = errorData.schedule_datetime[0];
+          } else if (typeof errorData.schedule_datetime === 'string') {
+            errorMessage = errorData.schedule_datetime;
+          }
+        } else if (errorData.holiday) {
+          if (Array.isArray(errorData.holiday)) {
+            errorMessage = errorData.holiday[0];
+          } else if (typeof errorData.holiday === 'string') {
+            errorMessage = errorData.holiday;
+          }
+        } else if (errorData.non_field_errors) {
+          if (Array.isArray(errorData.non_field_errors)) {
+            errorMessage = errorData.non_field_errors[0];
+          } else if (typeof errorData.non_field_errors === 'string') {
+            errorMessage = errorData.non_field_errors;
+          }
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      setProcessingDialog({
+        open: true,
+        state: 'error',
+        message: errorMessage,
+      });
+
+      enqueueSnackbar(errorMessage, { variant: 'error' });
     }
   };
 
@@ -185,7 +315,15 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
   ];
 
   return (
-    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
+    <>
+      <ProcessingDialog
+        open={processingDialog.open}
+        state={processingDialog.state}
+        message={processingDialog.message}
+        onClose={() => setProcessingDialog({ open: false, state: 'processing', message: '' })}
+      />
+
+      <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
         {/* Select Dish & Release Date */}
         <Grid item xs={12}>
@@ -207,7 +345,7 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
                 <RHFSelect
                   name="dishId"
                   label="Select Dish"
-                  disabled={loadingDishes}
+                  disabled={isLoadingRecipes}
                   sx={FORM_INPUT_SX}
                 >
                   <MenuItem value="" sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>
@@ -422,7 +560,8 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
           </Stack>
         </Grid>
       </Grid>
-    </FormProvider>
+      </FormProvider>
+    </>
   );
 }
 

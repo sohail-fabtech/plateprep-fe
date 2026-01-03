@@ -25,6 +25,7 @@ type Props = {
   onStatusUpdate: VoidFunction;
   columnVisibility: Record<string, boolean>;
   dense?: boolean;
+  isLoading?: boolean;
 };
 
 export default function SchedulingTableRow({
@@ -33,6 +34,7 @@ export default function SchedulingTableRow({
   onStatusUpdate,
   columnVisibility,
   dense = false,
+  isLoading = false,
 }: Props) {
   const { dish, schedule_datetime, season, status, holiday, created_at } = row;
 
@@ -133,7 +135,7 @@ export default function SchedulingTableRow({
                 fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
               }}
             >
-              {holiday?.name || '-'}
+              {typeof holiday === 'number' ? `Holiday #${holiday}` : '-'}
             </Typography>
           </TableCell>
         )}
@@ -181,6 +183,7 @@ export default function SchedulingTableRow({
             handleClosePopover();
             handleOpenDeleteConfirm();
           }}
+          disabled={isLoading}
           sx={{
             color: 'error.main',
             fontSize: { xs: '0.8125rem', md: '0.875rem' },
@@ -205,6 +208,7 @@ export default function SchedulingTableRow({
               handleCloseDeleteConfirm();
               onDeleteRow();
             }}
+            disabled={isLoading}
             sx={{
               boxShadow: 'none',
               '&:hover': {
@@ -212,7 +216,7 @@ export default function SchedulingTableRow({
               },
             }}
           >
-            Delete
+            {isLoading ? 'Deleting...' : 'Delete'}
           </Button>
         }
       />
