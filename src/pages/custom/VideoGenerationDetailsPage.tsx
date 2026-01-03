@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 // @mui
 import {
@@ -12,6 +12,8 @@ import {
   Divider,
   IconButton,
   Chip,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
@@ -23,8 +25,8 @@ import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 import Iconify from '../../components/iconify';
 import ConfirmDialog from '../../components/confirm-dialog';
 import MenuPopover from '../../components/menu-popover';
-// mock
-import { _videoGenerationList } from '../../_mock/arrays';
+// services
+import { useRecipeVideo } from '../../services';
 
 // ----------------------------------------------------------------------
 
@@ -33,21 +35,16 @@ export default function VideoGenerationDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [video, setVideo] = useState<IVideoGeneration | null>(null);
-  const [loading, setLoading] = useState(true);
   const [openConfirm, setOpenConfirm] = useState(false);
   const [openPopover, setOpenPopover] = useState<HTMLElement | null>(null);
 
-  useEffect(() => {
-    // Simulate API call
-    const timer = setTimeout(() => {
-      const foundVideo = _videoGenerationList.find((v) => v.id === Number(id));
-      setVideo(foundVideo || null);
-      setLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [id]);
+  // Fetch recipe video using API
+  const {
+    data: video,
+    isLoading,
+    isError,
+    error,
+  } = useRecipeVideo(id);
 
   const handleOpenPopover = (event: React.MouseEvent<HTMLElement>) => {
     setOpenPopover(event.currentTarget);
@@ -69,10 +66,22 @@ export default function VideoGenerationDetailsPage() {
     setOpenConfirm(false);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Container maxWidth={themeStretch ? false : 'lg'}>
-        <Typography>Loading...</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Container maxWidth={themeStretch ? false : 'lg'}>
+        <Alert severity="error">
+          {error instanceof Error ? error.message : 'Failed to load video. Please try again.'}
+        </Alert>
       </Container>
     );
   }
@@ -80,7 +89,7 @@ export default function VideoGenerationDetailsPage() {
   if (!video) {
     return (
       <Container maxWidth={themeStretch ? false : 'lg'}>
-        <Typography>Video not found</Typography>
+        <Alert severity="info">Video not found</Alert>
       </Container>
     );
   }

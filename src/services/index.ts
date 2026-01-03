@@ -127,3 +127,68 @@ export type {
   IPresignedUrlResponse,
 } from './presignedUrl/presignedUrlService';
 
+// Export Access Log hooks
+export {
+  useAccessLogs,
+  useAccessLog,
+  accessLogKeys,
+} from './accessLogs/accessLogHooks';
+
+// Export Access Log types
+export type { AccessLogQueryParams, AccessLogListResponse } from './accessLogs/accessLogHooks';
+
+// Export Audit Log hooks
+export {
+  useAuditLogs,
+  useAuditLog,
+  auditLogKeys,
+} from './auditLogs/auditLogHooks';
+
+// Export Audit Log types
+export type { AuditLogQueryParams, AuditLogListResponse } from './auditLogs/auditLogHooks';
+
+// Export Recipe Video hooks
+export {
+  useRecipeVideos,
+  useRecipeVideo,
+  recipeVideoKeys,
+} from './recipeVideos/recipeVideoHooks';
+
+// Export Recipe Video types
+export type { RecipeVideoQueryParams, RecipeVideoListResponse } from './recipeVideos/recipeVideoHooks';
+
+// Export Video Generation hooks
+export {
+  useGenerateVideo,
+  videoGenerationKeys,
+} from './videoGeneration/videoGenerationHooks';
+
+// Export Video Generation types
+export type { GenerateVideoRequest, GenerateVideoResponse } from './videoGeneration/videoGenerationService';
+
+// Export Dictionary Category hooks
+export {
+  useDictionaryCategories,
+  useDictionaryCategory,
+  useCreateDictionaryCategory,
+  useUpdateDictionaryCategory,
+  useDeleteDictionaryCategory,
+  dictionaryCategoryKeys,
+} from './dictionaryCategories/dictionaryCategoryHooks';
+
+// Export Dictionary Category types
+export type { DictionaryCategoryQueryParams, DictionaryCategoryListResponse } from './dictionaryCategories/dictionaryCategoryHooks';
+export type { IDictionaryCategory, CreateDictionaryCategoryRequest, UpdateDictionaryCategoryRequest } from './dictionaryCategories/dictionaryCategoryService';
+
+// Export Dictionary Item hooks
+export {
+  useDictionaryItems,
+  useCreateDictionaryItem,
+  useUpdateDictionaryItem,
+  dictionaryItemKeys,
+} from './dictionaryItems/dictionaryItemHooks';
+
+// Export Dictionary Item types
+export type { DictionaryItemQueryParams, DictionaryItemListResponse } from './dictionaryItems/dictionaryItemHooks';
+export type { IDictionaryItem, CreateDictionaryItemRequest, UpdateDictionaryItemRequest } from './dictionaryItems/dictionaryItemService';
+

@@ -11,3 +11,5 @@ export { default as SkeletonDictionaryCategoryCard } from './SkeletonDictionaryC
 export { default as SkeletonDictionaryTermCard } from './SkeletonDictionaryTermCard';
 export { default as SkeletonVideoGenerationCard } from './SkeletonVideoGenerationCard';
 export { default as SkeletonRecipeCard } from './SkeletonRecipeCard';
+export { default as SkeletonIngredientList } from './SkeletonIngredientList';
+export { default as SkeletonStepList } from './SkeletonStepList';

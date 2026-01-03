@@ -1,13 +1,15 @@
 import { Helmet } from 'react-helmet-async';
 import { Link as RouterLink } from 'react-router-dom';
 // @mui
-import { Container, Button, Stack } from '@mui/material';
+import { Container, Button } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // components
 import { useSettingsContext } from '../../components/settings';
 import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 import Iconify from '../../components/iconify';
+// auth
+import PermissionGuard from '../../auth/PermissionGuard';
 // sections
 import VideoGenerationNewEditForm from '../../sections/@dashboard/videoGeneration/VideoGenerationNewEditForm';
 
@@ -60,7 +62,9 @@ export default function VideoGenerationCreatePage() {
           }
         />
 
-        <VideoGenerationNewEditForm />
+        <PermissionGuard permission="create_video_generation">
+          <VideoGenerationNewEditForm />
+        </PermissionGuard>
       </Container>
     </>
   );

@@ -51,15 +51,31 @@ export default function ProcessAuditTableRow({ row, columnVisibility, dense = fa
       )}
 
       {columnVisibility.object && (
-        <TableCell sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+        <TableCell
+          sx={{
+            fontSize: { xs: '0.8125rem', md: '0.875rem' },
+            whiteSpace: 'nowrap',
+            maxWidth: 300,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={objectRepr}
+          >
             {objectRepr}
           </Typography>
         </TableCell>
       )}
 
       {columnVisibility.changedBy && (
-        <TableCell sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>
+        <TableCell sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, whiteSpace: 'nowrap' }}>
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             {changedByName}
           </Typography>
@@ -89,7 +105,7 @@ export default function ProcessAuditTableRow({ row, columnVisibility, dense = fa
       )}
 
       {columnVisibility.dateTime && (
-        <TableCell sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>
+        <TableCell sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, whiteSpace: 'nowrap' }}>
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             {fDateTime(timestamp)}
           </Typography>

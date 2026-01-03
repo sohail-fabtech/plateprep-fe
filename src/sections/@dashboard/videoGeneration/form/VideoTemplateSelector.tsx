@@ -1,9 +1,7 @@
 import { useTheme, alpha } from '@mui/material/styles';
-import { Box, Card, Stack, Typography, IconButton } from '@mui/material';
+import { Box, Card, Stack, Typography } from '@mui/material';
 // @types
 import { IVideoTemplate } from '../../../../@types/videoGeneration';
-// components
-import Iconify from '../../../../components/iconify';
 
 // ----------------------------------------------------------------------
 
@@ -70,9 +68,11 @@ export default function VideoTemplateSelector({ templates, selectedTemplate, onS
             >
               <Box sx={{ position: 'relative', width: 1, pt: '56.25%' }}>
                 <Box
-                  component="img"
-                  src={template.thumbnail}
-                  alt={template.name}
+                  component="video"
+                  src={template.videoUrl}
+                  controls
+                  preload="metadata"
+                  muted
                   sx={{
                     position: 'absolute',
                     top: 0,
@@ -82,45 +82,6 @@ export default function VideoTemplateSelector({ templates, selectedTemplate, onS
                     objectFit: 'cover',
                   }}
                 />
-
-                {/* Video Controls Overlay */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    bgcolor: alpha('#000', 0.7),
-                    p: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'common.white',
-                      fontSize: { xs: '0.625rem', sm: '0.6875rem' },
-                    }}
-                  >
-                    0:00 / {template.duration}
-                  </Typography>
-                  <Stack direction="row" spacing={0.5}>
-                    <IconButton size="small" sx={{ color: 'common.white', p: 0.5 }}>
-                      <Iconify icon="eva:play-fill" width={16} />
-                    </IconButton>
-                    <IconButton size="small" sx={{ color: 'common.white', p: 0.5 }}>
-                      <Iconify icon="eva:volume-up-fill" width={16} />
-                    </IconButton>
-                    <IconButton size="small" sx={{ color: 'common.white', p: 0.5 }}>
-                      <Iconify icon="eva:maximize-fill" width={16} />
-                    </IconButton>
-                    <IconButton size="small" sx={{ color: 'common.white', p: 0.5 }}>
-                      <Iconify icon="eva:more-vertical-fill" width={16} />
-                    </IconButton>
-                  </Stack>
-                </Box>
               </Box>
 
               <Stack spacing={0.5} sx={{ p: { xs: 1.5, sm: 2 } }}>

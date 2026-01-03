@@ -14,13 +14,13 @@ import {
   Typography,
   TableRow,
   TableCell,
+  Alert,
+  LinearProgress,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // @types
 import { IProcessAudit, IAccessLog } from '../../@types/tracking';
-// _mock_
-import { _processAuditList, _accessLogList } from '../../_mock/arrays';
 // components
 import Iconify from '../../components/iconify';
 import Scrollbar from '../../components/scrollbar';
@@ -28,18 +28,26 @@ import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 import { useSettingsContext } from '../../components/settings';
 import {
   useTable,
-  getComparator,
   emptyRows,
   TableEmptyRows,
   TableHeadCustom,
   TablePaginationCustom,
 } from '../../components/table';
+// hooks
+import { useDebounce } from '../../hooks/useDebounce';
+// services
+import { useAccessLogs, AccessLogQueryParams, useAuditLogs, AuditLogQueryParams } from '../../services';
 // sections
 import {
   ProcessAuditTableRow,
   ProcessAuditTableToolbar,
+  ProcessAuditTableSkeleton,
 } from '../../sections/@dashboard/tracking/processAudit';
-import { AccessLogTableRow, AccessLogTableToolbar } from '../../sections/@dashboard/tracking/accessLog';
+import {
+  AccessLogTableRow,
+  AccessLogTableToolbar,
+  AccessLogTableSkeleton,
+} from '../../sections/@dashboard/tracking/accessLog';
 
 // ----------------------------------------------------------------------
 
@@ -112,6 +120,9 @@ export default function TrackingAnalyticsPage() {
   const [currentTable, setCurrentTable] = useState<TableType>('processAudit');
   const [filterName, setFilterName] = useState('');
 
+  // Debounce search input (500ms delay) for both tables
+  const debouncedFilterName = useDebounce(filterName, 500);
+
   // Process Audit table state
   const processAuditTable = useTable({
     defaultOrderBy: 'timestamp',
@@ -137,6 +148,85 @@ export default function TrackingAnalyticsPage() {
       }
     })(),
   });
+
+  // Reset to page 0 when debounced search value changes
+  useEffect(() => {
+    if (currentTable === 'accessLog') {
+      accessLogTable.setPage(0);
+    } else if (currentTable === 'processAudit') {
+      processAuditTable.setPage(0);
+    }
+  }, [debouncedFilterName, currentTable]);
+
+  // Build API query params for process audit
+  const auditLogQueryParams: AuditLogQueryParams = useMemo(() => {
+    const params: AuditLogQueryParams = {
+      page: processAuditTable.page + 1, // API uses 1-based pagination
+      page_size: processAuditTable.rowsPerPage,
+      ordering: processAuditTable.orderBy
+        ? `${processAuditTable.order === 'desc' ? '-' : ''}${processAuditTable.orderBy}`
+        : '-timestamp',
+    };
+
+    if (debouncedFilterName) {
+      params.search = debouncedFilterName;
+    }
+
+    return params;
+  }, [
+    debouncedFilterName,
+    processAuditTable.page,
+    processAuditTable.rowsPerPage,
+    processAuditTable.order,
+    processAuditTable.orderBy,
+  ]);
+
+  // Build API query params for access logs
+  const accessLogQueryParams: AccessLogQueryParams = useMemo(() => {
+    const params: AccessLogQueryParams = {
+      page: accessLogTable.page + 1, // API uses 1-based pagination
+      page_size: accessLogTable.rowsPerPage,
+      ordering: accessLogTable.orderBy
+        ? `${accessLogTable.order === 'desc' ? '-' : ''}${accessLogTable.orderBy}`
+        : '-timestamp',
+    };
+
+    if (debouncedFilterName) {
+      params.search = debouncedFilterName;
+    }
+
+    return params;
+  }, [
+    debouncedFilterName,
+    accessLogTable.page,
+    accessLogTable.rowsPerPage,
+    accessLogTable.order,
+    accessLogTable.orderBy,
+  ]);
+
+  // Fetch audit logs using API - only when processAudit tab is active
+  const {
+    data: auditLogData,
+    isLoading: isLoadingAuditLogs,
+    isFetching: isFetchingAuditLogs,
+    isError: isErrorAuditLogs,
+    error: auditLogError,
+  } = useAuditLogs(
+    currentTable === 'processAudit' ? auditLogQueryParams : undefined,
+    currentTable === 'processAudit' // Only enable when this tab is active
+  );
+
+  // Fetch access logs using API - only when accessLog tab is active
+  const {
+    data: accessLogData,
+    isLoading: isLoadingAccessLogs,
+    isFetching: isFetchingAccessLogs,
+    isError: isErrorAccessLogs,
+    error: accessLogError,
+  } = useAccessLogs(
+    currentTable === 'accessLog' ? accessLogQueryParams : undefined,
+    currentTable === 'accessLog' // Only enable when this tab is active
+  );
 
   // Process Audit column visibility
   const [processAuditColumnVisibility, setProcessAuditColumnVisibility] = useState<
@@ -202,73 +292,24 @@ export default function TrackingAnalyticsPage() {
     }
   }, [accessLogTable.dense]);
 
-  // Filter Process Audit data
-  const processAuditDataFiltered = useMemo(() => {
-    let filtered = [..._processAuditList];
-
-    // Filter by search
-    if (filterName) {
-      const searchLower = filterName.toLowerCase();
-      filtered = filtered.filter(
-        (item) =>
-          item.modelName.toLowerCase().includes(searchLower) ||
-          item.objectRepr.toLowerCase().includes(searchLower) ||
-          item.changedByName.toLowerCase().includes(searchLower) ||
-          item.userEmail.toLowerCase().includes(searchLower)
-      );
+  // Process Audit data from API (already filtered and sorted by API)
+  const processAuditDataFiltered: IProcessAudit[] = useMemo(() => {
+    if (currentTable !== 'processAudit' || !auditLogData?.results) {
+      return [];
     }
+    // auditLogData.results is already transformed to IProcessAudit[] by the service
+    return auditLogData.results;
+  }, [currentTable, auditLogData]);
 
-    // Sort
-    const comparator = getComparator(processAuditTable.order, processAuditTable.orderBy);
-    filtered.sort(comparator);
-
-    return filtered;
-  }, [filterName, processAuditTable.order, processAuditTable.orderBy]);
-
-  // Filter Access Log data
-  const accessLogDataFiltered = useMemo(() => {
-    let filtered = [..._accessLogList];
-
-    // Filter by search
-    if (filterName) {
-      const searchLower = filterName.toLowerCase();
-      filtered = filtered.filter(
-        (item) =>
-          item.user.fullName.toLowerCase().includes(searchLower) ||
-          item.user.email.toLowerCase().includes(searchLower) ||
-          item.ipAddress.toLowerCase().includes(searchLower)
-      );
+  // Access Log data from API (already filtered and sorted by API)
+  // The service already transforms API response to IAccessLog format
+  const accessLogDataFiltered: IAccessLog[] = useMemo(() => {
+    if (currentTable !== 'accessLog' || !accessLogData?.results) {
+      return [];
     }
-
-    // Sort - handle nested properties
-    if (accessLogTable.orderBy) {
-      filtered.sort((a, b) => {
-        let aValue: string | number = '';
-        let bValue: string | number = '';
-
-        if (accessLogTable.orderBy === 'user') {
-          aValue = a.user.fullName.toLowerCase();
-          bValue = b.user.fullName.toLowerCase();
-        } else if (accessLogTable.orderBy === 'timestamp') {
-          aValue = a.timestamp;
-          bValue = b.timestamp;
-        } else {
-          aValue = (a as any)[accessLogTable.orderBy] || '';
-          bValue = (b as any)[accessLogTable.orderBy] || '';
-        }
-
-        if (bValue < aValue) {
-          return accessLogTable.order === 'desc' ? -1 : 1;
-        }
-        if (bValue > aValue) {
-          return accessLogTable.order === 'desc' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [filterName, accessLogTable.order, accessLogTable.orderBy]);
+    // accessLogData.results is already transformed to IAccessLog[] by the service
+    return accessLogData.results;
+  }, [currentTable, accessLogData]);
 
   const handleFilterName = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFilterName(event.target.value);
@@ -297,14 +338,21 @@ export default function TrackingAnalyticsPage() {
   const isFiltered = filterName !== '';
 
   const isProcessAuditNotFound =
-    !processAuditDataFiltered.length && !!filterName;
-  const isAccessLogNotFound = !accessLogDataFiltered.length && !!filterName;
+    !isLoadingAuditLogs &&
+    !isFetchingAuditLogs &&
+    !isErrorAuditLogs &&
+    processAuditDataFiltered.length === 0 &&
+    !!filterName;
+  const isAccessLogNotFound =
+    !isLoadingAccessLogs &&
+    !isFetchingAccessLogs &&
+    !isErrorAccessLogs &&
+    accessLogDataFiltered.length === 0 &&
+    !!filterName;
 
   const processAuditDenseHeight = processAuditTable.dense ? 52 : 72;
   const accessLogDenseHeight = accessLogTable.dense ? 52 : 72;
 
-  const currentTableData =
-    currentTable === 'processAudit' ? processAuditDataFiltered : accessLogDataFiltered;
   const currentTableHead =
     currentTable === 'processAudit' ? PROCESS_AUDIT_TABLE_HEAD : ACCESS_LOG_TABLE_HEAD;
   const currentColumnVisibility =
@@ -381,6 +429,10 @@ export default function TrackingAnalyticsPage() {
             />
           )}
 
+          {/* Linear Progress for fetching */}
+          {((currentTable === 'processAudit' && isFetchingAuditLogs) ||
+            (currentTable === 'accessLog' && isFetchingAccessLogs)) && <LinearProgress />}
+
           {/* Table */}
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
             <Scrollbar sx={{ maxWidth: '100%' }}>
@@ -418,37 +470,91 @@ export default function TrackingAnalyticsPage() {
                 />
 
                 <TableBody>
-                  {currentTableData
-                    .slice(
-                      currentTableState.page * currentTableState.rowsPerPage,
-                      currentTableState.page * currentTableState.rowsPerPage +
-                        currentTableState.rowsPerPage
-                    )
-                    .map((row) =>
-                      currentTable === 'processAudit' ? (
-                        <ProcessAuditTableRow
-                          key={(row as IProcessAudit).id}
-                          row={row as IProcessAudit}
+                  {/* Loading state - Show skeleton rows */}
+                  {currentTable === 'processAudit' && isLoadingAuditLogs && (
+                    <>
+                      {Array.from({ length: processAuditTable.rowsPerPage }).map((_, index) => (
+                        <ProcessAuditTableSkeleton
+                          key={`skeleton-${index}`}
                           columnVisibility={processAuditColumnVisibility}
                           dense={processAuditTable.dense}
                         />
-                      ) : (
-                        <AccessLogTableRow
-                          key={(row as IAccessLog).id}
-                          row={row as IAccessLog}
+                      ))}
+                    </>
+                  )}
+
+                  {currentTable === 'accessLog' && isLoadingAccessLogs && (
+                    <>
+                      {Array.from({ length: accessLogTable.rowsPerPage }).map((_, index) => (
+                        <AccessLogTableSkeleton
+                          key={`skeleton-${index}`}
                           columnVisibility={accessLogColumnVisibility}
                           dense={accessLogTable.dense}
                         />
-                      )
-                    )}
+                      ))}
+                    </>
+                  )}
+
+                  {/* Error state for process audit */}
+                  {currentTable === 'processAudit' && isErrorAuditLogs && !isLoadingAuditLogs && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={currentTableHead.filter((h) => !h.id || currentColumnVisibility[h.id]).length}
+                        sx={{ py: 10 }}
+                      >
+                        <Alert severity="error">
+                          {auditLogError instanceof Error
+                            ? auditLogError.message
+                            : 'Failed to load audit logs. Please try again.'}
+                        </Alert>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Error state for access logs */}
+                  {currentTable === 'accessLog' && isErrorAccessLogs && !isLoadingAccessLogs && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={currentTableHead.filter((h) => !h.id || currentColumnVisibility[h.id]).length}
+                        sx={{ py: 10 }}
+                      >
+                        <Alert severity="error">
+                          {accessLogError instanceof Error
+                            ? accessLogError.message
+                            : 'Failed to load access logs. Please try again.'}
+                        </Alert>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Data rows */}
+                  {currentTable === 'processAudit' &&
+                    !isLoadingAuditLogs &&
+                    !isErrorAuditLogs &&
+                    processAuditDataFiltered.map((row) => (
+                      <ProcessAuditTableRow
+                        key={row.id}
+                        row={row}
+                        columnVisibility={processAuditColumnVisibility}
+                        dense={processAuditTable.dense}
+                      />
+                    ))}
+
+                  {currentTable === 'accessLog' &&
+                    !isLoadingAccessLogs &&
+                    !isErrorAccessLogs &&
+                    accessLogDataFiltered.map((row) => (
+                      <AccessLogTableRow
+                        key={row.id}
+                        row={row}
+                        columnVisibility={accessLogColumnVisibility}
+                        dense={accessLogTable.dense}
+                      />
+                    ))}
 
                   <TableEmptyRows
                     height={currentDenseHeight}
-                    emptyRows={emptyRows(
-                      currentTableState.page,
-                      currentTableState.rowsPerPage,
-                      currentTableData.length
-                    )}
+                    emptyRows={0} // API handles pagination for both tables
                   />
 
                   {currentIsNotFound && (
@@ -497,7 +603,11 @@ export default function TrackingAnalyticsPage() {
             }}
           >
             <TablePaginationCustom
-              count={currentTableData.length}
+              count={
+                currentTable === 'accessLog'
+                  ? accessLogData?.count || 0
+                  : auditLogData?.count || 0
+              }
               page={currentTableState.page}
               rowsPerPage={currentTableState.rowsPerPage}
               onPageChange={currentTableState.onChangePage}
