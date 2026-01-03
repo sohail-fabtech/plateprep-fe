@@ -53,6 +53,8 @@ import {
 } from '../../../services';
 // sections
 import { ImageUploadZone, VideoUploadZone, DynamicIngredientList, DynamicStepList } from './form';
+// constants
+import { KITCHEN_STATION_OPTIONS } from '../../../constants/kitchenStations';
 
 // ----------------------------------------------------------------------
 
@@ -129,28 +131,6 @@ const CENTER_OF_PLATE_OPTIONS = [
 
 // Menu Class options (subcategories)
 const MENU_CLASS_OPTIONS = ['Commence', 'Soup', 'Salad', 'Appetizers', 'Main Course', 'Dessert', 'Side Dishes', 'Add On'];
-
-// Station options (from API documentation)
-const STATION_OPTIONS = [
-  'Salads',
-  'Cooking Station',
-  'Frying Station',
-  'Sauté Station',
-  'Baking/Pastry Station',
-  'Garnish Station',
-  'Sauté',
-  'Sauté1',
-  'Sauté2',
-  'Assembly Station',
-  'Expediting Station (Expo)',
-  'Dishwashing Station',
-  'Storage Area (Dry/Wet Storage)',
-  'Receiving Area',
-  'Cleaning Station',
-  'Grill Station',
-  'Pizza Station',
-  'Dessert',
-].sort((a, b) => a.localeCompare(b)); // Sort alphabetically
 
 const TIME_UNIT_OPTIONS = ['minutes', 'hours'];
 
@@ -935,7 +915,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
               <Grid item xs={12} md={4}>
                 <RHFSelect name="station" label="Station to Prepare Dish">
-                  {STATION_OPTIONS.map((option) => (
+                  {KITCHEN_STATION_OPTIONS.map((option) => (
                     <MenuItem key={option} value={option}>
                       {option}
                     </MenuItem>
@@ -971,6 +951,8 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                         }}
                         label="Restaurant Location"
                         formInputSx={{
+                          width: '100%',
+                          maxWidth: '100%',
                           '& .MuiInputBase-root': {
                             fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
                           },

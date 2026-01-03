@@ -18,6 +18,7 @@ import {
   MenuItem,
   TextField,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
@@ -30,20 +31,22 @@ import ConfirmDialog from '../../components/confirm-dialog';
 import MenuPopover from '../../components/menu-popover';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
-// utils
+// hooks
+import { usePermissions } from '../../hooks/usePermissions';
+// services
 import {
-  fetchTaskById,
-  updateTaskDescription,
-  updateTaskStatus,
-  addTaskComment,
-  deleteTask,
-  getYouTubeVideoId,
-} from '../../utils/taskAdapter';
+  useTask,
+  useUpdateTaskDescription,
+  useUpdateTaskStatus,
+  useAddTaskComment,
+  useUpdateTaskComment,
+  useDeleteTask,
+} from '../../services';
+// utils
+import { getYouTubeVideoId } from '../../utils/taskAdapter';
 // types
 import { ITaskDetail } from '../../@types/taskApi';
 import { TASK_STATUS_OPTIONS } from '../../@types/taskApi';
-// mock
-import { _taskList } from '../../_mock/arrays';
 
 // ----------------------------------------------------------------------
 
@@ -53,97 +56,54 @@ export default function TaskDetailsPage() {
   const { themeStretch } = useSettingsContext();
   const { enqueueSnackbar } = useSnackbar();
   const { user } = useAuthContext();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
 
+  // Permission-based check for edit and delete functionality
+  const canEdit = hasPermission('edit_tasks');
+  const canDelete = hasPermission('delete_tasks');
+
+  // Fetch task data using TanStack Query
+  const { data: taskDataFromQuery, isLoading: loading, isError, error: queryError } = useTask(id);
+  const updateDescriptionMutation = useUpdateTaskDescription();
+  const updateStatusMutation = useUpdateTaskStatus();
+  const addCommentMutation = useAddTaskComment();
+  const updateCommentMutation = useUpdateTaskComment();
+  const deleteTaskMutation = useDeleteTask();
+
   const [taskData, setTaskData] = useState<ITaskDetail | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [editingDescription, setEditingDescription] = useState(false);
   const [descriptionValue, setDescriptionValue] = useState('');
   const [newComment, setNewComment] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
   const [openPopover, setOpenPopover] = useState<HTMLElement | null>(null);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
 
-  // Check if user has edit permission
-  const canEdit = user?.role === 'admin' || user?.role === 'manager';
+  const error = isError ? (queryError instanceof Error ? queryError.message : 'Failed to load task') : null;
 
-  // Fetch task data
+  // Sync query data to local state for optimistic updates
   useEffect(() => {
-    async function loadTask() {
-      if (!id) return;
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Try to fetch from API first, fallback to mock data
-        try {
-          const task = await fetchTaskById(id);
-          setTaskData(task);
-          setDescriptionValue(task.taskDescription);
-        } catch (apiError) {
-          console.warn('API unavailable, using mock data:', apiError);
-          // Fallback to mock data
-          const mockTask = _taskList.find((t) => t.id === id);
-          if (mockTask) {
-            const fallbackTask: ITaskDetail = {
-              id: parseInt(mockTask.id, 10),
-              taskName: mockTask.taskName,
-              taskDescription: mockTask.taskDescription,
-              status: {
-                value: mockTask.status === 'in-progress' ? 'IP' : 'AS',
-                label: mockTask.status,
-              },
-              priority: {
-                value: mockTask.priority === 'high' ? 'H' : 'M',
-                label: mockTask.priority,
-              },
-              startedAt: '10:00:00',
-              completedAt: '14:00:00',
-              kitchenStation: 'Grill Station',
-              videoLink: 'https://youtu.be/S-TmmjEN-V0?si=-ZsY_SNAFK8ZMj7a',
-              dueDate: mockTask.dueDate ? mockTask.dueDate.toString() : new Date().toISOString(),
-              staffEmail: 'staff@restaurant.com',
-              staffProfile: null,
-              staffFullName: mockTask.staffName,
-              assignedBy: 'Restaurant Team',
-              comments: [],
-            };
-            setTaskData(fallbackTask);
-            setDescriptionValue(fallbackTask.taskDescription);
-          } else {
-            throw new Error('Task not found');
-          }
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error('Error loading task:', err);
-        setError('Failed to load task');
-        setLoading(false);
-        enqueueSnackbar('Failed to load task', { variant: 'error' });
-      }
+    if (taskDataFromQuery) {
+      setTaskData(taskDataFromQuery);
+      setDescriptionValue(taskDataFromQuery.taskDescription);
     }
-
-    loadTask();
-  }, [id, enqueueSnackbar]);
+  }, [taskDataFromQuery]);
 
   // Handle description save
   const handleDescriptionSave = useCallback(async () => {
-    if (!taskData) return;
+    if (!taskData || !id) return;
 
     try {
-      await updateTaskDescription(taskData.id, descriptionValue);
+      await updateDescriptionMutation.mutateAsync({ id, description: descriptionValue });
       setTaskData({ ...taskData, taskDescription: descriptionValue });
       setEditingDescription(false);
       enqueueSnackbar('Description updated successfully!', { variant: 'success' });
-      console.log('✅ [DESCRIPTION SAVED]', { taskId: taskData.id, description: descriptionValue });
     } catch (err) {
       console.error('Error saving description:', err);
       enqueueSnackbar('Failed to update description', { variant: 'error' });
     }
-  }, [taskData, descriptionValue, enqueueSnackbar]);
+  }, [taskData, descriptionValue, id, updateDescriptionMutation, enqueueSnackbar]);
 
   // Handle description cancel
   const handleDescriptionCancel = useCallback(() => {
@@ -156,15 +116,14 @@ export default function TaskDetailsPage() {
   // Handle status update
   const handleStatusUpdate = useCallback(
     async (statusValue: string) => {
-      if (!taskData) return;
+      if (!taskData || !id) return;
 
       try {
-        await updateTaskStatus(taskData.id, statusValue);
+        await updateStatusMutation.mutateAsync({ id, status: statusValue });
         const newStatus = TASK_STATUS_OPTIONS.find((s) => s.value === statusValue);
         if (newStatus) {
           setTaskData({ ...taskData, status: { value: newStatus.value, label: newStatus.label } });
           enqueueSnackbar('Status updated successfully!', { variant: 'success' });
-          console.log('✅ [STATUS UPDATED]', { taskId: taskData.id, status: newStatus.label });
         }
         setOpenPopover(null);
       } catch (err) {
@@ -172,42 +131,63 @@ export default function TaskDetailsPage() {
         enqueueSnackbar('Failed to update status', { variant: 'error' });
       }
     },
-    [taskData, enqueueSnackbar]
+    [taskData, id, updateStatusMutation, enqueueSnackbar]
   );
 
   // Handle add comment
   const handleAddComment = useCallback(async () => {
-    if (!taskData || !newComment.trim()) return;
+    if (!taskData || !newComment.trim() || !id) return;
 
     try {
-      setSubmittingComment(true);
-      const comment = await addTaskComment(taskData.id, newComment);
-      setTaskData({ ...taskData, comments: [...taskData.comments, comment] });
+      await addCommentMutation.mutateAsync({ id, message: newComment });
       setNewComment('');
       enqueueSnackbar('Comment added successfully!', { variant: 'success' });
-      console.log('✅ [COMMENT ADDED]', { taskId: taskData.id, comment: newComment });
     } catch (err) {
       console.error('Error adding comment:', err);
       enqueueSnackbar('Failed to add comment', { variant: 'error' });
-    } finally {
-      setSubmittingComment(false);
     }
-  }, [taskData, newComment, enqueueSnackbar]);
+  }, [taskData, newComment, id, addCommentMutation, enqueueSnackbar]);
+
+  // Handle edit comment
+  const handleEditComment = useCallback((commentId: number, currentMessage: string) => {
+    setEditingCommentId(commentId);
+    setEditingCommentText(currentMessage);
+  }, []);
+
+  // Handle save comment edit
+  const handleSaveCommentEdit = useCallback(async () => {
+    if (!taskData || !editingCommentId || !editingCommentText.trim() || !id) return;
+
+    try {
+      await updateCommentMutation.mutateAsync({ commentId: editingCommentId, message: editingCommentText, taskId: id });
+      setEditingCommentId(null);
+      setEditingCommentText('');
+      enqueueSnackbar('Comment updated successfully!', { variant: 'success' });
+    } catch (err) {
+      console.error('Error updating comment:', err);
+      enqueueSnackbar('Failed to update comment', { variant: 'error' });
+    }
+  }, [taskData, editingCommentId, editingCommentText, id, updateCommentMutation, enqueueSnackbar]);
+
+  // Handle cancel comment edit
+  const handleCancelCommentEdit = useCallback(() => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  }, []);
 
   // Handle delete task
   const handleDeleteTask = useCallback(async () => {
-    if (!taskData) return;
+    if (!taskData || !id) return;
 
     try {
-      await deleteTask(taskData.id);
+      await deleteTaskMutation.mutateAsync(id);
       enqueueSnackbar('Task deleted successfully!', { variant: 'success' });
-      console.log('✅ [TASK DELETED]', { taskId: taskData.id });
       navigate(PATH_DASHBOARD.tasks.list);
     } catch (err) {
       console.error('Error deleting task:', err);
       enqueueSnackbar('Failed to delete task', { variant: 'error' });
     }
-  }, [taskData, enqueueSnackbar, navigate]);
+  }, [taskData, id, deleteTaskMutation, enqueueSnackbar, navigate]);
 
   // Get status color
   const getStatusColor = (status: string): 'warning' | 'info' | 'success' | 'error' | 'default' => {
@@ -290,9 +270,9 @@ export default function TaskDetailsPage() {
     return (
       <Container maxWidth={themeStretch ? false : 'lg'}>
         <Box sx={{ textAlign: 'center', mt: 5 }}>
-          <Typography variant="h6" color="error">
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error || 'Task not found'}
-          </Typography>
+          </Alert>
           <Button
             variant="contained"
             onClick={() => navigate(PATH_DASHBOARD.tasks.list)}
@@ -340,24 +320,28 @@ export default function TaskDetailsPage() {
 
                 <Stack direction="row" spacing={1}>
                   {/* 3-Dot Menu */}
-                  <IconButton
-                    onClick={(e) => setOpenPopover(e.currentTarget)}
-                    sx={{
-                      border: `1px solid ${alpha(theme.palette.grey[500], 0.32)}`,
-                    }}
-                  >
-                    <Iconify icon="eva:more-vertical-fill" />
-                  </IconButton>
+                  {(canEdit || canDelete) && (
+                    <IconButton
+                      onClick={(e) => setOpenPopover(e.currentTarget)}
+                      sx={{
+                        border: `1px solid ${alpha(theme.palette.grey[500], 0.32)}`,
+                      }}
+                    >
+                      <Iconify icon="eva:more-vertical-fill" />
+                    </IconButton>
+                  )}
 
                   {/* Edit Button */}
-                  <Button
-                    variant="outlined"
-                    startIcon={<Iconify icon="eva:edit-outline" />}
-                    onClick={() => navigate(PATH_DASHBOARD.tasks.edit(id!))}
-                    sx={{ display: { xs: 'none', sm: 'flex' } }}
-                  >
-                    Edit
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<Iconify icon="eva:edit-outline" />}
+                      onClick={() => navigate(PATH_DASHBOARD.tasks.edit(id!))}
+                      sx={{ display: { xs: 'none', sm: 'flex' } }}
+                    >
+                      Edit
+                    </Button>
+                  )}
                 </Stack>
               </Stack>
 
@@ -601,7 +585,7 @@ export default function TaskDetailsPage() {
                 <Divider />
 
                 {/* Comment List */}
-                {taskData.comments.length > 0 ? (
+                {taskData.comments && taskData.comments.length > 0 ? (
                   <Stack spacing={2}>
                     {taskData.comments.map((comment) => (
                       <Box
@@ -611,39 +595,101 @@ export default function TaskDetailsPage() {
                           borderRadius: 2,
                           bgcolor: alpha(theme.palette.grey[500], 0.04),
                           border: `1px solid ${alpha(theme.palette.grey[500], 0.08)}`,
+                          position: 'relative',
                         }}
                       >
-                        <Stack direction="row" spacing={2} alignItems="flex-start">
-                          <Avatar
-                            sx={{
-                              width: 36,
-                              height: 36,
-                              fontSize: '0.875rem',
-                              bgcolor: theme.palette.primary.main,
-                            }}
-                          >
-                            {comment.userName.charAt(0).toUpperCase()}
-                          </Avatar>
-                          <Box sx={{ flex: 1 }}>
-                            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-                              <Typography variant="subtitle2" sx={{ fontSize: '0.875rem' }}>
-                                {comment.userName}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                sx={{ color: 'text.disabled', fontSize: '0.75rem' }}
+                        {editingCommentId === comment.id ? (
+                          <Stack spacing={2}>
+                            <TextField
+                              multiline
+                              rows={3}
+                              value={editingCommentText}
+                              onChange={(e) => setEditingCommentText(e.target.value)}
+                              placeholder="Edit comment..."
+                              sx={{
+                                '& .MuiInputBase-root': {
+                                  fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                                },
+                              }}
+                            />
+                            <Stack direction="row" spacing={1} justifyContent="flex-end">
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={handleCancelCommentEdit}
+                                disabled={updateCommentMutation.isPending}
                               >
-                                {formatDate(comment.createdAt)}
-                              </Typography>
+                                Cancel
+                              </Button>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={handleSaveCommentEdit}
+                                disabled={!editingCommentText.trim() || updateCommentMutation.isPending}
+                                startIcon={
+                                  updateCommentMutation.isPending ? (
+                                    <CircularProgress size={16} />
+                                  ) : (
+                                    <Iconify icon="eva:checkmark-fill" width={16} />
+                                  )
+                                }
+                              >
+                                Save
+                              </Button>
                             </Stack>
-                            <Typography
-                              variant="body2"
-                              sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, lineHeight: 1.7 }}
-                            >
-                              {comment.message}
-                            </Typography>
-                          </Box>
-                        </Stack>
+                          </Stack>
+                        ) : (
+                          <>
+                            <Stack direction="row" spacing={2} alignItems="flex-start">
+                              <Avatar
+                                sx={{
+                                  width: 36,
+                                  height: 36,
+                                  fontSize: '0.875rem',
+                                  bgcolor: theme.palette.primary.main,
+                                }}
+                              >
+                                {(comment.userName || 'U').charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Box sx={{ flex: 1 }}>
+                                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                                  <Typography variant="subtitle2" sx={{ fontSize: '0.875rem' }}>
+                                    {comment.userName || 'Unknown User'}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: 'text.disabled', fontSize: '0.75rem' }}
+                                  >
+                                    {comment.createdAt ? formatDate(comment.createdAt) : '-'}
+                                  </Typography>
+                                </Stack>
+                                <Typography
+                                  variant="body2"
+                                  sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' }, lineHeight: 1.7 }}
+                                >
+                                  {comment.message || ''}
+                                </Typography>
+                              </Box>
+                            </Stack>
+                            {canEdit && (
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEditComment(comment.id, comment.message)}
+                                sx={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  right: 8,
+                                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                                  '&:hover': {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.16),
+                                  },
+                                }}
+                              >
+                                <Iconify icon="eva:edit-outline" width={18} />
+                              </IconButton>
+                            )}
+                          </>
+                        )}
                       </Box>
                     ))}
                   </Stack>
@@ -673,9 +719,9 @@ export default function TaskDetailsPage() {
                     <Button
                       variant="contained"
                       onClick={handleAddComment}
-                      disabled={!newComment.trim() || submittingComment}
+                      disabled={!newComment.trim() || addCommentMutation.isPending}
                       startIcon={
-                        submittingComment ? (
+                        addCommentMutation.isPending ? (
                           <CircularProgress size={20} />
                         ) : (
                           <Iconify icon="eva:message-circle-outline" />
@@ -698,31 +744,39 @@ export default function TaskDetailsPage() {
           arrow="top-right"
           sx={{ width: 200 }}
         >
-          <Typography variant="subtitle2" sx={{ px: 1.5, py: 1 }}>
-            Update Status
-          </Typography>
-          <Divider />
-          {TASK_STATUS_OPTIONS.map((status) => (
-            <MenuItem key={status.value} onClick={() => handleStatusUpdate(status.value)} sx={{ py: 1 }}>
-              <Chip
-                label={status.label}
-                color={getStatusColor(status.value)}
-                size="small"
-                sx={{ mr: 1, fontWeight: 600 }}
-              />
-            </MenuItem>
-          ))}
-          <Divider />
-          <MenuItem
-            onClick={() => {
-              setOpenPopover(null);
-              setOpenDeleteConfirm(true);
-            }}
-            sx={{ color: 'error.main', py: 1 }}
-          >
-            <Iconify icon="eva:trash-2-outline" sx={{ mr: 1 }} />
-            Delete Task
-          </MenuItem>
+          {canEdit && (
+            <>
+              <Typography variant="subtitle2" sx={{ px: 1.5, py: 1 }}>
+                Update Status
+              </Typography>
+              <Divider />
+              {TASK_STATUS_OPTIONS.map((status) => (
+                <MenuItem key={status.value} onClick={() => handleStatusUpdate(status.value)} sx={{ py: 1 }}>
+                  <Chip
+                    label={status.label}
+                    color={getStatusColor(status.value)}
+                    size="small"
+                    sx={{ mr: 1, fontWeight: 600 }}
+                  />
+                </MenuItem>
+              ))}
+            </>
+          )}
+          {canDelete && (
+            <>
+              {canEdit && <Divider />}
+              <MenuItem
+                onClick={() => {
+                  setOpenPopover(null);
+                  setOpenDeleteConfirm(true);
+                }}
+                sx={{ color: 'error.main', py: 1 }}
+              >
+                <Iconify icon="eva:trash-2-outline" sx={{ mr: 1 }} />
+                Delete Task
+              </MenuItem>
+            </>
+          )}
         </MenuPopover>
 
         {/* Delete Confirmation */}

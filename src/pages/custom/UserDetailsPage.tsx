@@ -18,6 +18,7 @@ import {
   CircularProgress,
   Chip,
   Link,
+  Alert,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
@@ -28,13 +29,15 @@ import Iconify from '../../components/iconify';
 import { useSnackbar } from '../../components/snackbar';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
-// _mock_
-import { _userList } from '../../_mock/arrays';
+// hooks
+import { usePermissions } from '../../hooks/usePermissions';
+// services
+import { useUser, useUpdateUser } from '../../services';
 // sections
 import EditableField from '../../sections/@dashboard/recipe/EditableField';
 import { UserProfileImage } from '../../sections/@dashboard/userNew/details';
 // @types
-import { IUserAccountGeneral } from '../../@types/user';
+import { IUserDetail as IUserDetailApi } from '../../@types/userApi';
 
 // ----------------------------------------------------------------------
 
@@ -64,10 +67,10 @@ type IUserDetail = {
   country: string;
   location: string;
   avatarUrl: string | null;
-  restaurantName: string;
-  restaurantPhone: string;
-  restaurantEmail: string;
-  restaurantAddress: string;
+  branchName: string;
+  branchPhone: string;
+  branchEmail: string;
+  branchLocation: string;
   socialLinks: Array<{ name: string; url: string }>;
 };
 
@@ -77,84 +80,60 @@ export default function UserDetailsPage() {
   const { themeStretch } = useSettingsContext();
   const { enqueueSnackbar } = useSnackbar();
   const { user } = useAuthContext();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
 
+  // Permission-based check for edit functionality
+  const canEdit = hasPermission('edit_users');
+
+  // Fetch user data using TanStack Query
+  const { data: userDataFromApi, isLoading: loading, isError, error: queryError } = useUser(id);
+  const updateUserMutation = useUpdateUser();
+
   const [userData, setUserData] = useState<IUserDetail | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
 
-  // Check if user has edit permission
-  const canEdit = user?.role === 'admin' || user?.role === 'manager';
+  const error = isError ? (queryError instanceof Error ? queryError.message : 'Failed to load user') : null;
 
-  // Fetch user data
+  // Transform API response to UI format
   useEffect(() => {
-    async function loadUser() {
-      if (!id) return;
+    if (userDataFromApi) {
+      const name = `${userDataFromApi.first_name} ${userDataFromApi.last_name}`.trim();
+      const addressParts = [
+        userDataFromApi.street_address,
+        userDataFromApi.city,
+        userDataFromApi.state_province,
+        userDataFromApi.postal_code,
+        userDataFromApi.country,
+      ].filter(Boolean);
+      const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : '-';
 
-      try {
-        setLoading(true);
-        setError(null);
+      const transformedData: IUserDetail = {
+        id: String(userDataFromApi.id),
+        firstName: userDataFromApi.first_name,
+        lastName: userDataFromApi.last_name,
+        name,
+        email: userDataFromApi.email,
+        phoneNumber: userDataFromApi.phone_number || '-',
+        dateOfBirth: userDataFromApi.date_of_birth,
+        role: userDataFromApi.user_role?.role_name || userDataFromApi.role_name || userDataFromApi.role,
+        streetAddress: userDataFromApi.street_address || '',
+        city: userDataFromApi.city || '',
+        stateProvince: userDataFromApi.state_province || '',
+        postalCode: userDataFromApi.postal_code || '',
+        country: userDataFromApi.country || '',
+        location: userDataFromApi.branch?.branch_name || userDataFromApi.resturant?.resturant_name || '-',
+        avatarUrl: userDataFromApi.profile_image_url || userDataFromApi.profile || null,
+        branchName: userDataFromApi.branch?.branch_name || '-',
+        branchPhone: userDataFromApi.branch?.phone_number || '-',
+        branchEmail: userDataFromApi.branch?.email || '-',
+        branchLocation: userDataFromApi.branch?.branch_location || '-',
+        socialLinks: [], // Not in API response
+      };
 
-        // Find user from mock data
-        const mockUser = _userList.find((u) => u.id === id);
-        if (mockUser) {
-          // Parse name into first and last name
-          const nameParts = mockUser.name?.split(' ') || [];
-          const firstName = nameParts[0] || '';
-          const lastName = nameParts.slice(1).join(' ') || '';
-
-          // Build address from available fields
-          const addressParts = [
-            mockUser.address,
-            mockUser.city,
-            mockUser.state,
-            mockUser.zipCode,
-          ].filter(Boolean);
-          const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : '-';
-
-          const userDetail: IUserDetail = {
-            id: mockUser.id,
-            firstName,
-            lastName,
-            name: mockUser.name,
-            email: mockUser.email,
-            phoneNumber: mockUser.phoneNumber,
-            dateOfBirth: null, // Mock data doesn't have this
-            role: mockUser.role,
-            streetAddress: mockUser.address || '',
-            city: mockUser.city || '',
-            stateProvince: mockUser.state || '',
-            postalCode: mockUser.zipCode || '',
-            country: mockUser.country || '',
-            location: mockUser.company || '-',
-            avatarUrl: mockUser.avatarUrl || null,
-            restaurantName: 'sialkot', // Mock data
-            restaurantPhone: '+17753728288', // Mock data
-            restaurantEmail: 'abc@gmail.com', // Mock data
-            restaurantAddress: 'sialkot, pakistan', // Mock data
-            socialLinks: [
-              { name: 'whatsapp', url: 'https://web.whatsapp.com/' },
-              { name: 'instagram', url: 'https://www.instagram.com/' },
-            ],
-          };
-
-          setUserData(userDetail);
-        } else {
-          throw new Error('User not found');
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error('Error loading user:', err);
-        setError('Failed to load user');
-        setLoading(false);
-        enqueueSnackbar('Failed to load user', { variant: 'error' });
-      }
+      setUserData(transformedData);
     }
-
-    loadUser();
-  }, [id, enqueueSnackbar]);
+  }, [userDataFromApi]);
 
   // Handle field edit
   const handleFieldEdit = useCallback((fieldName: string) => {
@@ -164,34 +143,67 @@ export default function UserDetailsPage() {
   // Handle field save
   const handleFieldSave = useCallback(
     async (fieldName: string, value: string | number | string[]) => {
-      if (!userData) return;
+      if (!userData || !id) return;
 
-      console.group('✏️ [USER FIELD EDIT]');
-      console.log('Field Name:', fieldName);
-      console.log('New Value:', value);
-      console.log('User ID:', userData.id);
-      console.log('User Name:', userData.name);
-      console.log('Timestamp:', new Date().toISOString());
-      console.log('User:', user?.email || 'Unknown');
-      console.groupEnd();
+      // Prevent multiple simultaneous calls
+      if (updateUserMutation.isPending) {
+        return;
+      }
 
       try {
+        // Map UI field names to API field names
+        const apiFieldMap: Record<string, string> = {
+          name: 'first_name', // Will handle separately
+          firstName: 'first_name',
+          lastName: 'last_name',
+          streetAddress: 'street_address',
+          stateProvince: 'state_province',
+          postalCode: 'postal_code',
+          location: 'branch_id', // Will handle separately
+        };
+
+        let updateData: Partial<IUserDetailApi> = {};
+
+        if (fieldName === 'name') {
+          // Split name into first and last name
+          const nameParts = (value as string).split(' ');
+          updateData.first_name = nameParts[0] || '';
+          updateData.last_name = nameParts.slice(1).join(' ') || '';
+        } else if (fieldName === 'location') {
+          // Location update would require branch_id, skip for now
+          enqueueSnackbar('Location update not supported', { variant: 'info' });
+          setEditingField(null);
+          return;
+        } else {
+          const apiFieldName = apiFieldMap[fieldName] || fieldName;
+          (updateData as any)[apiFieldName] = value;
+        }
+
+        await updateUserMutation.mutateAsync({ id, data: updateData });
+
+        // Update local state
         setUserData((prev) => {
           if (!prev) return prev;
+          if (fieldName === 'name') {
+            const nameParts = (value as string).split(' ');
+            return {
+              ...prev,
+              name: value as string,
+              firstName: nameParts[0] || '',
+              lastName: nameParts.slice(1).join(' ') || '',
+            };
+          }
           return { ...prev, [fieldName]: value };
         });
 
         setEditingField(null);
         enqueueSnackbar('Field updated successfully!', { variant: 'success' });
-
-        // TODO: Make API call here
-        console.log(`✅ [FIELD SAVED] ${fieldName}:`, value);
       } catch (err) {
         console.error('Error saving field:', err);
         enqueueSnackbar('Failed to update field', { variant: 'error' });
       }
     },
-    [userData, user, enqueueSnackbar]
+    [userData, id, updateUserMutation, enqueueSnackbar]
   );
 
   // Handle field cancel
@@ -227,6 +239,11 @@ export default function UserDetailsPage() {
     return (
       <Container maxWidth={themeStretch ? false : 'lg'}>
         <Box sx={{ textAlign: 'center', mt: 5 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
           <Typography variant="h6" color="error">
             {error || 'User not found'}
           </Typography>
@@ -273,16 +290,18 @@ export default function UserDetailsPage() {
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
                     <UserProfileImage name={userData.name} role={userData.role} avatarUrl={userData.avatarUrl} />
                     
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        variant="outlined"
-                        startIcon={<Iconify icon="eva:edit-outline" />}
-                        onClick={() => navigate(PATH_DASHBOARD.users.edit(id!))}
-                        sx={{ display: { xs: 'none', sm: 'flex' } }}
-                      >
-                        Edit
-                      </Button>
-                    </Stack>
+                    {canEdit && (
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          variant="outlined"
+                          startIcon={<Iconify icon="eva:edit-outline" />}
+                          onClick={() => navigate(PATH_DASHBOARD.users.edit(id!))}
+                          sx={{ display: { xs: 'none', sm: 'flex' } }}
+                        >
+                          Edit
+                        </Button>
+                      </Stack>
+                    )}
                   </Stack>
 
                   {/* Name - Editable */}
@@ -293,12 +312,7 @@ export default function UserDetailsPage() {
                     canEdit={canEdit}
                     isEditing={editingField === 'name'}
                     onEdit={() => handleFieldEdit('name')}
-                    onSave={(value) => {
-                      const nameParts = (value as string).split(' ');
-                      handleFieldSave('name', value as string);
-                      handleFieldSave('firstName', nameParts[0] || '');
-                      handleFieldSave('lastName', nameParts.slice(1).join(' ') || '');
-                    }}
+                    onSave={(value) => handleFieldSave('name', value as string)}
                     onCancel={handleFieldCancel}
                     placeholder="Enter full name"
                   />
@@ -347,7 +361,7 @@ export default function UserDetailsPage() {
                 </Stack>
               </Card>
 
-              {/* Restaurant Location */}
+              {/* Restaurant Location (Branch Data) */}
               <Card>
                 <CardHeader title="Restaurant Location" />
                 <Stack spacing={2} sx={{ p: 3 }}>
@@ -355,42 +369,26 @@ export default function UserDetailsPage() {
                     <StyledIcon icon="eva:home-fill" />
                     <Typography variant="body2">
                       <Link component="span" variant="subtitle2" color="text.primary">
-                        {userData.restaurantName}
+                        {userData.branchName}
                       </Link>
                     </Typography>
                   </Stack>
 
                   <Stack direction="row">
                     <StyledIcon icon="eva:phone-fill" />
-                    <Typography variant="body2">{userData.restaurantPhone}</Typography>
+                    <Typography variant="body2">{userData.branchPhone}</Typography>
                   </Stack>
 
                   <Stack direction="row">
                     <StyledIcon icon="eva:email-fill" />
-                    <Typography variant="body2">{userData.restaurantEmail}</Typography>
+                    <Typography variant="body2">{userData.branchEmail}</Typography>
                   </Stack>
 
-                  {userData.socialLinks && userData.socialLinks.length > 0 && (
-                    <Box>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
-                        {userData.socialLinks.map((social, index) => (
-                          <Chip
-                            key={index}
-                            label={social.name}
-                            component="a"
-                            href={social.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            clickable
-                            size="small"
-                            sx={{
-                              fontSize: '0.75rem',
-                              height: 28,
-                            }}
-                          />
-                        ))}
-                      </Stack>
-                    </Box>
+                  {userData.branchLocation && userData.branchLocation !== '-' && (
+                    <Stack direction="row">
+                      <StyledIcon icon="eva:pin-fill" />
+                      <Typography variant="body2">{userData.branchLocation}</Typography>
+                    </Stack>
                   )}
                 </Stack>
               </Card>

@@ -4,9 +4,12 @@
 
 export interface ITaskApiResponse {
   id: number;
-  staff: number;
+  staff: number | null;
   staff_full_name: string;
-  task_name: string | null;
+  task_name: {
+    task_name: string;
+    id: number;
+  } | null;
   task_description: string;
   status: {
     value: string;
@@ -16,29 +19,38 @@ export interface ITaskApiResponse {
     value: string;
     name: string;
   };
-  started_at: string;
-  completed_at: string;
+  started_at: string | null;
+  completed_at: string | null;
   kitchen_station: string;
   attachment_video_link: string | null;
-  due_date: string;
+  youtube_url: string | null;
+  due_date: string | null;
   staff_email: string;
   staff_profile: string | null;
-  messages: ITaskMessage[];
-  task_details: any | null;
-  other_task_name: string;
-  video: any | null;
-  image: any | null;
-  staff_detail: ITaskStaffDetail;
+  messages?: ITaskMessage[];
+  task_details?: any | null;
+  other_task_name: string | null;
+  video: string | null;
+  image: string | null;
+  staff_detail?: ITaskStaffDetail;
   assigned_by: string;
+  created_at: string;
+  updated_at: string;
+  is_deleted: boolean;
+  branch?: number | null; // Branch ID from task payload
 }
 
 export interface ITaskMessage {
   id: number;
-  user_name: string;
-  user_email: string;
+  task_id: number;
   message: string;
+  message_creator_name: string;
   created_at: string;
-  user_profile?: string | null;
+  user_profile?: {
+    id: number;
+    full_name: string;
+    profile_image_url: string | null;
+  } | null;
 }
 
 export interface ITaskStaffDetail {
@@ -88,8 +100,16 @@ export interface ITaskDetail {
   staffEmail: string;
   staffProfile: string | null;
   staffFullName: string;
+  staffId: number | null;
   assignedBy: string;
   comments: ITaskComment[];
+  isDeleted?: boolean;
+  recipeId?: number | null; // Recipe ID if task is recipe-based
+  otherTaskName?: string | null; // Custom task name if not recipe-based
+  video?: string | null; // S3 video URL
+  image?: string | null; // Image URL
+  youtubeUrl?: string | null; // YouTube URL
+  branchId?: number | null; // Branch ID from task payload
 }
 
 export interface ITaskComment {

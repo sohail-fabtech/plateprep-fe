@@ -1,6 +1,8 @@
 import { Helmet } from 'react-helmet-async';
 import { useState, useMemo, useEffect } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+// hooks
+import { useDebounce } from '../../hooks/useDebounce';
 // @mui
 import {
   Tab,
@@ -128,6 +130,14 @@ export default function RecipesListPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [page, setPage] = useState(1);
 
+  // Debounce search input (500ms delay)
+  const debouncedFilterName = useDebounce(filterName, 500);
+
+  // Reset to page 1 when debounced search value changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedFilterName]);
+
   // Fetch menu categories for cuisine filter
   const { data: menuCategories = [], isLoading: isLoadingCategories } = useMenuCategories();
 
@@ -178,9 +188,9 @@ export default function RecipesListPage() {
       ordering: '-id', // Default ordering: newest first
     };
 
-    // Search parameter (global search)
-    if (filterName) {
-      params.search = filterName;
+    // Search parameter (global search) - use debounced value
+    if (debouncedFilterName) {
+      params.search = debouncedFilterName;
     }
 
     // Cuisine filter - send category ID to API
@@ -210,7 +220,7 @@ export default function RecipesListPage() {
     // "all" - no status filter
 
     return params;
-  }, [filterName, filterCuisine, filterStatus, filterBranch, page, branchIdForApi, cuisineIdForApi]);
+  }, [debouncedFilterName, filterCuisine, filterStatus, filterBranch, page, branchIdForApi, cuisineIdForApi]);
 
   // Fetch recipes using TanStack Query
   const { data, isLoading, isFetching, isError, error } = useRecipes(queryParams) as {

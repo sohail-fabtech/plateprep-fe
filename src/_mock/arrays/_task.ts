@@ -6,6 +6,7 @@ export const _taskList: ITask[] = [
   {
     id: '1',
     staffName: 'John Smith',
+    staffId: 1,
     taskName: 'Prepare Daily Specials Menu',
     taskDescription: 'Create and finalize the daily specials menu for tonight\'s service',
     status: 'in-progress',

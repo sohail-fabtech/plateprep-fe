@@ -1,6 +1,8 @@
 import { Helmet } from 'react-helmet-async';
 import { useState, useEffect, useMemo } from 'react';
-import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+// hooks
+import { useDebounce } from '../../hooks/useDebounce';
 // @mui
 import {
   Tab,
@@ -16,13 +18,13 @@ import {
   Typography,
   TableRow,
   TableCell,
+  Alert,
+  LinearProgress,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // @types
 import { IUser, IUserFilterStatus } from '../../@types/user';
-// _mock_
-import { _userList } from '../../_mock/arrays';
 // components
 import Iconify from '../../components/iconify';
 import Scrollbar from '../../components/scrollbar';
@@ -36,9 +38,27 @@ import {
   TableHeadCustom,
   TablePaginationCustom,
 } from '../../components/table';
+import { SubscriptionDialog } from '../../components/subscription-dialog';
 // sections
-import { UserTableRow, UserTableToolbar } from '../../sections/@dashboard/user/list';
+import { UserTableRow, UserTableToolbar, UserTableSkeleton } from '../../sections/@dashboard/user/list';
 import { useSnackbar } from '../../components/snackbar';
+// hooks
+import { useBranchFilter } from '../../hooks/useBranchFilter';
+import { useSubscription } from '../../hooks/useSubscription';
+import { usePermissions } from '../../hooks/usePermissions';
+// auth
+import PermissionGuard from '../../auth/PermissionGuard';
+// services
+import {
+  useUsers,
+  useDeleteUser,
+  useRestoreUser,
+  usePermanentlyDeleteUser,
+  UserQueryParams,
+  UserListResponse,
+} from '../../services';
+// utils
+import { transformApiResponseToUser } from '../../utils/userAdapter';
 
 // ----------------------------------------------------------------------
 
@@ -82,6 +102,7 @@ const TABLE_HEAD = [
   { id: 'address', label: 'Address', align: 'left', width: 300, minWidth: 300 },
   { id: 'location', label: 'Location', align: 'left' },
   { id: 'role', label: 'User Role', align: 'left' },
+  { id: 'archiveStatus', label: 'Archive Status', align: 'left' },
   { id: '', label: 'Action', align: 'right' },
 ];
 
@@ -94,6 +115,7 @@ const DEFAULT_COLUMN_VISIBILITY = {
   address: true,
   location: true,
   role: true,
+  archiveStatus: true,
 };
 
 // LocalStorage keys specific to users table
@@ -103,9 +125,6 @@ const USERS_DENSE_KEY = 'usersTableDense';
 // ----------------------------------------------------------------------
 
 export default function UsersListPage() {
-  const [searchParams] = useSearchParams();
-  const locationId = searchParams.get('location');
-
   // Initialize dense from localStorage
   const getDenseFromStorage = (): boolean => {
     try {
@@ -130,51 +149,71 @@ export default function UsersListPage() {
     onChangeRowsPerPage,
   } = useTable({
     defaultOrderBy: 'id',
-    defaultDense: (() => {
-      try {
-        const saved = localStorage.getItem(USERS_DENSE_KEY);
-        return saved ? JSON.parse(saved) : false;
-      } catch {
-        return false;
-      }
-    })(),
+    defaultDense: getDenseFromStorage(),
   });
 
   const { themeStretch } = useSettingsContext();
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+  const { hasSubscription } = useSubscription();
 
-  // Transform _userList to IUser format
-  const [tableData, setTableData] = useState<IUser[]>(() => {
-    return _userList.map((user) => {
-      // Build address from available fields
-      const addressParts = [
-        user.address,
-        user.city,
-        user.state,
-        user.zipCode,
-      ].filter(Boolean);
-      const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : '-';
+  // Branch filter hook
+  const { filterBranch, setFilterBranch, branchIdForApi, showBranchFilter } = useBranchFilter();
 
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        address: fullAddress,
-        location: user.company || '-', // Using company as location for now, can be updated when API provides location
-        role: user.role,
-        status: user.status,
-        avatarUrl: user.avatarUrl,
-        isDeleted: false, // Default to not deleted
-      };
-    });
-  });
+  // Subscription dialog state
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+
+  // Track loading state per user ID
+  const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
+
+  // Permission-based tab visibility
+  const visibleTabs = useMemo(() => {
+    const canView = hasPermission('view_users');
+    const canEdit = hasPermission('edit_users');
+    const canDelete = hasPermission('delete_users');
+
+    if (!canView) return [];
+
+    const tabs: IUserFilterStatus[] = [];
+
+    // Always show 'all' tab first
+    tabs.push('all');
+
+    // If only view permission (no edit, no delete), show only all tab
+    if (canView && !canEdit && !canDelete) {
+      return ['all'];
+    }
+
+    // If edit permission, add active tab
+    if (canEdit) {
+      tabs.push('active');
+    }
+
+    // If delete permission, add archived tab
+    if (canDelete) {
+      tabs.push('archived');
+    }
+
+    return tabs;
+  }, [hasPermission]);
 
   const [filterName, setFilterName] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
   const [filterLocation, setFilterLocation] = useState('all');
   const [filterStatus, setFilterStatus] = useState<IUserFilterStatus>('all');
+
+  // Debounce search input (500ms delay)
+  const debouncedFilterName = useDebounce(filterName, 500);
+
+  // Reset to page 0 when debounced search value changes
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedFilterName]);
+
+  // Mutation hooks
+  const archiveMutation = useDeleteUser();
+  const restoreMutation = useRestoreUser();
+  const permanentDeleteMutation = usePermanentlyDeleteUser();
 
   // Initialize column visibility from localStorage
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -186,6 +225,60 @@ export default function UsersListPage() {
       return DEFAULT_COLUMN_VISIBILITY;
     }
   });
+
+  // Build API query params from UI filters
+  const queryParams: UserQueryParams = useMemo(() => {
+    const params: UserQueryParams = {};
+
+    // Common filters for all tabs
+    params.page = page + 1; // API uses 1-based pagination
+    params.page_size = rowsPerPage;
+    params.ordering = orderBy ? `${order === 'desc' ? '-' : ''}${orderBy}` : '-id';
+
+    // Search parameter - use debounced value
+    if (debouncedFilterName) {
+      params.search = debouncedFilterName;
+    }
+
+    // Branch filter: use selected branch if owner, otherwise use user's branch
+    if (branchIdForApi) {
+      params.branch = typeof branchIdForApi === 'string' ? parseInt(branchIdForApi, 10) : branchIdForApi;
+    }
+
+    // Status filter mapping - only for non-"all" tabs
+    if (filterStatus === 'archived') {
+      params.is_archived = true;
+    } else if (filterStatus === 'active') {
+      params.is_archived = false;
+    }
+    // For "all" tab, don't send is_archived (shows both active and archived)
+
+    return params;
+  }, [debouncedFilterName, filterStatus, page, rowsPerPage, order, orderBy, branchIdForApi]);
+
+  // Fetch users using TanStack Query
+  const { data, isLoading, isFetching, isError, error } = useUsers(queryParams) as {
+    data: UserListResponse | undefined;
+    isLoading: boolean;
+    isFetching: boolean;
+    isError: boolean;
+    error: Error | null;
+  };
+
+  // Transform API data to IUser format for table
+  const tableData: IUser[] = useMemo(() => {
+    if (!data?.results) return [];
+    
+    return data.results.map((user: any) => transformApiResponseToUser(user));
+  }, [data]);
+
+  // Get unique locations from tableData
+  const locationOptions = useMemo(() => {
+    const locations = Array.from(
+      new Set(tableData.map((user: IUser) => user.location).filter((loc): loc is string => Boolean(loc)))
+    );
+    return locations.sort();
+  }, [tableData]);
 
   // Save column visibility to localStorage whenever it changes
   useEffect(() => {
@@ -205,34 +298,22 @@ export default function UsersListPage() {
     }
   }, [dense]);
 
-  // Filter by location if locationId is provided
-  useEffect(() => {
-    if (locationId) {
-      // TODO: Filter users by location when API is integrated
-      console.log('Filtering users by location:', locationId);
-    }
-  }, [locationId]);
+  // Client-side sorting (API handles filtering)
+  const dataFiltered = useMemo(() => {
+    if (!tableData.length) return [];
+    
+    const sorted = [...tableData].sort((a, b) => {
+      const comparator = getComparator(order, orderBy);
+      return comparator(a as any, b as any);
+    });
+    return sorted;
+  }, [tableData, order, orderBy]);
 
-  // Get unique locations from tableData
-  const locationOptions = useMemo(() => {
-    const locations = Array.from(
-      new Set(tableData.map((user) => user.location).filter((loc): loc is string => Boolean(loc)))
-    );
-    return locations.sort();
-  }, [tableData]);
+  const isFiltered = filterName !== '' || filterLocation !== 'all' || filterBranch !== '';
 
-  const dataFiltered = applySortFilter({
-    tableData,
-    comparator: getComparator(order, orderBy),
-    filterName,
-    filterRole,
-    filterLocation,
-    filterStatus,
-  });
-
-  const isFiltered = filterName !== '' || filterRole !== 'all' || filterLocation !== 'all';
-
-  const isNotFound = (!dataFiltered.length && !!filterName) || (!dataFiltered.length && isFiltered);
+  const isNotFound = !isLoading && !isError && dataFiltered.length === 0 && isFiltered;
+  
+  const totalPages = data?.count ? Math.ceil(data.count / rowsPerPage) : 0;
 
   const denseHeight = dense ? 52 : 72;
 
@@ -244,11 +325,6 @@ export default function UsersListPage() {
   const handleFilterName = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPage(0);
     setFilterName(event.target.value);
-  };
-
-  const handleFilterRole = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPage(0);
-    setFilterRole(event.target.value);
   };
 
   const handleFilterLocation = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,23 +340,80 @@ export default function UsersListPage() {
     navigate(PATH_DASHBOARD.users.edit(id));
   };
 
-  const handleDeleteRow = (id: string) => {
-    const deleteRow = tableData.filter((row) => row.id !== id);
-    setTableData(deleteRow);
-    enqueueSnackbar('User deleted successfully!', { variant: 'success' });
+  const handleArchiveRow = async (id: string) => {
+    setLoadingUserId(id);
+    try {
+      await archiveMutation.mutateAsync(id);
+      enqueueSnackbar('User archived successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error archiving user:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to archive user. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingUserId(null);
+    }
   };
 
-  const handleArchiveRow = (id: string) => {
-    const updatedData = tableData.map((row) => (row.id === id ? { ...row, isDeleted: true } : row));
-    setTableData(updatedData);
-    enqueueSnackbar('User archived successfully!', { variant: 'success' });
+  const handleRestoreRow = async (id: string) => {
+    setLoadingUserId(id);
+    try {
+      await restoreMutation.mutateAsync(id);
+      enqueueSnackbar('User restored successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error restoring user:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to restore user. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingUserId(null);
+    }
+  };
+
+  const handlePermanentDeleteRow = async (id: string) => {
+    setLoadingUserId(id);
+    try {
+      await permanentDeleteMutation.mutateAsync(id);
+      enqueueSnackbar('User deleted permanently', { variant: 'success' });
+    } catch (error) {
+      console.error('Error permanently deleting user:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete user. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingUserId(null);
+    }
+  };
+
+  const handleFilterBranch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPage(0);
+    setFilterBranch(event.target.value);
   };
 
   const handleResetFilter = () => {
     setFilterName('');
-    setFilterRole('all');
     setFilterLocation('all');
+    setFilterBranch('');
+    // Reset to 'all' tab
+    setFilterStatus('all');
+    setPage(0);
   };
+
+  // Ensure current filterStatus is valid based on permissions
+  useEffect(() => {
+    if (visibleTabs.length > 0) {
+      if (!visibleTabs.includes(filterStatus)) {
+        const firstTab = visibleTabs[0] as IUserFilterStatus;
+        setFilterStatus(firstTab);
+      }
+    }
+  }, [visibleTabs, filterStatus]);
 
   const handleToggleColumn = (columnId: string) => {
     setColumnVisibility((prev) => ({
@@ -304,55 +437,68 @@ export default function UsersListPage() {
             { name: 'List' },
           ]}
           action={
-            <Button
-              component={RouterLink}
-              to={PATH_DASHBOARD.users.create}
-              variant="contained"
-              startIcon={<Iconify icon="eva:plus-fill" />}
-            >
-              New User
-            </Button>
+            <PermissionGuard permission="create_users">
+              <Button
+                variant="contained"
+                startIcon={<Iconify icon="eva:plus-fill" />}
+                onClick={() => {
+                  if (!hasSubscription()) {
+                    setSubscriptionDialogOpen(true);
+                  } else {
+                    navigate(PATH_DASHBOARD.users.create);
+                  }
+                }}
+              >
+                New User
+              </Button>
+            </PermissionGuard>
           }
         />
 
         <Card sx={{ mb: { xs: 2, md: 3 }, overflow: 'hidden' }}>
-          <Tabs
-            value={filterStatus}
-            onChange={handleFilterStatus}
-            sx={{
-              px: { xs: 1.5, sm: 2 },
-              bgcolor: 'background.neutral',
-              '& .MuiTab-root': {
-                fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                fontWeight: 600,
-                minHeight: { xs: 44, md: 48 },
-              },
-            }}
-          >
-            {STATUS_OPTIONS.map((tab) => (
-              <Tab key={tab} label={tab} value={tab} sx={{ textTransform: 'capitalize' }} />
-            ))}
-          </Tabs>
+          {visibleTabs.length > 0 && (
+            <Tabs
+              value={filterStatus}
+              onChange={handleFilterStatus}
+              sx={{
+                px: { xs: 1.5, sm: 2 },
+                bgcolor: 'background.neutral',
+                '& .MuiTab-root': {
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                  fontWeight: 600,
+                  minHeight: { xs: 44, md: 48 },
+                },
+              }}
+            >
+              {visibleTabs.map((tab) => (
+                <Tab key={tab} label={tab} value={tab} sx={{ textTransform: 'capitalize' }} />
+              ))}
+            </Tabs>
+          )}
+
 
           <Divider />
 
           <UserTableToolbar
             isFiltered={isFiltered}
             filterName={filterName}
-            filterRole={filterRole}
+            filterRole="all"
             filterLocation={filterLocation}
-            optionsRole={ROLE_OPTIONS}
+            filterBranch={filterBranch}
+            showBranchFilter={showBranchFilter}
+            optionsRole={[]}
             optionsLocation={locationOptions}
             onFilterName={handleFilterName}
-            onFilterRole={handleFilterRole}
+            onFilterRole={() => {}}
             onFilterLocation={handleFilterLocation}
+            onFilterBranch={handleFilterBranch}
             onResetFilter={handleResetFilter}
             columnVisibility={columnVisibility}
             onToggleColumn={handleToggleColumn}
             tableHead={TABLE_HEAD}
             formInputSx={FORM_INPUT_SX}
           />
-
+ {isFetching && <LinearProgress />}
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
             <Scrollbar sx={{ maxWidth: '100%' }}>
               <Table sx={{ minWidth: { xs: 800, md: 960 } }}>
@@ -382,23 +528,43 @@ export default function UsersListPage() {
                 />
 
                 <TableBody>
-                  {dataFiltered
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row) => (
-                      <UserTableRow
-                        key={row.id}
-                        row={row}
-                        onViewRow={() => handleViewRow(row.id)}
-                        onEditRow={() => handleEditRow(row.id)}
-                        onDeleteRow={() => handleDeleteRow(row.id)}
-                        onArchiveRow={() => handleArchiveRow(row.id)}
-                        filterStatus={filterStatus}
+                  {isLoading ? (
+                    Array.from({ length: rowsPerPage }).map((_, index) => (
+                      <UserTableSkeleton
+                        key={`skeleton-${index}`}
                         columnVisibility={columnVisibility}
                         dense={dense}
                       />
-                    ))}
+                    ))
+                  ) : isError ? (
+                    <TableRow>
+                      <TableCell colSpan={8} sx={{ py: 10 }}>
+                        <Alert severity="error">
+                          {error instanceof Error ? error.message : 'Failed to load users. Please try again.'}
+                        </Alert>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <>
+                      {dataFiltered.map((row) => (
+                        <UserTableRow
+                          key={row.id}
+                          row={row}
+                          onViewRow={() => handleViewRow(row.id)}
+                          onEditRow={() => handleEditRow(row.id)}
+                          onDeleteRow={() => handlePermanentDeleteRow(row.id)}
+                          onArchiveRow={() => handleArchiveRow(row.id)}
+                          onRestoreRow={() => handleRestoreRow(row.id)}
+                          filterStatus={filterStatus}
+                          columnVisibility={columnVisibility}
+                          dense={dense}
+                          isLoading={loadingUserId === row.id}
+                        />
+                      ))}
 
-                  <TableEmptyRows height={denseHeight} emptyRows={emptyRows(page, rowsPerPage, dataFiltered.length)} />
+                      <TableEmptyRows height={denseHeight} emptyRows={emptyRows(page, rowsPerPage, dataFiltered.length)} />
+                    </>
+                  )}
 
                   {isNotFound && (
                     <TableRow>
@@ -426,7 +592,7 @@ export default function UsersListPage() {
           </TableContainer>
 
           <TablePaginationCustom
-            count={dataFiltered.length}
+            count={data?.count || 0}
             page={page}
             rowsPerPage={rowsPerPage}
             onPageChange={onChangePage}
@@ -436,64 +602,19 @@ export default function UsersListPage() {
           />
         </Card>
       </Container>
+
+      <SubscriptionDialog
+        open={subscriptionDialogOpen}
+        onClose={() => setSubscriptionDialogOpen(false)}
+        message="You need an active subscription to create a new user."
+        buttonText="Subscribe Now"
+        onButtonClick={() => {
+          setSubscriptionDialogOpen(false);
+          navigate(PATH_DASHBOARD.subscription);
+        }}
+      />
     </>
   );
 }
 
-// ----------------------------------------------------------------------
-
-function applySortFilter({
-  tableData,
-  comparator,
-  filterName,
-  filterRole,
-  filterLocation,
-  filterStatus,
-}: {
-  tableData: IUser[];
-  comparator: (a: any, b: any) => number;
-  filterName: string;
-  filterRole: string;
-  filterLocation: string;
-  filterStatus: IUserFilterStatus;
-}) {
-  const stabilizedThis = tableData.map((el, index) => [el, index] as const);
-
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
-
-  let filteredData = stabilizedThis.map((el) => el[0]);
-
-  // Filter by name, email, or address
-  if (filterName) {
-    filteredData = filteredData.filter(
-      (user) =>
-        user.name.toLowerCase().indexOf(filterName.toLowerCase()) !== -1 ||
-        user.email.toLowerCase().indexOf(filterName.toLowerCase()) !== -1 ||
-        (user.address && user.address.toLowerCase().indexOf(filterName.toLowerCase()) !== -1)
-    );
-  }
-
-  // Filter by role
-  if (filterRole !== 'all') {
-    filteredData = filteredData.filter((user) => user.role.toLowerCase() === filterRole.toLowerCase());
-  }
-
-  // Filter by location
-  if (filterLocation !== 'all') {
-    filteredData = filteredData.filter((user) => user.location?.toLowerCase() === filterLocation.toLowerCase());
-  }
-
-  // Filter by status (archived/active)
-  if (filterStatus === 'archived') {
-    filteredData = filteredData.filter((user) => user.isDeleted === true);
-  } else if (filterStatus === 'active') {
-    filteredData = filteredData.filter((user) => user.isDeleted !== true);
-  }
-
-  return filteredData;
-}
 

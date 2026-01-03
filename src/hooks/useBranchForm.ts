@@ -41,17 +41,17 @@ export function useBranchForm(initialBranchId?: number | string | ''): UseBranch
       return locationId || undefined;
     }
     
-    // If editing and recipe has branch, use it (owner can change, non-owner uses it)
+    // For non-owners, always use their profile branch ID (not task's branch)
+    if (!isOwner && userBranchId) {
+      return userBranchId;
+    }
+    
+    // For owners, use task's branch (if editing) or selected branch
     if (initialBranchId) {
       const branchId = typeof initialBranchId === 'string' 
         ? (/^\d+$/.test(initialBranchId) ? parseInt(initialBranchId, 10) : undefined)
         : initialBranchId;
       if (branchId) return branchId;
-    }
-    
-    // For non-owners, use their branch ID
-    if (!isOwner && userBranchId) {
-      return userBranchId;
     }
     
     return undefined;

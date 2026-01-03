@@ -9,6 +9,7 @@ export type ITaskFilterStatus = 'all' | 'active' | 'archived';
 export type ITask = {
   id: string;
   staffName: string;
+  staffId?: number | null;
   taskName: string;
   taskDescription: string;
   status: ITaskStatus;
@@ -17,6 +18,8 @@ export type ITask = {
   updatedAt?: Date | string;
   dueDate?: Date | string | null;
   isArchived: boolean;
+  branchId?: number | string | null;
+  image?: string | null;
 };
 
 export type ITaskVideoFile = {
@@ -32,11 +35,13 @@ export type ITaskForm = {
   kitchenStation: string;
   assignTo: string;
   email?: string;
+  restaurantLocation?: string | number | '';
   taskStartTime?: Date | null;
   taskCompletionTime?: Date | null;
   dueDate?: Date | null;
   videoLink?: string;
   video?: ITaskVideoFile | null;
+  image?: string | null;
   priority: ITaskPriority;
   description: string;
   status: ITaskStatus;

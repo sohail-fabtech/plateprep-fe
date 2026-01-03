@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 // @mui
 import {
@@ -9,6 +9,8 @@ import {
   Typography,
   Avatar,
   Stack,
+  CircularProgress,
+  useTheme,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../../../routes/paths';
@@ -29,9 +31,11 @@ type Props = {
   onEditRow: VoidFunction;
   onDeleteRow: VoidFunction;
   onArchiveRow: VoidFunction;
+  onRestoreRow?: VoidFunction;
   filterStatus: string;
   columnVisibility: Record<string, boolean>;
   dense?: boolean;
+  isLoading?: boolean;
 };
 
 export default function UserTableRow({
@@ -40,33 +44,64 @@ export default function UserTableRow({
   onEditRow,
   onDeleteRow,
   onArchiveRow,
+  onRestoreRow,
   filterStatus,
   columnVisibility,
   dense = false,
+  isLoading = false,
 }: Props) {
   const { id, name, email, phoneNumber, address, location, role, avatarUrl, isDeleted } = row;
+  const theme = useTheme();
 
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [openArchiveConfirm, setOpenArchiveConfirm] = useState(false);
+  const [openRestoreConfirm, setOpenRestoreConfirm] = useState(false);
   const [openPopover, setOpenPopover] = useState<HTMLElement | null>(null);
+  const wasLoadingRef = useRef(false);
+
+  // Close dialogs when loading completes
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading) {
+      // Loading just completed, close dialogs
+      setOpenDeleteConfirm(false);
+      setOpenArchiveConfirm(false);
+      setOpenRestoreConfirm(false);
+    }
+    wasLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   const handleOpenDeleteConfirm = () => {
+    if (isLoading) return; // Prevent opening dialog during loading
     setOpenDeleteConfirm(true);
   };
 
   const handleCloseDeleteConfirm = () => {
+    if (isLoading) return; // Prevent closing dialog during loading
     setOpenDeleteConfirm(false);
   };
 
   const handleOpenArchiveConfirm = () => {
+    if (isLoading) return; // Prevent opening dialog during loading
     setOpenArchiveConfirm(true);
   };
 
   const handleCloseArchiveConfirm = () => {
+    if (isLoading) return; // Prevent closing dialog during loading
     setOpenArchiveConfirm(false);
   };
 
+  const handleOpenRestoreConfirm = () => {
+    if (isLoading) return; // Prevent opening dialog during loading
+    setOpenRestoreConfirm(true);
+  };
+
+  const handleCloseRestoreConfirm = () => {
+    if (isLoading) return; // Prevent closing dialog during loading
+    setOpenRestoreConfirm(false);
+  };
+
   const handleOpenPopover = (event: React.MouseEvent<HTMLElement>) => {
+    if (shouldDisableMenu) return; // Prevent opening menu if deleted in "All" tab
     setOpenPopover(event.currentTarget);
   };
 
@@ -89,9 +124,15 @@ export default function UserTableRow({
     }
   };
 
-  // Determine if we should show Archive or Delete based on filterStatus and isDeleted
-  const showArchive = filterStatus !== 'archived' && !isDeleted;
-  const showDelete = filterStatus === 'archived' || isDeleted;
+  // Determine if we should show Archive, Restore, or Delete based on filterStatus and isDeleted
+  const isArchived = isDeleted === true;
+  const showArchive = filterStatus !== 'archived' && !isArchived;
+  const showRestore = filterStatus === 'archived' && isArchived && onRestoreRow;
+  const showDelete = filterStatus === 'archived' && isArchived;
+
+  // In "All" tab, if user is deleted, disable the menu (similar to task table)
+  const isInAllTab = filterStatus === 'all';
+  const shouldDisableMenu = isArchived && isInAllTab;
 
   return (
     <>
@@ -213,8 +254,33 @@ export default function UserTableRow({
           </TableCell>
         )}
 
+        {columnVisibility.archiveStatus && (
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
+            <Label
+              variant="soft"
+              color={isArchived ? 'error' : 'success'}
+              sx={{
+                textTransform: 'capitalize',
+                fontSize: { xs: '0.6875rem', md: '0.75rem' },
+                fontWeight: 600,
+              }}
+            >
+              {isArchived ? 'Archived' : 'Active'}
+            </Label>
+          </TableCell>
+        )}
+
         <TableCell align="right" sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
-          <IconButton onClick={handleOpenPopover}>
+          <IconButton
+            onClick={handleOpenPopover}
+            disabled={isLoading || shouldDisableMenu}
+            sx={{
+              width: { xs: 36, md: 40 },
+              height: { xs: 36, md: 40 },
+              opacity: shouldDisableMenu ? 0.5 : 1,
+              cursor: shouldDisableMenu ? 'not-allowed' : 'pointer',
+            }}
+          >
             <Iconify icon="eva:more-vertical-fill" />
           </IconButton>
         </TableCell>
@@ -226,45 +292,102 @@ export default function UserTableRow({
             handleClosePopover();
             onViewRow();
           }}
+          sx={{
+            fontSize: { xs: '0.8125rem', md: '0.875rem' },
+            py: 1,
+          }}
         >
-          <Iconify icon="eva:eye-fill" />
+          <Iconify icon="eva:eye-fill" sx={{ mr: 1 }} />
           View
         </MenuItem>
 
-        <MenuItem
-          onClick={() => {
-            handleClosePopover();
-            onEditRow();
-          }}
-        >
-          <Iconify icon="eva:edit-fill" />
-          Edit
-        </MenuItem>
-
-        {showArchive && (
+        {!isArchived && (
           <MenuItem
             onClick={() => {
               handleClosePopover();
-              handleOpenArchiveConfirm();
+              onEditRow();
             }}
-            sx={{ color: 'text.secondary' }}
+            sx={{
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+              py: 1,
+            }}
           >
-            <Iconify icon="eva:archive-fill" />
-            Archive
+            <Iconify icon="eva:edit-fill" sx={{ mr: 1 }} />
+            Edit
           </MenuItem>
         )}
 
-        {showDelete && (
+        {/* In "All" tab, if user is deleted, show Delete instead of Archive */}
+        {isArchived && isInAllTab ? (
           <MenuItem
             onClick={() => {
-              handleClosePopover();
               handleOpenDeleteConfirm();
+              handleClosePopover();
             }}
-            sx={{ color: 'error.main' }}
+            sx={{
+              color: 'error.main',
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+              py: 1,
+            }}
           >
-            <Iconify icon="eva:trash-2-outline" />
+            <Iconify icon="eva:trash-2-outline" sx={{ mr: 1 }} />
             Delete
           </MenuItem>
+        ) : isArchived ? (
+          // In "archived" tab, show Restore and Delete
+          <>
+            {showRestore && (
+              <MenuItem
+                onClick={() => {
+                  handleOpenRestoreConfirm();
+                  handleClosePopover();
+                }}
+                sx={{
+                  color: 'success.main',
+                  fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                  py: 1,
+                }}
+              >
+                <Iconify icon="eva:refresh-fill" sx={{ mr: 1 }} />
+                Restore
+              </MenuItem>
+            )}
+
+            {showDelete && (
+              <MenuItem
+                onClick={() => {
+                  handleOpenDeleteConfirm();
+                  handleClosePopover();
+                }}
+                sx={{
+                  color: 'error.main',
+                  fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                  py: 1,
+                }}
+              >
+                <Iconify icon="eva:trash-2-outline" sx={{ mr: 1 }} />
+                Delete
+              </MenuItem>
+            )}
+          </>
+        ) : (
+          // In "active" or "all" tab for active users, show Archive
+          showArchive && (
+            <MenuItem
+              onClick={() => {
+                handleOpenArchiveConfirm();
+                handleClosePopover();
+              }}
+              sx={{
+                color: 'text.secondary',
+                fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                py: 1,
+              }}
+            >
+              <Iconify icon="eva:archive-fill" sx={{ mr: 1 }} />
+              Archive
+            </MenuItem>
+          )
         )}
       </MenuPopover>
 
@@ -277,21 +400,28 @@ export default function UserTableRow({
           <Button
             variant="contained"
             color="error"
+            disabled={isLoading}
             onClick={() => {
               onDeleteRow();
-              handleCloseDeleteConfirm();
             }}
+            startIcon={
+              isLoading ? (
+                <CircularProgress size={16} sx={{ color: 'inherit' }} />
+              ) : undefined
+            }
             sx={{
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
               boxShadow: 'none',
               '&:hover': {
                 boxShadow: 'none',
-                bgcolor: 'error.main',
+                bgcolor: isLoading ? 'error.main' : 'error.dark',
               },
             }}
           >
-            Delete
+            {isLoading ? 'Deleting...' : 'Delete'}
           </Button>
         }
+        cancelButtonDisabled={isLoading}
       />
 
       <ConfirmDialog
@@ -302,23 +432,65 @@ export default function UserTableRow({
         action={
           <Button
             variant="contained"
+            disabled={isLoading}
             onClick={() => {
               onArchiveRow();
-              handleCloseArchiveConfirm();
             }}
+            startIcon={
+              isLoading ? (
+                <CircularProgress size={16} sx={{ color: 'inherit' }} />
+              ) : undefined
+            }
             sx={{
-              bgcolor: 'grey.500',
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+              bgcolor: theme.palette.grey[500],
               color: '#fff',
               boxShadow: 'none',
               '&:hover': {
+                bgcolor: isLoading ? theme.palette.grey[500] : theme.palette.grey[600],
                 boxShadow: 'none',
-                bgcolor: 'grey.500',
               },
             }}
           >
-            Archive
+            {isLoading ? 'Archiving...' : 'Archive'}
           </Button>
         }
+        cancelButtonDisabled={isLoading}
+      />
+
+      <ConfirmDialog
+        open={openRestoreConfirm}
+        onClose={handleCloseRestoreConfirm}
+        title="Restore User"
+        content="Are you sure you want to restore this user? The user will be moved back to the active list."
+        action={
+          <Button
+            variant="contained"
+            color="success"
+            disabled={isLoading}
+            onClick={() => {
+              if (onRestoreRow) {
+                onRestoreRow();
+              }
+            }}
+            startIcon={
+              isLoading ? (
+                <CircularProgress size={16} sx={{ color: 'inherit' }} />
+              ) : undefined
+            }
+            sx={{
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: 'none',
+                bgcolor: isLoading ? 'success.main' : 'success.dark',
+              },
+            }}
+          >
+            {isLoading ? 'Restoring...' : 'Restore'}
+          </Button>
+        }
+        cancelButtonDisabled={isLoading}
       />
     </>
   );

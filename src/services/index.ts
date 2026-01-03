@@ -22,13 +22,34 @@ export type { RecipeQueryParams, RecipeListResponse } from './recipes/recipeServ
 export {
   useTask,
   useTasks,
+  useCreateTask,
   useUpdateTask,
   useUpdateTaskDescription,
   useUpdateTaskStatus,
   useAddTaskComment,
+  useUpdateTaskComment,
   useDeleteTask,
+  useRestoreTask,
+  usePermanentlyDeleteTask,
   taskKeys,
 } from './tasks/taskHooks';
+
+// Export Task types
+export type { TaskQueryParams, TaskListResponse, ITaskApiRequest } from './tasks/taskHooks';
+
+// Export User hooks
+export {
+  useUser,
+  useUsers,
+  useUpdateUser,
+  useDeleteUser,
+  useRestoreUser,
+  usePermanentlyDeleteUser,
+  userKeys,
+} from './users/userHooks';
+
+// Export User types
+export type { UserQueryParams, UserListResponse } from './users/userHooks';
 
 // Export Location hooks
 export {

@@ -1,16 +1,16 @@
 import { Helmet } from 'react-helmet-async';
 import { useParams } from 'react-router-dom';
 // @mui
-import { Container } from '@mui/material';
+import { Container, CircularProgress, Alert, Box } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // components
 import { useSettingsContext } from '../../components/settings';
 import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
+// services
+import { useTask } from '../../services';
 // sections
 import TaskNewEditForm from '../../sections/@dashboard/task/TaskNewEditForm';
-// mock data
-import { _taskList } from '../../_mock/arrays';
 
 // ----------------------------------------------------------------------
 
@@ -19,7 +19,8 @@ export default function TasksEditPage() {
   
   const { id } = useParams();
 
-  const currentTask = _taskList.find((task) => task.id === id);
+  // Fetch task using TanStack Query
+  const { data: currentTask, isLoading, isError, error } = useTask(id);
 
   return (
     <>
@@ -39,11 +40,21 @@ export default function TasksEditPage() {
               name: 'Tasks',
               href: PATH_DASHBOARD.tasks.root,
             },
-            { name: currentTask?.taskName || 'Edit' },
+            { name: currentTask?.taskName || 'Loading...' },
           ]}
         />
 
-        <TaskNewEditForm isEdit currentTask={currentTask} />
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+            <CircularProgress />
+          </Box>
+        ) : isError ? (
+          <Alert severity="error">
+            {error instanceof Error ? error.message : 'Failed to load task. Please try again.'}
+          </Alert>
+        ) : currentTask ? (
+          <TaskNewEditForm isEdit currentTask={currentTask} />
+        ) : null}
       </Container>
     </>
   );

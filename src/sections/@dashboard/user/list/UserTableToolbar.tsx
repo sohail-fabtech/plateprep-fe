@@ -15,6 +15,7 @@ import {
 // components
 import Iconify from '../../../../components/iconify';
 import MenuPopover from '../../../../components/menu-popover';
+import BranchSelect from '../../../../components/branch-select/BranchSelect';
 
 // ----------------------------------------------------------------------
 
@@ -22,6 +23,8 @@ type Props = {
   filterName: string;
   filterRole: string;
   filterLocation: string;
+  filterBranch?: string | number | '';
+  showBranchFilter?: boolean;
   isFiltered: boolean;
   optionsRole: string[];
   optionsLocation: string[];
@@ -29,6 +32,7 @@ type Props = {
   onFilterName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterRole: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterLocation: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onFilterBranch?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   columnVisibility: Record<string, boolean>;
   onToggleColumn: (columnId: string) => void;
   tableHead: { id: string; label?: string; tooltip?: string }[];
@@ -40,11 +44,14 @@ export default function UserTableToolbar({
   filterName,
   filterRole,
   filterLocation,
+  filterBranch,
+  showBranchFilter,
   optionsRole,
   optionsLocation,
   onFilterName,
   onFilterRole,
   onFilterLocation,
+  onFilterBranch,
   onResetFilter,
   columnVisibility,
   onToggleColumn,
@@ -72,43 +79,26 @@ export default function UserTableToolbar({
         }}
         sx={{ px: { xs: 2, sm: 2.5 }, py: { xs: 2, md: 3 } }}
       >
-        <TextField
-          fullWidth
-          select
-          label="Role"
-          value={filterRole}
-          onChange={onFilterRole}
-          SelectProps={{
-            MenuProps: {
-              PaperProps: {
-                sx: {
-                  maxHeight: 260,
-                },
-              },
-            },
-          }}
-          sx={{
-            maxWidth: { sm: 240 },
-            textTransform: 'capitalize',
-            ...formInputSx,
-          }}
-        >
-          {optionsRole.map((option) => (
-            <MenuItem
-              key={option}
-              value={option}
-              sx={{
-                mx: 1,
-                borderRadius: 0.75,
-                typography: 'body2',
-                textTransform: 'capitalize',
-                fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-              }}
-            >
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
+        {showBranchFilter && (
+          <BranchSelect
+            value={filterBranch || ''}
+            onChange={(e) => {
+              if (onFilterBranch) {
+                const value = e.target.value;
+                const syntheticEvent = {
+                  target: { value },
+                } as React.ChangeEvent<HTMLInputElement>;
+                onFilterBranch(syntheticEvent);
+              }
+            }}
+            label="Location"
+            formInputSx={{
+              width: '100%',
+              maxWidth: { sm: 240 },
+              ...formInputSx,
+            }}
+          />
+        )}
 
         <TextField
           fullWidth
