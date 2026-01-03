@@ -79,8 +79,14 @@ export function transformApiResponseToRecipe(apiResponse: IRecipeApiResponse): I
     name: item.name || '',
   }));
 
-  // Map status from API format (P/D/A) to internal format (active/draft/archived)
-  const status = STATUS_MAP[apiResponse.status.value] || 'draft';
+  // Map status from API format (P/PR/D/A) to internal format (active/private/draft/archived)
+  const statusValue = apiResponse.status.value;
+  let status: 'draft' | 'active' | 'private' | 'archived';
+  if (statusValue === 'PR') {
+    status = 'private';
+  } else {
+    status = STATUS_MAP[statusValue] || 'draft';
+  }
 
   // Map availability
   const isAvailable = AVAILABILITY_MAP[apiResponse.availability.value] ?? true;
@@ -311,12 +317,12 @@ export function transformRecipeToApiRequest(
   if (recipe.ingredients !== undefined) {
     // Only include if array is not empty (empty array means no change in update)
     if (recipe.ingredients.length > 0) {
-      apiRequest.ingredients = recipe.ingredients.map((ing) => ({
+    apiRequest.ingredients = recipe.ingredients.map((ing) => ({
         ...(ing.id && !isNaN(parseInt(ing.id, 10)) && { id: parseInt(ing.id, 10) }),
         title: ing.title || '',
         quantity: String(ing.quantity || ''),
-        unit: ing.unit || '',
-      }));
+      unit: ing.unit || '',
+    }));
     } else {
       // Empty array - API will handle deletion/clearing
       apiRequest.ingredients = [];
@@ -326,12 +332,12 @@ export function transformRecipeToApiRequest(
   // Essential tools array
   if (recipe.essentialIngredients !== undefined) {
     if (recipe.essentialIngredients.length > 0) {
-      apiRequest.essential = recipe.essentialIngredients.map((ess) => ({
+    apiRequest.essential = recipe.essentialIngredients.map((ess) => ({
         ...(ess.id && !isNaN(parseInt(ess.id, 10)) && { id: parseInt(ess.id, 10) }),
         title: ess.title || '',
         quantity: String(ess.quantity || ''),
-        unit: ess.unit || '',
-      }));
+      unit: ess.unit || '',
+    }));
     } else {
       apiRequest.essential = [];
     }
@@ -340,10 +346,10 @@ export function transformRecipeToApiRequest(
   // Preparation steps array
   if (recipe.steps !== undefined) {
     if (recipe.steps.length > 0) {
-      apiRequest.steps = recipe.steps.map((step) => ({
+    apiRequest.steps = recipe.steps.map((step) => ({
         ...(step.id && !isNaN(parseInt(step.id, 10)) && { id: parseInt(step.id, 10) }),
         title: step.description || '',
-      }));
+    }));
     } else {
       apiRequest.steps = [];
     }
@@ -352,12 +358,12 @@ export function transformRecipeToApiRequest(
   // Tags array
   if (recipe.tags !== undefined) {
     if (recipe.tags.length > 0) {
-      // Tags are stored as strings in IRecipe, but API expects objects with id and name
-      // For updates, we'll need to preserve existing tag IDs if available
-      // For now, we'll create new tags (backend will handle duplicates)
-      apiRequest.tags = recipe.tags.map((tag) => ({
+    // Tags are stored as strings in IRecipe, but API expects objects with id and name
+    // For updates, we'll need to preserve existing tag IDs if available
+    // For now, we'll create new tags (backend will handle duplicates)
+    apiRequest.tags = recipe.tags.map((tag) => ({
         name: String(tag || ''),
-      }));
+    }));
     } else {
       apiRequest.tags = [];
     }
@@ -410,9 +416,9 @@ export function transformRecipeToApiRequest(
   // Cooking deviation comments array (no ID support - always replaces all)
   if (recipe.cookingDeviationComments !== undefined) {
     if (recipe.cookingDeviationComments.length > 0) {
-      apiRequest.cooking_deviation_comment = recipe.cookingDeviationComments.map((comment) => ({
+    apiRequest.cooking_deviation_comment = recipe.cookingDeviationComments.map((comment) => ({
         step: comment.step || '',
-      }));
+    }));
     } else {
       apiRequest.cooking_deviation_comment = [];
     }
@@ -421,10 +427,10 @@ export function transformRecipeToApiRequest(
   // Real-time variable comments array
   if (recipe.realtimeVariableComments !== undefined) {
     if (recipe.realtimeVariableComments.length > 0) {
-      apiRequest.real_time_variable_comment = recipe.realtimeVariableComments.map((comment) => ({
+    apiRequest.real_time_variable_comment = recipe.realtimeVariableComments.map((comment) => ({
         ...(comment.id && !isNaN(parseInt(comment.id, 10)) && { id: parseInt(comment.id, 10) }),
         step: comment.step || '',
-      }));
+    }));
     } else {
       apiRequest.real_time_variable_comment = [];
     }

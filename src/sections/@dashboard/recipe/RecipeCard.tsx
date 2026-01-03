@@ -212,7 +212,7 @@ export default function RecipeCard({
             {dishName}
           </Typography>
 
-          {description && (
+          {/* {description && ( */}
             <Typography
               variant="body2"
               sx={{
@@ -229,7 +229,7 @@ export default function RecipeCard({
             >
               {description}
             </Typography>
-          )}
+          {/* )} */}
 
           <Stack direction="row" spacing={{ xs: 0.75, sm: 1 }}>
             {isArchived ? (

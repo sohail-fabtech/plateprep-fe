@@ -27,10 +27,6 @@ import {
   useTheme,
   alpha,
   IconButton,
-  Dialog,
-  DialogContent,
-  LinearProgress,
-  CircularProgress,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../../routes/paths';
@@ -40,6 +36,7 @@ import { IRecipe, IIngredient, IPreparationStep, IComment } from '../../../@type
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
+import { ProcessingDialog } from '../../../components/processing-dialog';
 // services
 import {
   useCreateRecipe,
@@ -53,8 +50,6 @@ import {
 } from '../../../services';
 // sections
 import { ImageUploadZone, VideoUploadZone, DynamicIngredientList, DynamicStepList } from './form';
-// components
-import DialogAnimate from '../../../components/animate/DialogAnimate';
 
 // ----------------------------------------------------------------------
 
@@ -222,7 +217,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       availability: currentRecipe?.isAvailable ? 'available' : 'unavailable',
       cookingDeviationComments: currentRecipe?.cookingDeviationComments?.map(comment => comment.step) || [],
       realtimeVariableComments: currentRecipe?.realtimeVariableComments?.map(comment => comment.step) || [],
-      status: currentRecipe?.status || 'draft',
+      status: currentRecipe?.status === 'private' ? 'private' : 'public',
       images: currentRecipe?.imageFiles || [],
       primaryImageIndex: 0,
       fullyPlatedImageIndex: -1,
@@ -354,9 +349,9 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
         salePrice: typeof data.menuPrice === 'number' ? data.menuPrice : parseFloat(String(data.menuPrice || 0)) || 0,
         foodCostPct: typeof data.foodCostWanted === 'number' ? data.foodCostWanted : parseFloat(String(data.foodCostWanted || 0)) || 0,
       },
-      status: data.status as 'draft' | 'active' | 'private' | 'archived',
+      status: data.status === 'private' ? 'private' : 'active',
       isAvailable: data.availability === 'available',
-      isPublic: data.status === 'active',
+      isPublic: data.status === 'public',
       cookingDeviationComments,
       realtimeVariableComments,
     };
@@ -370,9 +365,14 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   }, [currentRecipe]);
 
   const onSubmit = async (data: FormValuesProps) => {
+    // Show processing dialog
+    setProcessingDialog({
+      open: true,
+      state: 'processing',
+      message: isEdit ? 'Updating recipe...' : 'Creating recipe...',
+    });
+
     try {
-      setIsProcessing(true);
-      
       // Step 1: Upload files to S3 using presigned URLs
       const uploadedImageUrls: string[] = [];
       let uploadedVideoUrl: string | null = null;
@@ -381,46 +381,15 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
       // Upload recipe images
       if (imageFiles.length > 0) {
-        setProcessingMessage('Uploading images...');
-        const existingImageCount = values.images.filter((url) => 
-          url.startsWith('http') && !url.startsWith('blob:')
-        ).length;
-        
-        // Initialize all progress trackers
-        const initialProgress = imageFiles.map((file, i) => ({
-          fileIndex: existingImageCount + i,
-          fileName: file.name,
-          progress: 0,
-          status: 'uploading' as const,
-        }));
-        setImageUploadProgress(initialProgress);
-        
-        for (let i = 0; i < imageFiles.length; i++) {
-          const file = imageFiles[i];
-          const fileIndex = existingImageCount + i;
-
+        setProcessingDialog({
+          open: true,
+          state: 'processing',
+          message: 'Uploading images...',
+        });
+        for (const file of imageFiles) {
           const fileKey = generateFileKey('recipe_images', file.name);
-          const s3Url = await uploadFileWithPresignedUrl(
-            file,
-            fileKey,
-            file.type,
-            (progress) => {
-              setImageUploadProgress((prev) =>
-                prev.map((p) =>
-                  p.fileIndex === fileIndex ? { ...p, progress } : p
-                )
-              );
-            }
-          );
-          
+          const s3Url = await uploadFileWithPresignedUrl(file, fileKey, file.type);
           uploadedImageUrls.push(s3Url);
-          
-          // Mark as completed
-          setImageUploadProgress((prev) =>
-            prev.map((p) =>
-              p.fileIndex === fileIndex ? { ...p, progress: 100, status: 'completed' } : p
-            )
-          );
         }
       }
 
@@ -432,39 +401,44 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
       // Upload video if new file selected
       if (videoFile) {
-        setProcessingMessage('Uploading video...');
-        setIsVideoUploading(true);
-        setVideoUploadProgress(0);
-        
+        setProcessingDialog({
+          open: true,
+          state: 'processing',
+          message: 'Uploading video...',
+        });
         const fileKey = generateFileKey('recipe_videos', videoFile.name);
-        uploadedVideoUrl = await uploadFileWithPresignedUrl(
-          videoFile,
-          fileKey,
-          videoFile.type,
-          (progress) => {
-            setVideoUploadProgress(progress);
-          }
-        );
-        
-        setIsVideoUploading(false);
-        setVideoUploadProgress(100);
+        uploadedVideoUrl = await uploadFileWithPresignedUrl(videoFile, fileKey, videoFile.type);
       }
 
       // Upload starch preparation image if new file selected
       if (starchImageFile) {
-        setProcessingMessage('Uploading starch preparation image...');
+        setProcessingDialog({
+          open: true,
+          state: 'processing',
+          message: 'Uploading starch preparation image...',
+        });
         const fileKey = generateFileKey('starch_preparation', starchImageFile.name);
         uploadedStarchImageUrl = await uploadFileWithPresignedUrl(starchImageFile, fileKey, starchImageFile.type);
       }
 
       // Upload plate design image if new file selected
       if (plateImageFile) {
-        setProcessingMessage('Uploading plate design image...');
+        setProcessingDialog({
+          open: true,
+          state: 'processing',
+          message: 'Uploading plate design image...',
+        });
         const fileKey = generateFileKey('plate_design', plateImageFile.name);
         uploadedPlateImageUrl = await uploadFileWithPresignedUrl(plateImageFile, fileKey, plateImageFile.type);
       }
 
       // Step 2: Transform form data to recipe format
+      setProcessingDialog({
+        open: true,
+        state: 'processing',
+        message: isEdit ? 'Updating recipe...' : 'Creating recipe...',
+      });
+
       const recipeData = transformFormDataToRecipe(data);
 
       // Step 3: Add uploaded URLs to recipe data
@@ -486,47 +460,59 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
         (recipeData as any).plateDesignImage = uploadedPlateImageUrl;
       }
 
-      // Step 4: Handle draft status
-      if (data.status === 'draft') {
-        (recipeData as any).is_draft = true;
-        (recipeData as any).is_schedule = false;
-      } else {
-        (recipeData as any).is_draft = false;
-      }
+      // Step 4: Handle draft status - only set is_draft if status is draft (for backward compatibility)
+      // Status is now only 'public' or 'private', so is_draft should be false
+      (recipeData as any).is_draft = false;
+      (recipeData as any).is_schedule = false;
 
       // Step 5: Create or update recipe
-      setProcessingMessage(isEdit ? 'Updating recipe...' : 'Creating recipe...');
-      
       if (isEdit && currentRecipe?.id) {
         // Update existing recipe
         await updateRecipeMutation.mutateAsync({
           id: currentRecipe.id,
           data: recipeData,
         });
-        enqueueSnackbar('Recipe updated successfully!', { variant: 'success' });
+        // Show success
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'Recipe updated successfully!',
+        });
+        // Navigate after a short delay to show success message
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.recipes.list);
+        }, 1500);
       } else {
         // Create new recipe
         await createRecipeMutation.mutateAsync(recipeData);
-        enqueueSnackbar('Recipe created successfully!', { variant: 'success' });
+        // Show success
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'Recipe created successfully!',
+        });
+        // Navigate after a short delay to show success message
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.recipes.list);
+        }, 1500);
       }
-
-      setIsProcessing(false);
-      navigate(PATH_DASHBOARD.recipes.list);
     } catch (error) {
       console.error('Error saving recipe:', error);
-      setIsProcessing(false);
-      setImageUploadProgress([]);
-      setIsVideoUploading(false);
-      setVideoUploadProgress(0);
       const errorMessage = error instanceof Error 
         ? error.message 
         : 'Failed to save recipe. Please try again.';
-      enqueueSnackbar(errorMessage, { variant: 'error' });
+      // Show error - form data is preserved (not reset)
+      setProcessingDialog({
+        open: true,
+        state: 'error',
+        message: errorMessage,
+      });
     }
   };
 
   const onSaveDraft = async () => {
-    setValue('status', 'draft');
+    // Set as draft (private) when saving as draft
+    setValue('status', 'private');
     handleSubmit(onSubmit)();
   };
 
@@ -536,17 +522,15 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   const [starchImageFile, setStarchImageFile] = useState<File | null>(null);
   const [plateImageFile, setPlateImageFile] = useState<File | null>(null);
 
-  // Upload progress tracking
-  const [imageUploadProgress, setImageUploadProgress] = useState<Array<{
-    fileIndex: number;
-    fileName: string;
-    progress: number;
-    status: 'uploading' | 'completed' | 'error';
-  }>>([]);
-  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
-  const [isVideoUploading, setIsVideoUploading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingMessage, setProcessingMessage] = useState('');
+  // Processing dialog state
+  const [processingDialog, setProcessingDialog] = useState<{
+    open: boolean;
+    state: 'processing' | 'success' | 'error';
+    message?: string;
+  }>({
+    open: false,
+    state: 'processing',
+  });
 
   const handleImageUpload = (files: File[]) => {
     // Store File objects for later upload
@@ -624,8 +608,14 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
   return (
     <>
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
+      <ProcessingDialog
+        open={processingDialog.open}
+        state={processingDialog.state}
+        message={processingDialog.message}
+        onClose={() => setProcessingDialog({ open: false, state: 'processing' })}
+      />
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={4}>
         <Grid item xs={12}>
           {/* Image Upload Section */}
@@ -647,7 +637,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   fullyPlatedIndex={values.fullyPlatedImageIndex}
                   error={!!error}
                   helperText={error?.message}
-                  uploadProgress={imageUploadProgress}
                 />
               )}
             />
@@ -1337,9 +1326,8 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     control={control}
                     render={({ field }) => (
                       <RadioGroup {...field} row>
-                        <FormControlLabel value="draft" control={<Radio />} label="Draft" />
-                        <FormControlLabel value="active" control={<Radio />} label="Active" />
-                        <FormControlLabel value="archived" control={<Radio />} label="Archived" />
+                        <FormControlLabel value="public" control={<Radio />} label="Public" />
+                        <FormControlLabel value="private" control={<Radio />} label="Private" />
                       </RadioGroup>
                     )}
                   />
@@ -1390,28 +1378,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       </Grid>
     </FormProvider>
     </DragDropContext>
-
-    {/* Processing Dialog */}
-    <DialogAnimate
-      open={isProcessing}
-      maxWidth="sm"
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          p: 0,
-        },
-      }}
-    >
-      <DialogContent sx={{ p: 4, textAlign: 'center' }}>
-        <CircularProgress size={64} sx={{ mb: 3, color: 'primary.main' }} />
-        <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-          {processingMessage || 'Processing...'}
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Please wait while we process your recipe
-        </Typography>
-      </DialogContent>
-    </DialogAnimate>
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 // @mui
-import { Box, Stack, Typography, IconButton, Card, alpha, Chip, useTheme, MenuItem, MenuList, Divider, LinearProgress } from '@mui/material';
+import { Box, Stack, Typography, IconButton, Card, alpha, Chip, useTheme, MenuItem, MenuList, Divider } from '@mui/material';
 // components
 import Iconify from '../../../../components/iconify';
 import MenuPopover from '../../../../components/menu-popover';
@@ -21,8 +21,6 @@ type Props = {
   onTypeChange: (type: 'preparation' | 'presentation') => void;
   error?: boolean;
   helperText?: string;
-  uploadProgress?: number;
-  isUploading?: boolean;
 };
 
 export default function VideoUploadZone({ 
@@ -31,9 +29,7 @@ export default function VideoUploadZone({
   onRemove, 
   onTypeChange,
   error, 
-  helperText,
-  uploadProgress = 0,
-  isUploading = false,
+  helperText 
 }: Props) {
   const theme = useTheme();
   const [openPopover, setOpenPopover] = useState<HTMLElement | null>(null);
@@ -204,67 +200,6 @@ export default function VideoUploadZone({
                 >
                   <track kind="captions" />
                 </video>
-
-                {/* Upload Progress Overlay */}
-                {isUploading && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      bgcolor: alpha(theme.palette.grey[900], 0.8),
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 10,
-                      p: 3,
-                    }}
-                  >
-                    <Iconify
-                      icon="eva:cloud-upload-outline"
-                      width={40}
-                      sx={{ color: theme.palette.common.white, mb: 2 }}
-                    />
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: theme.palette.common.white,
-                        mb: 2,
-                        textAlign: 'center',
-                        fontWeight: 600,
-                      }}
-                    >
-                      Uploading video...
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={uploadProgress}
-                      sx={{
-                        width: '100%',
-                        maxWidth: 200,
-                        height: 8,
-                        borderRadius: 4,
-                        bgcolor: alpha(theme.palette.common.white, 0.2),
-                        '& .MuiLinearProgress-bar': {
-                          borderRadius: 4,
-                        },
-                      }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: theme.palette.common.white,
-                        mt: 1.5,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {Math.round(uploadProgress)}%
-                    </Typography>
-                  </Box>
-                )}
 
                 {/* Video Type Badge */}
                 <Box
