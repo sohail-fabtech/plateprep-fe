@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -26,8 +26,12 @@ import { IRestaurantLocation, IRestaurantLocationForm, ISocialMedia } from '../.
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
+import { ProcessingDialog } from '../../../components/processing-dialog';
 // validation
 import RestaurantLocationValidationSchema from './RestaurantLocationValidation';
+// services
+import { useCreateBranch, useUpdateBranch } from '../../../services';
+import { transformSocialMediaToApiFormat } from '../../../services/branches/branchService';
 
 // ----------------------------------------------------------------------
 
@@ -70,6 +74,20 @@ export default function RestaurantLocationNewEditForm({ isEdit = false, currentL
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
 
+  const createBranchMutation = useCreateBranch();
+  const updateBranchMutation = useUpdateBranch();
+
+  // Processing dialog state
+  const [processingDialog, setProcessingDialog] = useState<{
+    open: boolean;
+    state: 'processing' | 'success' | 'error';
+    message: string;
+  }>({
+    open: false,
+    state: 'processing',
+    message: '',
+  });
+
   const defaultValues = useMemo<IRestaurantLocationForm>(
     () => ({
       branchName: currentLocation?.branchName || '',
@@ -107,24 +125,104 @@ export default function RestaurantLocationNewEditForm({ isEdit = false, currentL
   }, [isEdit, currentLocation, reset, defaultValues]);
 
   const onSubmit = async (data: IRestaurantLocationForm) => {
+    // Show processing dialog
+    setProcessingDialog({
+      open: true,
+      state: 'processing',
+      message: isEdit ? 'Updating location...' : 'Creating location...',
+    });
+
     try {
+      // Transform social media from array to object format
+      const socialMediaObject = transformSocialMediaToApiFormat(data.socialMedia);
+
       // Transform to API payload format
+      // Convert empty strings to null for optional fields
       const apiPayload = {
-        branch_name: data.branchName,
-        branch_location: data.branchLocation,
-        phone_number: data.phoneNumber,
-        email: data.email,
-        social_media: JSON.stringify(data.socialMedia),
+        branch_name: data.branchName.trim(),
+        branch_location: data.branchLocation?.trim() || null,
+        phone_number: data.phoneNumber?.trim() || null,
+        email: data.email?.trim() || null,
+        social_media: socialMediaObject,
       };
 
-      console.log('RESTAURANT LOCATION API PAYLOAD:', apiPayload);
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      enqueueSnackbar(!isEdit ? 'Location created successfully!' : 'Location updated successfully!');
-      navigate(PATH_DASHBOARD.restaurantLocation.list);
-    } catch (error) {
-      console.error(error);
-      enqueueSnackbar('Something went wrong!', { variant: 'error' });
+      if (isEdit && currentLocation?.id) {
+        // Update existing branch
+        await updateBranchMutation.mutateAsync({
+          id: currentLocation.id,
+          data: apiPayload,
+        });
+        // Show success
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'Location updated successfully!',
+        });
+        // Navigate after a short delay to show success message
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.restaurantLocation.list);
+        }, 1500);
+      } else {
+        // Create new branch
+        await createBranchMutation.mutateAsync(apiPayload);
+        // Show success
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'Location created successfully!',
+        });
+        // Navigate after a short delay to show success message
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.restaurantLocation.list);
+        }, 1500);
+      }
+    } catch (error: any) {
+      console.error('Error saving location:', error);
+      
+      // Extract error data - handle both axios interceptor format and direct error
+      const errorData = error?.response?.data || error?.data || error;
+      let errorMessage = 'Failed to save location. Please try again.';
+      
+      // Handle different error formats
+      if (typeof errorData === 'string') {
+        // Direct string error
+        errorMessage = errorData;
+      } else if (errorData && typeof errorData === 'object') {
+        // Check for detail field (general error)
+        if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } 
+        // Check for non_field_errors (general validation errors)
+        else if (errorData.non_field_errors) {
+          const nonFieldErrors = Array.isArray(errorData.non_field_errors)
+            ? errorData.non_field_errors
+            : [errorData.non_field_errors];
+          errorMessage = nonFieldErrors[0];
+        }
+        // Handle field-specific errors
+        else {
+          const fieldErrors = Object.entries(errorData)
+            .map(([field, messages]: [string, any]) => {
+              const msg = Array.isArray(messages) ? messages[0] : messages;
+              return `${field}: ${msg}`;
+            })
+            .join(', ');
+          if (fieldErrors) {
+            errorMessage = fieldErrors;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      // Show error in processing dialog
+      setProcessingDialog({
+        open: true,
+        state: 'error',
+        message: errorMessage,
+      });
     }
   };
 
@@ -164,8 +262,15 @@ export default function RestaurantLocationNewEditForm({ isEdit = false, currentL
   }, [values.socialMedia, setValue]);
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
+    <>
+      <ProcessingDialog
+        open={processingDialog.open}
+        state={processingDialog.state}
+        message={processingDialog.message}
+        onClose={() => setProcessingDialog({ open: false, state: 'processing', message: '' })}
+      />
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
         {/* Basic Information */}
         <Grid item xs={12}>
@@ -458,7 +563,7 @@ export default function RestaurantLocationNewEditForm({ isEdit = false, currentL
               type="submit"
               variant="contained"
               size="large"
-              loading={isSubmitting}
+              loading={isSubmitting || createBranchMutation.isPending || updateBranchMutation.isPending}
               sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 140 } }}
             >
               {isEdit ? 'Update Location' : 'Add Location'}
@@ -466,8 +571,9 @@ export default function RestaurantLocationNewEditForm({ isEdit = false, currentL
           </Stack>
         </Grid>
       </Grid>
-    </FormProvider>
-    </DragDropContext>
+        </FormProvider>
+      </DragDropContext>
+    </>
   );
 }
 

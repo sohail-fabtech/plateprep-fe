@@ -1,14 +1,14 @@
 import { Helmet } from 'react-helmet-async';
 import { useParams } from 'react-router-dom';
 // @mui
-import { Container } from '@mui/material';
+import { Container, CircularProgress, Alert, Box } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
-// _mock_
-import { _restaurantLocationList } from '../../_mock/arrays';
 // components
 import { useSettingsContext } from '../../components/settings';
 import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
+// services
+import { useBranch } from '../../services';
 // sections
 import RestaurantLocationNewEditForm from '../../sections/@dashboard/restaurantLocation/RestaurantLocationNewEditForm';
 
@@ -19,7 +19,24 @@ export default function RestaurantLocationEditPage() {
 
   const { id } = useParams();
 
-  const currentLocation = _restaurantLocationList.find((location) => location.id === Number(id));
+  // Fetch branch using TanStack Query
+  const { data: currentBranch, isLoading, isError, error } = useBranch(id);
+
+  // Transform IBranch to IRestaurantLocation format for the form
+  const currentLocation = currentBranch
+    ? {
+        id: currentBranch.id,
+        branchName: currentBranch.branchName,
+        branchLocation: currentBranch.branchLocation || '',
+        phoneNumber: currentBranch.phoneNumber || '',
+        email: currentBranch.email || '',
+        socialMedia: currentBranch.socialMedia || [],
+        restaurantName: currentBranch.restaurantName,
+        createdAt: currentBranch.createdAt,
+        updatedAt: currentBranch.updatedAt,
+        isDeleted: currentBranch.isDeleted,
+      }
+    : undefined;
 
   return (
     <>
@@ -39,11 +56,21 @@ export default function RestaurantLocationEditPage() {
               name: 'Restaurant Locations',
               href: PATH_DASHBOARD.restaurantLocation.root,
             },
-            { name: currentLocation?.branchName || 'Edit' },
+            { name: currentLocation?.branchName || 'Loading...' },
           ]}
         />
 
-        <RestaurantLocationNewEditForm isEdit currentLocation={currentLocation} />
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+            <CircularProgress />
+          </Box>
+        ) : isError ? (
+          <Alert severity="error">
+            {error instanceof Error ? error.message : 'Failed to load location. Please try again.'}
+          </Alert>
+        ) : currentLocation ? (
+          <RestaurantLocationNewEditForm isEdit currentLocation={currentLocation} />
+        ) : null}
       </Container>
     </>
   );

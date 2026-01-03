@@ -62,7 +62,16 @@ export {
 } from './locations/locationHooks';
 
 // Export Branch hooks
-export { useBranches, branchKeys } from './branches/branchHooks';
+export {
+  useBranches,
+  useBranch,
+  useCreateBranch,
+  useUpdateBranch,
+  useArchiveBranch,
+  useRestoreBranch,
+  usePermanentlyDeleteBranch,
+  branchKeys,
+} from './branches/branchHooks';
 
 // Export Branch types
 export type { BranchQueryParams, BranchListResponse, IBranch } from './branches/branchService';

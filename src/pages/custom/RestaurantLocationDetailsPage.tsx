@@ -28,12 +28,12 @@ import { useSnackbar } from '../../components/snackbar';
 import SvgColor from '../../components/svg-color';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
-// utils
-import { fetchRestaurantLocationById } from '../../utils/restaurantLocationAdapter';
+// hooks
+import { usePermissions } from '../../hooks/usePermissions';
+// services
+import { useBranch, useUpdateBranch } from '../../services';
 // types
 import { IRestaurantLocation } from '../../@types/restaurantLocation';
-// mock
-import { _restaurantLocationList } from '../../_mock/arrays';
 // sections
 import EditableField from '../../sections/@dashboard/recipe/EditableField';
 
@@ -60,52 +60,40 @@ export default function RestaurantLocationDetailsPage() {
   const { themeStretch } = useSettingsContext();
   const { enqueueSnackbar } = useSnackbar();
   const { user } = useAuthContext();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
 
   const [locationData, setLocationData] = useState<IRestaurantLocation | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<TabValue>('users');
 
-  // Check if user has edit permission
-  const canEdit = user?.role === 'admin' || user?.role === 'manager';
+  // Permission-based check for edit functionality
+  const canEdit = hasPermission('edit_branches');
 
-  // Fetch location data
+  // Fetch location data using TanStack Query
+  const { data: branchDataFromApi, isLoading: loading, isError, error: queryError } = useBranch(id);
+  const updateBranchMutation = useUpdateBranch();
+
+  const error = isError ? (queryError instanceof Error ? queryError.message : 'Failed to load location') : null;
+
+  // Transform API response to IRestaurantLocation format
   useEffect(() => {
-    async function loadLocation() {
-      if (!id) return;
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Try to fetch from API first, fallback to mock data
-        try {
-          const location = await fetchRestaurantLocationById(id);
-          setLocationData(location);
-        } catch (apiError) {
-          console.warn('API unavailable, using mock data:', apiError);
-          // Fallback to mock data
-          const mockLocation = _restaurantLocationList.find((loc) => loc.id === Number(id));
-          if (mockLocation) {
-            setLocationData(mockLocation);
-          } else {
-            throw new Error('Location not found');
-          }
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error('Error loading location:', err);
-        setError('Failed to load location');
-        setLoading(false);
-        enqueueSnackbar('Failed to load location', { variant: 'error' });
-      }
+    if (branchDataFromApi) {
+      const transformedData: IRestaurantLocation = {
+        id: branchDataFromApi.id,
+        branchName: branchDataFromApi.branchName,
+        branchLocation: branchDataFromApi.branchLocation || '',
+        phoneNumber: branchDataFromApi.phoneNumber || '',
+        email: branchDataFromApi.email || '',
+        socialMedia: branchDataFromApi.socialMedia || [],
+        restaurantName: branchDataFromApi.restaurantName,
+        createdAt: branchDataFromApi.createdAt,
+        updatedAt: branchDataFromApi.updatedAt,
+        isDeleted: branchDataFromApi.isDeleted,
+      };
+      setLocationData(transformedData);
     }
-
-    loadLocation();
-  }, [id, enqueueSnackbar]);
+  }, [branchDataFromApi]);
 
   // Handle field edit
   const handleFieldEdit = useCallback((fieldName: string) => {
@@ -115,34 +103,67 @@ export default function RestaurantLocationDetailsPage() {
   // Handle field save
   const handleFieldSave = useCallback(
     async (fieldName: string, value: string | number | string[]) => {
-      if (!locationData) return;
+      if (!locationData || !id) return;
 
-      console.group('✏️ [RESTAURANT LOCATION FIELD EDIT]');
-      console.log('Field Name:', fieldName);
-      console.log('New Value:', value);
-      console.log('Location ID:', locationData.id);
-      console.log('Location Name:', locationData.branchName);
-      console.log('Timestamp:', new Date().toISOString());
-      console.log('User:', user?.email || 'Unknown');
-      console.groupEnd();
+      // Prevent multiple simultaneous calls
+      if (updateBranchMutation.isPending) {
+        return;
+      }
 
       try {
-        setLocationData((prev) => {
-          if (!prev) return prev;
-          return { ...prev, [fieldName]: value };
+        // Map UI field names to API field names
+        const apiFieldMap: Record<string, string> = {
+          branchName: 'branch_name',
+          branchLocation: 'branch_location',
+          phoneNumber: 'phone_number',
+          email: 'email',
+        };
+
+        const apiFieldName = apiFieldMap[fieldName];
+        if (!apiFieldName) {
+          console.error('Unknown field name:', fieldName);
+          enqueueSnackbar('Unknown field', { variant: 'error' });
+          return;
+        }
+
+        // Prepare update data
+        const updateData: Record<string, any> = {
+          [apiFieldName]: value,
+        };
+
+        // Call API to update branch
+        const updatedBranch = await updateBranchMutation.mutateAsync({
+          id: locationData.id,
+          data: updateData,
         });
 
+        // Update local state with transformed API response
+        const transformedData: IRestaurantLocation = {
+          id: updatedBranch.id,
+          branchName: updatedBranch.branchName,
+          branchLocation: updatedBranch.branchLocation || '',
+          phoneNumber: updatedBranch.phoneNumber || '',
+          email: updatedBranch.email || '',
+          socialMedia: updatedBranch.socialMedia || [],
+          restaurantName: updatedBranch.restaurantName,
+          createdAt: updatedBranch.createdAt,
+          updatedAt: updatedBranch.updatedAt,
+          isDeleted: updatedBranch.isDeleted,
+        };
+
+        setLocationData(transformedData);
         setEditingField(null);
         enqueueSnackbar('Field updated successfully!', { variant: 'success' });
-
-        // TODO: Make API call here
-        console.log(`✅ [FIELD SAVED] ${fieldName}:`, value);
       } catch (err) {
         console.error('Error saving field:', err);
-        enqueueSnackbar('Failed to update field', { variant: 'error' });
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : 'Failed to update field. Please try again.';
+        enqueueSnackbar(errorMessage, { variant: 'error' });
       }
     },
-    [locationData, user, enqueueSnackbar]
+    [locationData, id, updateBranchMutation, enqueueSnackbar]
   );
 
   // Handle field cancel

@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 // @mui
 import {
@@ -16,13 +16,24 @@ import {
   Typography,
   TableRow,
   TableCell,
+  Alert,
+  LinearProgress,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // @types
 import { IRestaurantLocation, IRestaurantLocationFilterStatus } from '../../@types/restaurantLocation';
-// _mock_
-import { _restaurantLocationList } from '../../_mock/arrays';
+// services
+import {
+  useBranches,
+  useArchiveBranch,
+  useRestoreBranch,
+  usePermanentlyDeleteBranch,
+  BranchQueryParams,
+  BranchListResponse,
+} from '../../services';
+// hooks
+import { useDebounce } from '../../hooks/useDebounce';
 // components
 import Iconify from '../../components/iconify';
 import Scrollbar from '../../components/scrollbar';
@@ -37,7 +48,11 @@ import {
   TablePaginationCustom,
 } from '../../components/table';
 // sections
-import { RestaurantLocationTableRow, RestaurantLocationTableToolbar } from '../../sections/@dashboard/restaurantLocation/list';
+import {
+  RestaurantLocationTableRow,
+  RestaurantLocationTableToolbar,
+  RestaurantLocationTableSkeleton,
+} from '../../sections/@dashboard/restaurantLocation/list';
 import { useSnackbar } from '../../components/snackbar';
 
 // ----------------------------------------------------------------------
@@ -64,6 +79,7 @@ const TABLE_HEAD = [
   { id: 'branchLocation', label: 'Address', align: 'left' },
   { id: 'phoneNumber', label: 'Phone Number', align: 'left' },
   { id: 'socialLinks', label: 'Social Links', align: 'left' },
+  { id: 'archiveStatus', label: 'Archive Status', align: 'left' },
   { id: '', label: 'Action', align: 'right' },
 ];
 
@@ -74,6 +90,7 @@ const DEFAULT_COLUMN_VISIBILITY = {
   branchLocation: true,
   phoneNumber: true,
   socialLinks: true,
+  archiveStatus: true,
 };
 
 // LocalStorage keys specific to restaurant location table
@@ -105,7 +122,7 @@ export default function RestaurantLocationListPage() {
     onChangeDense,
     onChangePage,
     onChangeRowsPerPage,
-  } = useTable({ 
+  } = useTable({
     defaultOrderBy: 'branchName',
     defaultDense: getDenseFromStorage(),
   });
@@ -114,9 +131,18 @@ export default function RestaurantLocationListPage() {
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
 
-  const [tableData, setTableData] = useState(_restaurantLocationList);
   const [filterName, setFilterName] = useState('');
   const [filterStatus, setFilterStatus] = useState<IRestaurantLocationFilterStatus>('all');
+  const [loadingBranchId, setLoadingBranchId] = useState<number | null>(null);
+
+  // Debounce search input (500ms delay)
+  const debouncedFilterName = useDebounce(filterName, 500);
+
+  // Reset to page 0 when debounced search value changes
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedFilterName, setPage]);
+
   // Initialize column visibility from localStorage
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
     try {
@@ -146,16 +172,66 @@ export default function RestaurantLocationListPage() {
     }
   }, [dense]);
 
-  const dataFiltered = applySortFilter({
-    tableData,
-    comparator: getComparator(order, orderBy),
-    filterName,
-    filterStatus,
-  });
+  // Build API query params from UI filters
+  const queryParams: BranchQueryParams = useMemo(() => {
+    const params: BranchQueryParams = {};
+
+    // Common filters for all tabs
+    params.page = page + 1; // API uses 1-based pagination
+    params.page_size = rowsPerPage;
+    params.ordering = orderBy ? `${order === 'desc' ? '-' : ''}${orderBy}` : '-created_at';
+
+    // Search parameter - use debounced value
+    if (debouncedFilterName) {
+      params.search = debouncedFilterName;
+    }
+
+    // Status filter mapping - only for non-"all" tabs
+    if (filterStatus === 'archived') {
+      params.is_archived = true;
+    } else if (filterStatus === 'active') {
+      params.is_archived = false;
+    }
+    // For "all" tab, don't send is_archived (shows both active and archived)
+
+    return params;
+  }, [debouncedFilterName, filterStatus, page, rowsPerPage, order, orderBy]);
+
+  // Fetch branches using TanStack Query
+  const { data, isLoading, isFetching, isError, error } = useBranches(queryParams) as {
+    data: BranchListResponse | undefined;
+    isLoading: boolean;
+    isFetching: boolean;
+    isError: boolean;
+    error: Error | null;
+  };
+
+  // Transform API data to IRestaurantLocation format for table
+  const tableData: IRestaurantLocation[] = useMemo(() => {
+    if (!data?.results) return [];
+
+    return data.results.map((branch) => ({
+      id: branch.id,
+      branchName: branch.branchName,
+      branchLocation: branch.branchLocation || '',
+      phoneNumber: branch.phoneNumber || '',
+      email: branch.email || '',
+      socialMedia: branch.socialMedia || [],
+      restaurantName: branch.restaurantName,
+      createdAt: branch.createdAt,
+      updatedAt: branch.updatedAt,
+      isDeleted: branch.isDeleted,
+    }));
+  }, [data]);
+
+  // Mutation hooks
+  const archiveMutation = useArchiveBranch();
+  const restoreMutation = useRestoreBranch();
+  const permanentDeleteMutation = usePermanentlyDeleteBranch();
 
   const isFiltered = filterName !== '';
 
-  const isNotFound = (!dataFiltered.length && !!filterName) || (!dataFiltered.length && isFiltered);
+  const isNotFound = !isLoading && !isFetching && tableData.length === 0;
 
   const denseHeight = dense ? 52 : 72;
 
@@ -180,22 +256,60 @@ export default function RestaurantLocationListPage() {
     navigate(PATH_DASHBOARD.restaurantLocation.edit(id.toString()));
   };
 
-  const handleDeleteRow = (id: number) => {
-    const deleteRow = tableData.filter((row) => row.id !== id);
-    setTableData(deleteRow);
-    enqueueSnackbar('Location deleted successfully!', { variant: 'success' });
+  const handleDeleteRow = async (id: number) => {
+    setLoadingBranchId(id);
+    try {
+      await permanentDeleteMutation.mutateAsync(id);
+      enqueueSnackbar('Location deleted permanently', { variant: 'success' });
+    } catch (error) {
+      console.error('Error permanently deleting location:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete location. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingBranchId(null);
+    }
   };
 
-  const handleArchiveRow = (id: number) => {
-    const updatedData = tableData.map((row) =>
-      row.id === id ? { ...row, isDeleted: true } : row
-    );
-    setTableData(updatedData);
-    enqueueSnackbar('Location archived successfully!', { variant: 'success' });
+  const handleArchiveRow = async (id: number) => {
+    setLoadingBranchId(id);
+    try {
+      await archiveMutation.mutateAsync(id);
+      enqueueSnackbar('Location archived successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error archiving location:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to archive location. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingBranchId(null);
+    }
+  };
+
+  const handleRestoreRow = async (id: number) => {
+    setLoadingBranchId(id);
+    try {
+      await restoreMutation.mutateAsync(id);
+      enqueueSnackbar('Location restored successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error restoring location:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to restore location. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingBranchId(null);
+    }
   };
 
   const handleResetFilter = () => {
     setFilterName('');
+    setPage(0);
   };
 
   const handleToggleColumn = (columnId: string) => {
@@ -263,6 +377,14 @@ export default function RestaurantLocationListPage() {
             formInputSx={FORM_INPUT_SX}
           />
 
+          {(isLoading || isFetching) && <LinearProgress />}
+
+          {isError && (
+            <Alert severity="error" sx={{ m: 2 }}>
+              {error instanceof Error ? error.message : 'Failed to load locations. Please try again.'}
+            </Alert>
+          )}
+
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
             <Scrollbar sx={{ maxWidth: '100%' }}>
               <Table sx={{ minWidth: { xs: 800, md: 960 } }}>
@@ -293,53 +415,67 @@ export default function RestaurantLocationListPage() {
                 />
 
                 <TableBody>
-                  {dataFiltered
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row) => (
-                      <RestaurantLocationTableRow
-                        key={row.id}
-                        row={row}
-                        onViewRow={() => handleViewRow(row.id)}
-                        onEditRow={() => handleEditRow(row.id)}
-                        onDeleteRow={() => handleDeleteRow(row.id)}
-                        onArchiveRow={() => handleArchiveRow(row.id)}
-                        filterStatus={filterStatus}
-                        columnVisibility={columnVisibility}
-                        dense={dense}
+                  {isLoading || isFetching ? (
+                    <>
+                      {[...Array(rowsPerPage)].map((_, index) => (
+                        <RestaurantLocationTableSkeleton
+                          key={`skeleton-${index}`}
+                          columnVisibility={columnVisibility}
+                          dense={dense}
+                        />
+                      ))}
+                    </>
+                  ) : isError ? null : (
+                    <>
+                      {tableData.map((row) => (
+                        <RestaurantLocationTableRow
+                          key={row.id}
+                          row={row}
+                          onViewRow={() => handleViewRow(row.id)}
+                          onEditRow={() => handleEditRow(row.id)}
+                          onDeleteRow={() => handleDeleteRow(row.id)}
+                          onArchiveRow={() => handleArchiveRow(row.id)}
+                          onRestoreRow={() => handleRestoreRow(row.id)}
+                          filterStatus={filterStatus}
+                          columnVisibility={columnVisibility}
+                          dense={dense}
+                          isLoading={loadingBranchId === row.id}
+                        />
+                      ))}
+
+                      <TableEmptyRows
+                        height={denseHeight}
+                        emptyRows={emptyRows(page, rowsPerPage, tableData.length)}
                       />
-                    ))}
 
-                  <TableEmptyRows
-                    height={denseHeight}
-                    emptyRows={emptyRows(page, rowsPerPage, dataFiltered.length)}
-                  />
-
-                  {isNotFound && (
-                    <TableRow>
-                      <TableCell colSpan={6} sx={{ py: 10 }}>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography
-                            variant="h6"
-                            paragraph
-                            sx={{
-                              fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' },
-                              fontWeight: 700,
-                            }}
-                          >
-                            No results found
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: 'text.secondary',
-                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                            }}
-                          >
-                            Try adjusting your search or filter to find what you are looking for.
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
+                      {isNotFound && (
+                        <TableRow>
+                          <TableCell colSpan={7} sx={{ py: 10 }}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography
+                                variant="h6"
+                                paragraph
+                                sx={{
+                                  fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' },
+                                  fontWeight: 700,
+                                }}
+                              >
+                                No results found
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: 'text.secondary',
+                                  fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                                }}
+                              >
+                                Try adjusting your search or filter to find what you are looking for.
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   )}
                 </TableBody>
               </Table>
@@ -347,7 +483,7 @@ export default function RestaurantLocationListPage() {
           </TableContainer>
 
           <TablePaginationCustom
-            count={dataFiltered.length}
+            count={data?.count || 0}
             page={page}
             rowsPerPage={rowsPerPage}
             onPageChange={onChangePage}
@@ -364,48 +500,4 @@ export default function RestaurantLocationListPage() {
       </Container>
     </>
   );
-}
-
-// ----------------------------------------------------------------------
-
-function applySortFilter({
-  tableData,
-  comparator,
-  filterName,
-  filterStatus,
-}: {
-  tableData: IRestaurantLocation[];
-  comparator: (a: any, b: any) => number;
-  filterName: string;
-  filterStatus: IRestaurantLocationFilterStatus;
-}) {
-  const stabilizedThis = tableData.map((el, index) => [el, index] as const);
-
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
-
-  let dataFiltered = stabilizedThis.map((el) => el[0]);
-
-  // Filter by status
-  if (filterStatus === 'archived') {
-    dataFiltered = dataFiltered.filter((location) => location.isDeleted);
-  } else if (filterStatus === 'active') {
-    dataFiltered = dataFiltered.filter((location) => !location.isDeleted);
-  } else if (filterStatus === 'all') {
-    dataFiltered = dataFiltered.filter((location) => !location.isDeleted);
-  }
-
-  // Filter by search name (searches both location name and address)
-  if (filterName) {
-    dataFiltered = dataFiltered.filter(
-      (location) =>
-        location.branchName.toLowerCase().indexOf(filterName.toLowerCase()) !== -1 ||
-        location.branchLocation.toLowerCase().indexOf(filterName.toLowerCase()) !== -1
-    );
-  }
-
-  return dataFiltered;
 }

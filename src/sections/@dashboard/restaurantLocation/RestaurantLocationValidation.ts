@@ -7,29 +7,29 @@ export const RestaurantLocationValidationSchema = Yup.object().shape({
   branchName: Yup.string()
     .required('Location name is required')
     .trim()
-    .min(2, 'Location name must be at least 2 characters')
-    .max(100, 'Location name must not exceed 100 characters'),
+    .min(1, 'Location name is required')
+    .max(255, 'Location name must not exceed 255 characters'),
   
+  // ===== OPTIONAL FIELDS WITH VALIDATION =====
   branchLocation: Yup.string()
-    .required('Address is required')
+    .nullable()
     .trim()
-    .min(5, 'Address must be at least 5 characters')
-    .max(200, 'Address must not exceed 200 characters'),
+    .max(255, 'Address must not exceed 255 characters')
+    .transform((value, originalValue) => (originalValue === '' ? null : value)),
   
   phoneNumber: Yup.string()
-    .required('Phone number is required')
+    .nullable()
     .trim()
-    .matches(/^[\d\s\-\+\(\)]+$/, 'Please enter a valid phone number')
-    .min(10, 'Phone number must be at least 10 characters')
-    .max(20, 'Phone number must not exceed 20 characters'),
+    .matches(/^[\d\s\-\+\(\)]*$/, 'Please enter a valid phone number')
+    .max(20, 'Phone number must not exceed 20 characters')
+    .transform((value, originalValue) => (originalValue === '' ? null : value)),
   
   email: Yup.string()
-    .required('Email is required')
+    .nullable()
     .email('Please enter a valid email address')
     .trim()
-    .max(100, 'Email must not exceed 100 characters'),
-
-  // ===== OPTIONAL FIELDS WITH VALIDATION =====
+    .max(254, 'Email must not exceed 254 characters')
+    .transform((value, originalValue) => (originalValue === '' ? null : value)),
   
   socialMedia: Yup.array()
     .of(

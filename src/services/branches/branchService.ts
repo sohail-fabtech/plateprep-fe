@@ -9,7 +9,7 @@ export interface IBranch {
   branchLocation: string | null;
   phoneNumber: string | null;
   email: string | null;
-  socialMedia: Record<string, string> | null;
+  socialMedia: Array<{ name: string; url: string }> | null;
   restaurantName: string;
   createdAt: string;
   updatedAt: string;
@@ -22,8 +22,9 @@ export interface IBranchApiResponse {
   branch_location: string | null;
   phone_number: string | null;
   email: string | null;
-  social_media: Record<string, string> | null;
+  social_media: Record<string, string> | null; // Object format: { "whatsapp": "url", "instagram": "url" }
   restaurant_name: string;
+  total_social_links?: string[];
   created_at: string;
   updated_at: string;
   is_deleted: boolean;
@@ -61,13 +62,27 @@ export interface BranchListResponse {
  * Transform API response to internal format
  */
 function transformApiResponseToBranch(apiResponse: IBranchApiResponse): IBranch {
+  // Convert social_media object format to array format for UI
+  // API sends: { "whatsapp": "url", "instagram": "url" }
+  // UI needs: [{ name: "whatsapp", url: "url" }, { name: "instagram", url: "url" }]
+  let socialMediaArray: Array<{ name: string; url: string }> = [];
+  
+  if (apiResponse.social_media && typeof apiResponse.social_media === 'object') {
+    socialMediaArray = Object.entries(apiResponse.social_media)
+      .map(([name, url]) => ({
+        name,
+        url,
+      }))
+      .filter((item) => item.name && item.url);
+  }
+
   return {
     id: apiResponse.id,
     branchName: apiResponse.branch_name,
     branchLocation: apiResponse.branch_location,
     phoneNumber: apiResponse.phone_number,
     email: apiResponse.email,
-    socialMedia: apiResponse.social_media,
+    socialMedia: socialMediaArray.length > 0 ? socialMediaArray : null,
     restaurantName: apiResponse.restaurant_name,
     createdAt: apiResponse.created_at,
     updatedAt: apiResponse.updated_at,
@@ -102,5 +117,94 @@ export async function getBranches(params?: BranchQueryParams): Promise<BranchLis
     page: response.data.page,
     results: (response.data.results || []).map(transformApiResponseToBranch),
   };
+}
+
+/**
+ * Fetch branch by ID
+ */
+export async function getBranchById(id: string | number): Promise<IBranch> {
+  const response = await axiosInstance.get<IBranchApiResponse>(`/branches/${id}/`);
+  return transformApiResponseToBranch(response.data);
+}
+
+export interface RestoreBranchResponse {
+  message: string;
+  branch: IBranchApiResponse;
+}
+
+export interface PermanentlyDeleteBranchResponse {
+  message: string;
+}
+
+/**
+ * Archive branch (soft delete)
+ */
+export async function archiveBranch(id: string | number): Promise<void> {
+  await axiosInstance.delete(`/branches/${id}/`);
+}
+
+/**
+ * Restore archived branch
+ */
+export async function restoreBranch(id: string | number): Promise<RestoreBranchResponse> {
+  const response = await axiosInstance.post<RestoreBranchResponse>(`/branches/${id}/restore/`, {});
+  return response.data;
+}
+
+/**
+ * Permanently delete branch
+ */
+export async function permanentlyDeleteBranch(id: string | number): Promise<PermanentlyDeleteBranchResponse> {
+  const response = await axiosInstance.post<PermanentlyDeleteBranchResponse>(`/branches/${id}/delete/`, {});
+  return response.data;
+}
+
+/**
+ * Transform social media from array format to object format for API
+ */
+export function transformSocialMediaToApiFormat(
+  socialMedia: Array<{ name: string; url: string }> | null
+): Record<string, string> | null {
+  if (!socialMedia || socialMedia.length === 0) return null;
+  
+  const result: Record<string, string> = {};
+  socialMedia.forEach((item) => {
+    if (item.name && item.url) {
+      result[item.name] = item.url;
+    }
+  });
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+export interface CreateBranchRequest {
+  branch_name: string;
+  branch_location?: string | null;
+  phone_number?: string | null;
+  email?: string | null;
+  social_media?: Record<string, string> | null;
+}
+
+export interface UpdateBranchRequest {
+  branch_name?: string;
+  branch_location?: string | null;
+  phone_number?: string | null;
+  email?: string | null;
+  social_media?: Record<string, string> | null;
+}
+
+/**
+ * Create new branch
+ */
+export async function createBranch(data: CreateBranchRequest): Promise<IBranch> {
+  const response = await axiosInstance.post<IBranchApiResponse>('/branches/', data);
+  return transformApiResponseToBranch(response.data);
+}
+
+/**
+ * Update branch fields
+ */
+export async function updateBranch(id: string | number, data: UpdateBranchRequest): Promise<IBranch> {
+  const response = await axiosInstance.patch<IBranchApiResponse>(`/branches/${id}/`, data);
+  return transformApiResponseToBranch(response.data);
 }
 
