@@ -51,6 +51,23 @@ export {
 // Export User types
 export type { UserQueryParams, UserListResponse } from './users/userHooks';
 
+// Export Role hooks
+export {
+  useRole,
+  useRoles,
+  useCreateRole,
+  useUpdateRole,
+  useDeleteRole,
+  useRestoreRole,
+  usePermanentlyDeleteRole,
+  usePermissions,
+  roleKeys,
+  permissionKeys,
+} from './roles/roleHooks';
+
+// Export Role types
+export type { RoleQueryParams, RoleListResponse } from './roles/roleHooks';
+
 // Export Location hooks
 export {
   useLocations,

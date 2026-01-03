@@ -37,6 +37,11 @@ import {
   UsersCreatePage,
   UsersEditPage,
   UserDetailsPage,
+  // Dashboard: Roles
+  RolesListPage,
+  RolesCreatePage,
+  RolesEditPage,
+  RoleDetailsPage,
   // Dashboard: Ecommerce
   EcommerceShopPage,
   EcommerceCheckoutPage,
@@ -286,6 +291,16 @@ export default function Router() {
             { path: 'create', element: <UsersCreatePage /> },
             { path: ':id', element: <UserDetailsPage /> },
             { path: ':id/edit', element: <UsersEditPage /> },
+          ],
+        },
+        {
+          path: 'roles',
+          children: [
+            { element: <Navigate to="/dashboard/roles/list" replace />, index: true },
+            { path: 'list', element: <RolesListPage /> },
+            { path: 'create', element: <RolesCreatePage /> },
+            { path: ':id', element: <RoleDetailsPage /> },
+            { path: ':id/edit', element: <RolesEditPage /> },
           ],
         },
         {

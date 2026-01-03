@@ -114,6 +114,10 @@ export const UsersListPage = Loadable(lazy(() => import('../pages/custom/UsersLi
 export const UsersCreatePage = Loadable(lazy(() => import('../pages/custom/UsersCreatePage')));
 export const UsersEditPage = Loadable(lazy(() => import('../pages/custom/UsersEditPage')));
 export const UserDetailsPage = Loadable(lazy(() => import('../pages/custom/UserDetailsPage')));
+export const RolesListPage = Loadable(lazy(() => import('../pages/custom/RolesListPage')));
+export const RolesCreatePage = Loadable(lazy(() => import('../pages/custom/RolesCreatePage')));
+export const RolesEditPage = Loadable(lazy(() => import('../pages/custom/RolesEditPage')));
+export const RoleDetailsPage = Loadable(lazy(() => import('../pages/custom/RoleDetailsPage')));
 export const RestaurantLocationListPage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationListPage')));
 export const RestaurantLocationCreatePage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationCreatePage')));
 export const RestaurantLocationEditPage = Loadable(lazy(() => import('../pages/custom/RestaurantLocationEditPage')));

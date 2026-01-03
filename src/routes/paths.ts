@@ -90,6 +90,13 @@ export const PATH_DASHBOARD = {
     view: (id: string) => path(ROOTS_DASHBOARD, `/users/${id}`),
     edit: (id: string) => path(ROOTS_DASHBOARD, `/users/${id}/edit`),
   },
+  roles: {
+    root: path(ROOTS_DASHBOARD, '/roles'),
+    list: path(ROOTS_DASHBOARD, '/roles/list'),
+    create: path(ROOTS_DASHBOARD, '/roles/create'),
+    view: (id: string) => path(ROOTS_DASHBOARD, `/roles/${id}`),
+    edit: (id: string) => path(ROOTS_DASHBOARD, `/roles/${id}/edit`),
+  },
   templates: {
     root: path(ROOTS_DASHBOARD, '/templates'),
     list: path(ROOTS_DASHBOARD, '/templates/list'),

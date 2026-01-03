@@ -42,6 +42,7 @@ const ICONS = {
   howto: icon('ic_howto'),
   videoGen: icon('ic_video_gen'),
   recipes: icon('ic_recipes'),
+  roles: icon('ic_lock'),
 };
 
 const navConfig = [
@@ -91,6 +92,12 @@ const navConfig = [
         path: PATH_DASHBOARD.users.root,
         icon: ICONS.user,
         permission: 'view_users',
+      },
+      {
+        title: 'Roles',
+        path: PATH_DASHBOARD.roles.root,
+        icon: ICONS.roles,
+        permission: 'view_roles',
       },
       {
         title: 'Templates',
