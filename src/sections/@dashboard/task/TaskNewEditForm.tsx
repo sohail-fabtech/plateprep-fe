@@ -90,7 +90,7 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
       video: null,
       priority: currentTask?.priority || 'medium',
       description: currentTask?.taskDescription || '',
-      status: currentTask?.status || 'draft',
+      status: currentTask?.status || 'pending',
     }),
     [currentTask]
   );
@@ -132,10 +132,6 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
     }
   };
 
-  const onSaveDraft = async () => {
-    setValue('status', 'draft');
-    handleSubmit(onSubmit)();
-  };
 
   const handleVideoUpload = (file: File) => {
     const url = URL.createObjectURL(file);

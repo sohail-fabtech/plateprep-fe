@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { useState, useMemo, useEffect } from 'react';
-import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 // @mui
 import {
   Tab,
@@ -35,10 +35,14 @@ import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 import { useSettingsContext } from '../../components/settings';
 import { SkeletonRecipeCard } from '../../components/skeleton';
 import { useSnackbar } from '../../components/snackbar';
+import { SubscriptionDialog } from '../../components/subscription-dialog';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
 import PermissionGuard from '../../auth/PermissionGuard';
 import { usePermissions } from '../../hooks/usePermissions';
+// hooks
+import { useBranchFilter } from '../../hooks/useBranchFilter';
+import { useSubscription } from '../../hooks/useSubscription';
 // sections
 import RecipeCard from '../../sections/@dashboard/recipe/RecipeCard';
 import { RecipeTableToolbar } from '../../sections/@dashboard/recipe/list';
@@ -71,7 +75,14 @@ export default function RecipesListPage() {
   const { user } = useAuthContext();
   const { hasPermission } = usePermissions();
   const { enqueueSnackbar } = useSnackbar();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { hasSubscription } = useSubscription();
+  const navigate = useNavigate();
+  
+  // Branch filter hook
+  const { filterBranch, setFilterBranch, branchIdForApi, showBranchFilter, hasLocationInUrl, locationFromUrl } = useBranchFilter();
+
+  // Subscription dialog state
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
 
   // Mutation hooks
   const archiveMutation = useDeleteRecipe();
@@ -115,21 +126,7 @@ export default function RecipesListPage() {
   const [filterName, setFilterName] = useState('');
   const [filterCuisine, setFilterCuisine] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterBranch, setFilterBranch] = useState<string | number | ''>('');
   const [page, setPage] = useState(1);
-
-  // Check if location is provided via URL query parameter
-  const locationFromUrl = searchParams.get('location');
-  const hasLocationInUrl = !!locationFromUrl;
-
-  // Initialize filterBranch from URL query parameter if present
-  useEffect(() => {
-    if (locationFromUrl) {
-      // Convert to number if it's a valid number, otherwise keep as string
-      const locationValue = /^\d+$/.test(locationFromUrl) ? parseInt(locationFromUrl, 10) : locationFromUrl;
-      setFilterBranch(locationValue);
-    }
-  }, [locationFromUrl]);
 
   // Fetch menu categories for cuisine filter
   const { data: menuCategories = [], isLoading: isLoadingCategories } = useMenuCategories();
@@ -152,25 +149,8 @@ export default function RecipesListPage() {
     return branch?.branchName || null;
   }, [hasLocationInUrl, locationFromUrl, branchesData]);
 
-  // Check if user is owner to show branch filter
+  // Check if user is owner (for isFiltered calculation)
   const isOwner = user?.is_owner === true;
-  
-  // Get branch ID from user profile if not owner
-  const userBranchId = user?.branch?.id;
-
-  // Determine which branch ID to use
-  // If location is in URL, use it; otherwise use normal logic
-  const branchIdForApi = useMemo(() => {
-    if (hasLocationInUrl && locationFromUrl) {
-      // Convert to number if it's a valid number, otherwise keep as string
-      return /^\d+$/.test(locationFromUrl) ? parseInt(locationFromUrl, 10) : locationFromUrl;
-    }
-    // If not in URL, use normal logic
-    return isOwner ? (filterBranch || undefined) : userBranchId;
-  }, [hasLocationInUrl, locationFromUrl, isOwner, filterBranch, userBranchId]);
-
-  // Show branch select only if user is owner AND location is NOT in URL
-  const showBranchFilter = isOwner && !hasLocationInUrl;
 
   // Build cuisine options from API data (no "all" option)
   const cuisineOptions = useMemo(() => {
@@ -262,7 +242,8 @@ export default function RecipesListPage() {
 
   const handleFilterBranch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPage(1);
-    setFilterBranch(event.target.value);
+    const value = event.target.value;
+    setFilterBranch(value === '' ? '' : (/^\d+$/.test(value) ? parseInt(value, 10) : value));
   };
 
   const handleArchiveRow = async (id: string) => {
@@ -348,6 +329,17 @@ export default function RecipesListPage() {
         <title> Recipe: List | Minimal UI</title>
       </Helmet>
 
+      <SubscriptionDialog
+        open={subscriptionDialogOpen}
+        message="You need an active subscription to create recipes. Please subscribe to continue."
+        buttonText="Subscribe Now"
+        onClose={() => setSubscriptionDialogOpen(false)}
+        onButtonClick={() => {
+          setSubscriptionDialogOpen(false);
+          navigate(PATH_DASHBOARD.subscription);
+        }}
+      />
+
       <Container maxWidth={themeStretch ? false : 'xl'}>
         <CustomBreadcrumbs
           heading="Recipe List"
@@ -359,10 +351,15 @@ export default function RecipesListPage() {
           action={
             <PermissionGuard permission="create_recipe">
               <Button
-                component={RouterLink}
-                to={PATH_DASHBOARD.recipes.new}
                 variant="contained"
                 startIcon={<Iconify icon="eva:plus-fill" />}
+                onClick={() => {
+                  if (!hasSubscription()) {
+                    setSubscriptionDialogOpen(true);
+                  } else {
+                    navigate(PATH_DASHBOARD.recipes.new);
+                  }
+                }}
               >
                 New Recipe
               </Button>

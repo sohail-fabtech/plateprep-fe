@@ -15,17 +15,21 @@ import {
 // components
 import Iconify from '../../../../components/iconify';
 import MenuPopover from '../../../../components/menu-popover';
+import BranchSelect from '../../../../components/branch-select/BranchSelect';
 
 // ----------------------------------------------------------------------
 
 type Props = {
   filterName: string;
   filterPriority: string;
+  filterBranch: string | number | '';
   isFiltered: boolean;
   optionsPriority: string[];
+  showBranchFilter?: boolean;
   onResetFilter: VoidFunction;
   onFilterName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterPriority: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onFilterBranch: (event: React.ChangeEvent<HTMLInputElement>) => void;
   columnVisibility: Record<string, boolean>;
   onToggleColumn: (columnId: string) => void;
   tableHead: { id: string; label?: string; tooltip?: string }[];
@@ -36,9 +40,12 @@ export default function TaskTableToolbar({
   isFiltered,
   filterName,
   filterPriority,
+  filterBranch,
   optionsPriority,
+  showBranchFilter = false,
   onFilterName,
   onFilterPriority,
+  onFilterBranch,
   onResetFilter,
   columnVisibility,
   onToggleColumn,
@@ -66,6 +73,15 @@ export default function TaskTableToolbar({
         }}
         sx={{ px: { xs: 2, sm: 2.5 }, py: { xs: 2, md: 3 } }}
       >
+        {showBranchFilter && (
+          <BranchSelect
+            value={filterBranch}
+            onChange={onFilterBranch}
+            label="Location"
+            formInputSx={formInputSx}
+          />
+        )}
+
         <TextField
           fullWidth
           select

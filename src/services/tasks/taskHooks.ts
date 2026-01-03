@@ -11,6 +11,9 @@ import {
   TaskQueryParams,
 } from './taskService';
 
+// Re-export TaskQueryParams for use in other modules
+export type { TaskQueryParams };
+
 // ----------------------------------------------------------------------
 
 /**

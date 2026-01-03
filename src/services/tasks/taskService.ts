@@ -11,6 +11,7 @@ export interface TaskQueryParams extends QueryParams {
   status?: string;
   priority?: string;
   staffId?: number;
+  branch?: number;
 }
 
 /**

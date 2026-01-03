@@ -39,6 +39,8 @@ import {
 // sections
 import { TaskTableRow, TaskTableToolbar } from '../../sections/@dashboard/task/list';
 import { useSnackbar } from '../../components/snackbar';
+// hooks
+import { useBranchFilter } from '../../hooks/useBranchFilter';
 
 // ----------------------------------------------------------------------
 
@@ -55,7 +57,7 @@ const FORM_INPUT_SX = {
   },
 };
 
-const STATUS_OPTIONS: ITaskFilterStatus[] = ['all', 'draft', 'active', 'archived'];
+const STATUS_OPTIONS: ITaskFilterStatus[] = ['all', 'active', 'archived'];
 
 const PRIORITY_OPTIONS = ['all', 'low', 'medium', 'high', 'urgent'];
 
@@ -116,6 +118,9 @@ export default function TasksListPage() {
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
 
+  // Branch filter hook
+  const { filterBranch, setFilterBranch, branchIdForApi, showBranchFilter } = useBranchFilter();
+
   const [tableData, setTableData] = useState(_taskList);
 
   const [filterName, setFilterName] = useState('');
@@ -161,7 +166,7 @@ export default function TasksListPage() {
     filterStatus,
   });
 
-  const isFiltered = filterName !== '' || filterPriority !== 'all';
+  const isFiltered = filterName !== '' || filterPriority !== 'all' || filterBranch !== '';
 
   const isNotFound = (!dataFiltered.length && !!filterName) || (!dataFiltered.length && isFiltered);
 
@@ -207,9 +212,15 @@ export default function TasksListPage() {
     enqueueSnackbar('Task archived successfully!', { variant: 'success' });
   };
 
+  const handleFilterBranch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPage(0);
+    setFilterBranch(event.target.value);
+  };
+
   const handleResetFilter = () => {
     setFilterName('');
     setFilterPriority('all');
+    setFilterBranch('');
   };
 
   const handleToggleColumn = (columnId: string) => {
@@ -270,9 +281,12 @@ export default function TasksListPage() {
             isFiltered={isFiltered}
             filterName={filterName}
             filterPriority={filterPriority}
+            filterBranch={filterBranch}
             optionsPriority={PRIORITY_OPTIONS}
+            showBranchFilter={showBranchFilter}
             onFilterName={handleFilterName}
             onFilterPriority={handleFilterPriority}
+            onFilterBranch={handleFilterBranch}
             onResetFilter={handleResetFilter}
             columnVisibility={columnVisibility}
             onToggleColumn={handleToggleColumn}
@@ -415,8 +429,6 @@ function applySortFilter({
     tableData = tableData.filter(
       (task) => !task.isArchived && (task.status === 'in-progress' || task.status === 'pending')
     );
-  } else if (filterStatus === 'draft') {
-    tableData = tableData.filter((task) => !task.isArchived && task.status === 'pending');
   } else if (filterStatus === 'all') {
     tableData = tableData.filter((task) => !task.isArchived);
   }

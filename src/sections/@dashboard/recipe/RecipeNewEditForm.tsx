@@ -37,6 +37,9 @@ import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
 import { ProcessingDialog } from '../../../components/processing-dialog';
+import BranchSelect from '../../../components/branch-select/BranchSelect';
+// hooks
+import { useBranchForm } from '../../../hooks/useBranchForm';
 // services
 import {
   useCreateRecipe,
@@ -166,6 +169,11 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   const { data: predefinedStarch = [], isLoading: isLoadingStarch } = useAllPredefinedStarch();
   const { data: predefinedVegetables = [], isLoading: isLoadingVegetables } = useAllPredefinedVegetables();
 
+  // Branch form hook
+  const { branchIdForApi, showBranchSelect, initialBranchId } = useBranchForm(
+    currentRecipe?.branchId ? String(currentRecipe.branchId) : ''
+  );
+
   // Build cuisine options from API
   const cuisineOptions = useMemo(() => {
     return menuCategories
@@ -198,7 +206,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       costPerServing: currentRecipe?.costing?.costPerServing || 0,
       station: currentRecipe?.station || '',
       youtubeUrl: currentRecipe?.youtubeUrl || '',
-      restaurantLocation: '',
+      restaurantLocation: initialBranchId ? String(initialBranchId) : '',
       caseCost: currentRecipe?.costing?.caseCost || 0,
       caseWeight: currentRecipe?.costing?.caseWeightLb || 0,
       servingWeight: currentRecipe?.costing?.servingWeightOz || 0,
@@ -223,7 +231,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       fullyPlatedImageIndex: -1,
       video: currentRecipe?.videoFile ? { url: currentRecipe.videoFile, name: 'video.mp4', type: 'preparation' as 'preparation' | 'presentation' } : null,
     }),
-    [currentRecipe]
+    [currentRecipe, initialBranchId]
   );
 
   const methods = useForm<FormValuesProps>({
@@ -361,8 +369,20 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
     (recipe as any).predefinedStarch = data.predefinedStarch || [];
     (recipe as any).predefinedVegetables = data.predefinedVegetable || [];
 
+    // Add branch ID - use branchIdForApi from hook if available, otherwise use form value
+    if (branchIdForApi) {
+      (recipe as any).branchId = branchIdForApi;
+    } else if (data.restaurantLocation) {
+      const branchValue = typeof data.restaurantLocation === 'string' 
+        ? (/^\d+$/.test(data.restaurantLocation) ? parseInt(data.restaurantLocation, 10) : undefined)
+        : data.restaurantLocation;
+      if (branchValue) {
+        (recipe as any).branchId = branchValue;
+      }
+    }
+
     return recipe;
-  }, [currentRecipe]);
+  }, [currentRecipe, branchIdForApi]);
 
   const onSubmit = async (data: FormValuesProps) => {
     // Show processing dialog
@@ -464,6 +484,18 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       // Status is now only 'public' or 'private', so is_draft should be false
       (recipeData as any).is_draft = false;
       (recipeData as any).is_schedule = false;
+
+      // Step 4.5: Add branch ID - use branchIdForApi from hook if available, otherwise use form value
+      if (branchIdForApi) {
+        (recipeData as any).branchId = branchIdForApi;
+      } else if (data.restaurantLocation) {
+        const branchValue = typeof data.restaurantLocation === 'string' 
+          ? (/^\d+$/.test(data.restaurantLocation) ? parseInt(data.restaurantLocation, 10) : undefined)
+          : data.restaurantLocation;
+        if (branchValue) {
+          (recipeData as any).branchId = branchValue;
+        }
+      }
 
       // Step 5: Create or update recipe
       if (isEdit && currentRecipe?.id) {
@@ -924,6 +956,33 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   }}
                 />
               </Grid>
+
+              {showBranchSelect && (
+                <Grid item xs={12} md={4}>
+                  <Controller
+                    name="restaurantLocation"
+                    control={control}
+                    render={({ field, fieldState: { error } }) => (
+                      <BranchSelect
+                        value={field.value}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? '' : (/^\d+$/.test(value) ? parseInt(value, 10) : value));
+                        }}
+                        label="Restaurant Location"
+                        formInputSx={{
+                          '& .MuiInputBase-root': {
+                            fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                          },
+                          '& .MuiInputLabel-root': {
+                            fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                          },
+                        }}
+                      />
+                    )}
+                  />
+                </Grid>
+              )}
             </Grid>
           </Card>
         </Grid>

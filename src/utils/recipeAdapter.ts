@@ -264,6 +264,7 @@ export interface IRecipeApiRequest {
   predefined_ingredients?: number[];
   predefined_starch?: number[];
   predefined_vegetables?: number[];
+  branch?: number;
 }
 
 export function transformRecipeToApiRequest(
@@ -556,6 +557,16 @@ export function transformRecipeToApiRequest(
   // Handle servingsInCase if available
   if ((recipe.costing as any)?.servingsInCase !== undefined) {
     apiRequest.servingsInCase = formatNumber((recipe.costing as any).servingsInCase);
+  }
+
+  // Branch ID - send as integer (API expects "branch" field, not "branch_id")
+  if ((recipe as any).branchId !== undefined && (recipe as any).branchId !== '' && (recipe as any).branchId !== null) {
+    const branchId = typeof (recipe as any).branchId === 'string' 
+      ? (/^\d+$/.test((recipe as any).branchId) ? parseInt((recipe as any).branchId, 10) : undefined)
+      : (recipe as any).branchId;
+    if (branchId && !isNaN(branchId) && branchId > 0) {
+      apiRequest.branch = branchId;
+    }
   }
 
   return apiRequest;

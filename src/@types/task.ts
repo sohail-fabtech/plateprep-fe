@@ -4,7 +4,7 @@ export type ITaskStatus = 'draft' | 'pending' | 'in-progress' | 'completed' | 'c
 
 export type ITaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-export type ITaskFilterStatus = 'all' | 'draft' | 'active' | 'archived';
+export type ITaskFilterStatus = 'all' | 'active' | 'archived';
 
 export type ITask = {
   id: string;
