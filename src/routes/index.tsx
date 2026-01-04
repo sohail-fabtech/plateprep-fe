@@ -38,6 +38,7 @@ import {
   UsersCreatePage,
   UsersEditPage,
   UserDetailsPage,
+  UserOneOffPermissionsPage,
   // Dashboard: Roles
   RolesListPage,
   RolesCreatePage,
@@ -299,6 +300,7 @@ export default function Router() {
             { path: 'create', element: <UsersCreatePage /> },
             { path: ':id', element: <UserDetailsPage /> },
             { path: ':id/edit', element: <UsersEditPage /> },
+            { path: ':id/one-off-permissions', element: <UserOneOffPermissionsPage /> },
           ],
         },
         {

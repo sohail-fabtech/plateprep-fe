@@ -7,8 +7,10 @@ import {
   restoreUser,
   permanentlyDeleteUser,
   updateUser,
+  updateUserIndividualPermissions,
   UserQueryParams,
   UserListResponse,
+  UpdateUserIndividualPermissionsRequest,
 } from './userService';
 
 // Re-export UserQueryParams and UserListResponse for use in other modules
@@ -105,6 +107,21 @@ export function useUpdateUser() {
   });
 }
 
+/**
+ * Hook to update user individual permissions
+ */
+export function useUpdateUserIndividualPermissions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateUserIndividualPermissionsRequest) => updateUserIndividualPermissions(data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.user_id) });
+    },
+  });
+}
+
 // Re-export response types
 export type { RestoreUserResponse, PermanentlyDeleteUserResponse } from '../../@types/userApi';
+export type { UpdateUserIndividualPermissionsRequest } from './userService';
 

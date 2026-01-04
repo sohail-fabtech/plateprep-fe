@@ -42,6 +42,7 @@ export {
   useUser,
   useUsers,
   useUpdateUser,
+  useUpdateUserIndividualPermissions,
   useDeleteUser,
   useRestoreUser,
   usePermanentlyDeleteUser,
@@ -49,7 +50,7 @@ export {
 } from './users/userHooks';
 
 // Export User types
-export type { UserQueryParams, UserListResponse } from './users/userHooks';
+export type { UserQueryParams, UserListResponse, UpdateUserIndividualPermissionsRequest } from './users/userHooks';
 
 // Export Role hooks
 export {

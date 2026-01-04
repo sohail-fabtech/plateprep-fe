@@ -29,6 +29,7 @@ type Props = {
   isLoading?: boolean;
   error?: Error | null;
   formInputSx?: object;
+  disabledPermissions?: string[]; // UI permission IDs that should be disabled (e.g., role permissions)
 };
 
 type PermissionGroup = {
@@ -49,6 +50,7 @@ export default function PermissionMatrix({
   isLoading = false,
   error = null,
   formInputSx,
+  disabledPermissions = [],
 }: Props) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const { isOwner } = usePermissions();
@@ -111,6 +113,10 @@ export default function PermissionMatrix({
   }, [permissions, isOwner]);
 
   const handleTogglePermission = (uiId: string) => {
+    // Don't allow toggling disabled permissions
+    if (disabledPermissions.includes(uiId)) {
+      return;
+    }
     const isSelected = selectedPermissions.includes(uiId);
     if (isSelected) {
       onChange(selectedPermissions.filter((id) => id !== uiId));
@@ -122,15 +128,17 @@ export default function PermissionMatrix({
   const handleToggleModule = (moduleCode: string) => {
     const modulePermissions = permissionGroups.find((g) => g.moduleCode === moduleCode)?.permissions || [];
     const moduleUiIds = modulePermissions.map((p) => p.uiId);
-    const allSelected = moduleUiIds.every((id) => selectedPermissions.includes(id));
+    // Filter out disabled permissions for toggle logic
+    const editableModuleUiIds = moduleUiIds.filter((id) => !disabledPermissions.includes(id));
+    const allSelected = editableModuleUiIds.every((id) => selectedPermissions.includes(id));
 
     if (allSelected) {
-      // Deselect all
-      onChange(selectedPermissions.filter((id) => !moduleUiIds.includes(id)));
+      // Deselect all editable permissions (keep disabled ones)
+      onChange(selectedPermissions.filter((id) => !editableModuleUiIds.includes(id)));
     } else {
-      // Select all
+      // Select all editable permissions
       const newSelected = [...selectedPermissions];
-      moduleUiIds.forEach((id) => {
+      editableModuleUiIds.forEach((id) => {
         if (!newSelected.includes(id)) {
           newSelected.push(id);
         }
@@ -177,9 +185,10 @@ export default function PermissionMatrix({
     <Box>
       {permissionGroups.map((group) => {
         const moduleUiIds = group.permissions.map((p) => p.uiId);
-        const selectedCount = moduleUiIds.filter((id) => selectedPermissions.includes(id)).length;
-        const allSelected = selectedCount === moduleUiIds.length;
-        const someSelected = selectedCount > 0 && selectedCount < moduleUiIds.length;
+        const editableModuleUiIds = moduleUiIds.filter((id) => !disabledPermissions.includes(id));
+        const selectedCount = editableModuleUiIds.filter((id) => selectedPermissions.includes(id)).length;
+        const allSelected = editableModuleUiIds.length > 0 && selectedCount === editableModuleUiIds.length;
+        const someSelected = selectedCount > 0 && selectedCount < editableModuleUiIds.length;
         const isExpanded = expandedModules.has(group.moduleCode);
 
         return (
@@ -199,6 +208,7 @@ export default function PermissionMatrix({
                       checked={allSelected}
                       indeterminate={someSelected}
                       onChange={() => handleToggleModule(group.moduleCode)}
+                      disabled={moduleUiIds.every((id) => disabledPermissions.includes(id))}
                       sx={{
                         '& .MuiSvgIcon-root': {
                           fontSize: { xs: 20, md: 24 },
@@ -243,20 +253,23 @@ export default function PermissionMatrix({
               <Box sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
                 <FormGroup>
                   <Stack spacing={1.5}>
-                    {group.permissions.map((permission) => (
-                      <FormControlLabel
-                        key={permission.uiId}
-                        control={
-                          <Checkbox
-                            checked={selectedPermissions.includes(permission.uiId)}
-                            onChange={() => handleTogglePermission(permission.uiId)}
-                            sx={{
-                              '& .MuiSvgIcon-root': {
-                                fontSize: { xs: 20, md: 24 },
-                              },
-                            }}
-                          />
-                        }
+                    {group.permissions.map((permission) => {
+                      const isDisabled = disabledPermissions.includes(permission.uiId);
+                      return (
+                        <FormControlLabel
+                          key={permission.uiId}
+                          control={
+                            <Checkbox
+                              checked={selectedPermissions.includes(permission.uiId)}
+                              onChange={() => handleTogglePermission(permission.uiId)}
+                              disabled={isDisabled}
+                              sx={{
+                                '& .MuiSvgIcon-root': {
+                                  fontSize: { xs: 20, md: 24 },
+                                },
+                              }}
+                            />
+                          }
                         label={
                           <Typography
                             variant="body2"
@@ -267,14 +280,16 @@ export default function PermissionMatrix({
                             {permission.name}
                           </Typography>
                         }
-                        sx={{
-                          m: 0,
-                          '& .MuiFormControlLabel-label': {
-                            fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                          },
-                        }}
-                      />
-                    ))}
+                          sx={{
+                            m: 0,
+                            '& .MuiFormControlLabel-label': {
+                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                              opacity: isDisabled ? 0.6 : 1,
+                            },
+                          }}
+                        />
+                      );
+                    })}
                   </Stack>
                 </FormGroup>
               </Box>

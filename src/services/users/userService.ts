@@ -101,3 +101,27 @@ export async function updateUser(id: string | number, data: Partial<IUserApiResp
   return response.data;
 }
 
+/**
+ * Update user individual permissions
+ */
+export interface UpdateUserIndividualPermissionsRequest {
+  user_id: number;
+  permissions: number[];
+}
+
+export interface UpdateUserIndividualPermissionsResponse {
+  detail: string;
+  user_id: number;
+  permissions: number[];
+}
+
+export async function updateUserIndividualPermissions(
+  data: UpdateUserIndividualPermissionsRequest
+): Promise<UpdateUserIndividualPermissionsResponse> {
+  const response = await axiosInstance.post<UpdateUserIndividualPermissionsResponse>(
+    '/user-permissions/set/',
+    data
+  );
+  return response.data;
+}
+

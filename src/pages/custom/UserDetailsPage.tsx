@@ -294,6 +294,18 @@ export default function UserDetailsPage() {
                       <Stack direction="row" spacing={1}>
                         <Button
                           variant="outlined"
+                          startIcon={<Iconify icon="eva:lock-fill" />}
+                          onClick={() => navigate(PATH_DASHBOARD.users.oneOffPermissions(id!))}
+                          sx={{
+                            display: { xs: 'none', sm: 'flex' },
+                            fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                            height: { xs: 40, md: 44 },
+                          }}
+                        >
+                          One-Off Permissions
+                        </Button>
+                        <Button
+                          variant="outlined"
                           startIcon={<Iconify icon="eva:edit-outline" />}
                           onClick={() => navigate(PATH_DASHBOARD.users.edit(id!))}
                           sx={{ display: { xs: 'none', sm: 'flex' } }}

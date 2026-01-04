@@ -89,6 +89,7 @@ export const PATH_DASHBOARD = {
     create: path(ROOTS_DASHBOARD, '/users/create'),
     view: (id: string) => path(ROOTS_DASHBOARD, `/users/${id}`),
     edit: (id: string) => path(ROOTS_DASHBOARD, `/users/${id}/edit`),
+    oneOffPermissions: (id: string) => path(ROOTS_DASHBOARD, `/users/${id}/one-off-permissions`),
   },
   roles: {
     root: path(ROOTS_DASHBOARD, '/roles'),

@@ -114,6 +114,7 @@ export const UsersListPage = Loadable(lazy(() => import('../pages/custom/UsersLi
 export const UsersCreatePage = Loadable(lazy(() => import('../pages/custom/UsersCreatePage')));
 export const UsersEditPage = Loadable(lazy(() => import('../pages/custom/UsersEditPage')));
 export const UserDetailsPage = Loadable(lazy(() => import('../pages/custom/UserDetailsPage')));
+export const UserOneOffPermissionsPage = Loadable(lazy(() => import('../pages/custom/UserOneOffPermissionsPage')));
 export const RolesListPage = Loadable(lazy(() => import('../pages/custom/RolesListPage')));
 export const RolesCreatePage = Loadable(lazy(() => import('../pages/custom/RolesCreatePage')));
 export const RolesEditPage = Loadable(lazy(() => import('../pages/custom/RolesEditPage')));
