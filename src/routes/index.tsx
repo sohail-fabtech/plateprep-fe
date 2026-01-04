@@ -2,6 +2,7 @@ import { Navigate, useRoutes } from 'react-router-dom';
 // auth
 import AuthGuard from '../auth/AuthGuard';
 import GuestGuard from '../auth/GuestGuard';
+import OwnerGuard from '../auth/OwnerGuard';
 // layouts
 import MainLayout from '../layouts/main';
 import SimpleLayout from '../layouts/simple';
@@ -276,7 +277,14 @@ export default function Router() {
           path: 'restaurant-location',
           children: [
             { element: <Navigate to="/dashboard/restaurant-location/list" replace />, index: true },
-            { path: 'list', element: <RestaurantLocationListPage /> },
+            {
+              path: 'list',
+              element: (
+                <OwnerGuard>
+                  <RestaurantLocationListPage />
+                </OwnerGuard>
+              ),
+            },
             { path: 'new', element: <RestaurantLocationCreatePage /> },
             { path: ':id', element: <RestaurantLocationDetailsPage /> },
             { path: ':id/edit', element: <RestaurantLocationEditPage /> },
@@ -297,7 +305,14 @@ export default function Router() {
           path: 'roles',
           children: [
             { element: <Navigate to="/dashboard/roles/list" replace />, index: true },
-            { path: 'list', element: <RolesListPage /> },
+            {
+              path: 'list',
+              element: (
+                <OwnerGuard>
+                  <RolesListPage />
+                </OwnerGuard>
+              ),
+            },
             { path: 'create', element: <RolesCreatePage /> },
             { path: ':id', element: <RoleDetailsPage /> },
             { path: ':id/edit', element: <RolesEditPage /> },

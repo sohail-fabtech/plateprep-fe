@@ -25,7 +25,7 @@ type Props = {
 
 export default function NavVertical({ openNav, onCloseNav }: Props) {
   const { pathname } = useLocation();
-  const { hasPermission, profile } = usePermissions();
+  const { hasPermission, profile, isOwner } = usePermissions();
 
   const isDesktop = useResponsive('up', 'lg');
 
@@ -47,13 +47,19 @@ export default function NavVertical({ openNav, onCloseNav }: Props) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Filter navigation items based on permissions
+  // Filter navigation items based on permissions and owner status
   const filteredNavConfig = useMemo(() => {
     if (!profile) return navConfig;
 
     return navConfig.map((section) => ({
       ...section,
       items: section.items.filter((item) => {
+        // Owner-only routes: restaurant-location and roles
+        const isOwnerOnlyRoute = item.path?.includes('/restaurant-location') || item.path?.includes('/roles');
+        if (isOwnerOnlyRoute && !isOwner) {
+          return false;
+        }
+
         // If no permission specified, show item
         if (!item.permission) return true;
 
@@ -61,7 +67,7 @@ export default function NavVertical({ openNav, onCloseNav }: Props) {
         return hasPermission(item.permission);
       }),
     }));
-  }, [profile, hasPermission]);
+  }, [profile, hasPermission, isOwner]);
 
   const renderContent = (
     <Scrollbar

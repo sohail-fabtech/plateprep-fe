@@ -17,6 +17,8 @@ import {
 import { IPermission } from '../../@types/roleApi';
 // utils
 import { mapCodenameToModuleAction, generatePermissionId } from '../../utils/permissionMapping';
+// hooks
+import { usePermissions } from '../../hooks/usePermissions';
 
 // ----------------------------------------------------------------------
 
@@ -49,6 +51,7 @@ export default function PermissionMatrix({
   formInputSx,
 }: Props) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const { isOwner } = usePermissions();
 
   // Group permissions by module
   const permissionGroups = useMemo<PermissionGroup[]>(() => {
@@ -61,6 +64,13 @@ export default function PermissionMatrix({
       if (mapped) {
         const uiId = generatePermissionId(mapped.moduleCode, mapped.actionCode);
         const moduleCode = mapped.moduleCode;
+
+        // Filter out BRANCH/BRANCHES and ROLE/ROLES modules for non-owners
+        const isBranchModule = moduleCode === 'BRANCH' || moduleCode === 'BRANCHES';
+        const isRoleModule = moduleCode === 'ROLE' || moduleCode === 'ROLES';
+        if (!isOwner && (isBranchModule || isRoleModule)) {
+          return;
+        }
 
         if (!groupsMap.has(moduleCode)) {
           groupsMap.set(moduleCode, []);
@@ -98,7 +108,7 @@ export default function PermissionMatrix({
     setExpandedModules(new Set(groups.map((g) => g.moduleCode)));
 
     return groups;
-  }, [permissions]);
+  }, [permissions, isOwner]);
 
   const handleTogglePermission = (uiId: string) => {
     const isSelected = selectedPermissions.includes(uiId);

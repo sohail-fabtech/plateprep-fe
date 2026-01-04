@@ -140,6 +140,11 @@ export const routePermissionMap: Record<string, string[]> = {
   '/dashboard/dictionary': ['view_dictionary'],
   '/dashboard/dictionary/list': ['view_dictionary'],
   '/dashboard/dictionary/:categoryId': ['view_dictionary'],
+  '/dashboard/roles': ['view_roles'],
+  '/dashboard/roles/list': ['view_roles'],
+  '/dashboard/roles/create': ['create_roles'],
+  '/dashboard/roles/:id': ['view_roles'],
+  '/dashboard/roles/:id/edit': ['edit_roles'],
 };
 
 /**
@@ -208,6 +213,14 @@ function normalizeRoutePath(routePath: string): string {
 }
 
 /**
+ * Owner-only routes - only accessible to owners
+ */
+const OWNER_ONLY_ROUTES = [
+  '/dashboard/restaurant-location/list',
+  '/dashboard/roles/list',
+];
+
+/**
  * Check if user can access a route
  */
 export function canAccessRoute(profile: UserProfile | null, routePath: string): boolean {
@@ -216,6 +229,12 @@ export function canAccessRoute(profile: UserProfile | null, routePath: string): 
 
   // Remove query strings for matching
   const cleanPath = routePath.split('?')[0];
+
+  // Check if route is owner-only
+  const isOwnerOnlyRoute = OWNER_ONLY_ROUTES.some((route) => cleanPath === route || cleanPath.startsWith(route));
+  if (isOwnerOnlyRoute && profile.is_owner !== true) {
+    return false;
+  }
 
   // Try exact match first
   let requiredPermissions = routePermissionMap[cleanPath];
