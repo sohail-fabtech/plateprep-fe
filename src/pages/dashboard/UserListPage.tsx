@@ -48,16 +48,15 @@ import UserTableRowOld from '../../sections/@dashboard/user/list/UserTableRowOld
 const STATUS_OPTIONS = ['all', 'active', 'banned'];
 
 const ROLE_OPTIONS = [
-  'all',
-  'ux designer',
-  'full stack designer',
-  'backend developer',
-  'project manager',
-  'leader',
-  'ui designer',
-  'ui/ux designer',
-  'front end developer',
-  'full stack developer',
+  { id: 'ux designer', name: 'UX Designer' },
+  { id: 'full stack designer', name: 'Full Stack Designer' },
+  { id: 'backend developer', name: 'Backend Developer' },
+  { id: 'project manager', name: 'Project Manager' },
+  { id: 'leader', name: 'Leader' },
+  { id: 'ui designer', name: 'UI Designer' },
+  { id: 'ui/ux designer', name: 'UI/UX Designer' },
+  { id: 'front end developer', name: 'Front End Developer' },
+  { id: 'full stack developer', name: 'Full Stack Developer' },
 ];
 
 const TABLE_HEAD = [
@@ -99,9 +98,7 @@ export default function UserListPage() {
 
   const [filterName, setFilterName] = useState('');
 
-  const [filterRole, setFilterRole] = useState('all');
-
-  const [filterLocation, setFilterLocation] = useState('all');
+  const [filterRole, setFilterRole] = useState('');
 
   const [openConfirm, setOpenConfirm] = useState(false);
 
@@ -116,20 +113,11 @@ export default function UserListPage() {
     status: true,
   });
 
-  // Get unique locations from tableData
-  const locationOptions = useMemo(() => {
-    const locations = Array.from(
-      new Set(tableData.map((user) => user.company).filter((loc): loc is string => Boolean(loc)))
-    );
-    return locations.sort();
-  }, [tableData]);
-
   const dataFiltered = applyFilter({
     inputData: tableData,
     comparator: getComparator(order, orderBy),
     filterName,
     filterRole,
-    filterLocation,
     filterStatus,
   });
 
@@ -137,7 +125,7 @@ export default function UserListPage() {
 
   const denseHeight = dense ? 52 : 72;
 
-  const isFiltered = filterName !== '' || filterRole !== 'all' || filterLocation !== 'all' || filterStatus !== 'all';
+  const isFiltered = filterName !== '' || filterRole !== '' || filterStatus !== 'all';
 
   const isNotFound =
     (!dataFiltered.length && !!filterName) ||
@@ -165,11 +153,6 @@ export default function UserListPage() {
   const handleFilterRole = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPage(0);
     setFilterRole(event.target.value);
-  };
-
-  const handleFilterLocation = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPage(0);
-    setFilterLocation(event.target.value);
   };
 
   const handleDeleteRow = (id: string) => {
@@ -207,8 +190,7 @@ export default function UserListPage() {
 
   const handleResetFilter = () => {
     setFilterName('');
-    setFilterRole('all');
-    setFilterLocation('all');
+    setFilterRole('');
     setFilterStatus('all');
   };
 
@@ -276,12 +258,9 @@ export default function UserListPage() {
               isFiltered={isFiltered}
               filterName={filterName}
               filterRole={filterRole}
-              filterLocation={filterLocation}
               optionsRole={ROLE_OPTIONS}
-              optionsLocation={locationOptions}
               onFilterName={handleFilterName}
               onFilterRole={handleFilterRole}
-              onFilterLocation={handleFilterLocation}
               onResetFilter={handleResetFilter}
               columnVisibility={columnVisibility}
               onToggleColumn={handleToggleColumn}
@@ -399,14 +378,12 @@ function applyFilter({
   filterName,
   filterStatus,
   filterRole,
-  filterLocation,
 }: {
   inputData: IUserAccountGeneral[];
   comparator: (a: any, b: any) => number;
   filterName: string;
   filterStatus: string;
   filterRole: string;
-  filterLocation: string;
 }) {
   const stabilizedThis = inputData.map((el, index) => [el, index] as const);
 
@@ -430,11 +407,6 @@ function applyFilter({
 
   if (filterRole !== 'all') {
     inputData = inputData.filter((user) => user.role === filterRole);
-  }
-
-  // Filter by location (company)
-  if (filterLocation !== 'all') {
-    inputData = inputData.filter((user) => user.company?.toLowerCase() === filterLocation.toLowerCase());
   }
 
   return inputData;

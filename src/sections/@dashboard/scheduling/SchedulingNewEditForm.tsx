@@ -149,13 +149,52 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
       const scheduleDatetimeValue = scheduleData?.scheduleDatetime || (scheduleData as any)?.schedule_datetime;
       const holidayValue = scheduleData?.holiday;
       
+      // Safely parse date - ensure it's a valid Date object
+      let parsedDate: Date | null = null;
+      if (scheduleDatetimeValue) {
+        const date = new Date(scheduleDatetimeValue);
+        // Only use the date if it's valid
+        if (!isNaN(date.getTime())) {
+          parsedDate = date;
+        }
+      }
+      
+      // Safely get dishId - ensure it's a valid number or null
+      let dishIdValue: number | null = null;
+      if (scheduleData?.dish?.id) {
+        const id = typeof scheduleData.dish.id === 'number' 
+          ? scheduleData.dish.id 
+          : parseInt(String(scheduleData.dish.id), 10);
+        if (!isNaN(id) && id > 0) {
+          dishIdValue = id;
+        }
+      }
+      
+      // Safely get holidayId - handle both object and number formats
+      let holidayIdValue: number | null = null;
+      if (holidayValue) {
+        if (typeof holidayValue === 'number') {
+          // Already a number
+          holidayIdValue = holidayValue;
+        } else if (typeof holidayValue === 'object' && holidayValue !== null) {
+          // It's an object with an id property (from API response)
+          const holidayObj = holidayValue as { id?: number | string };
+          if ('id' in holidayObj && holidayObj.id !== undefined && holidayObj.id !== null) {
+            const id = typeof holidayObj.id === 'number' 
+              ? holidayObj.id 
+              : parseInt(String(holidayObj.id), 10);
+            if (!isNaN(id) && id > 0) {
+              holidayIdValue = id;
+            }
+          }
+        }
+      }
+      
       return {
-        dishId: scheduleData?.dish.id || null,
-        scheduleDatetime: scheduleDatetimeValue
-          ? new Date(scheduleDatetimeValue)
-          : null,
+        dishId: dishIdValue,
+        scheduleDatetime: parsedDate,
         season: scheduleData?.season || '',
-        holidayId: (typeof holidayValue === 'number' ? holidayValue : null),
+        holidayId: holidayIdValue,
       };
     },
     [scheduleData]
@@ -171,6 +210,8 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
     watch,
     control,
     handleSubmit,
+    setError,
+    clearErrors,
     formState: { isSubmitting },
   } = methods;
 
@@ -200,6 +241,9 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
     }
 
     try {
+      // Clear previous errors before submission
+      clearErrors();
+
       setProcessingDialog({
         open: true,
         state: 'processing',
@@ -208,24 +252,14 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
 
       if (isEdit && scheduleData) {
         // Update existing schedule
-        const updatePayload: any = {};
+        // API requires all three fields (dish, schedule_datetime, holiday) to be present
+        const updatePayload: any = {
+          dish: data.dishId,
+          schedule_datetime: data.scheduleDatetime ? data.scheduleDatetime.toISOString() : scheduleData.scheduleDatetime,
+          holiday: data.holidayId,
+        };
 
-        if (data.dishId !== scheduleData.dish.id) {
-          updatePayload.dish = data.dishId;
-        }
-
-        if (data.scheduleDatetime) {
-          const datetimeStr = data.scheduleDatetime.toISOString();
-          if (datetimeStr !== scheduleData.scheduleDatetime) {
-            updatePayload.schedule_datetime = datetimeStr;
-          }
-        }
-
-        const currentHolidayId = typeof scheduleData.holiday === 'number' ? scheduleData.holiday : null;
-        if (data.holidayId !== currentHolidayId) {
-          updatePayload.holiday = data.holidayId;
-        }
-
+        // Add optional fields only if they changed
         if (data.season !== scheduleData.season) {
           updatePayload.season = data.season || null;
         }
@@ -259,39 +293,51 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
         navigate(PATH_DASHBOARD.scheduling.list);
       }, 1500);
     } catch (error: any) {
+      // Extract error data - handle both axios interceptor format and original error format
+      // ScheduleDishError preserves responseData, axios interceptor returns error.response.data directly
+      const errorData = error?.responseData || error?.response?.data || error?.data || error;
       let errorMessage = isEdit ? 'Failed to update schedule. Please try again.' : 'Failed to create schedule. Please try again.';
 
-      if (error?.response?.data) {
-        const errorData = error.response.data;
-
-        // Handle field-specific errors
-        if (errorData.dish) {
-          if (Array.isArray(errorData.dish)) {
-            errorMessage = errorData.dish[0];
-          } else if (typeof errorData.dish === 'string') {
-            errorMessage = errorData.dish;
-          }
-        } else if (errorData.schedule_datetime) {
-          if (Array.isArray(errorData.schedule_datetime)) {
-            errorMessage = errorData.schedule_datetime[0];
-          } else if (typeof errorData.schedule_datetime === 'string') {
-            errorMessage = errorData.schedule_datetime;
-          }
-        } else if (errorData.holiday) {
-          if (Array.isArray(errorData.holiday)) {
-            errorMessage = errorData.holiday[0];
-          } else if (typeof errorData.holiday === 'string') {
-            errorMessage = errorData.holiday;
-          }
-        } else if (errorData.non_field_errors) {
-          if (Array.isArray(errorData.non_field_errors)) {
-            errorMessage = errorData.non_field_errors[0];
-          } else if (typeof errorData.non_field_errors === 'string') {
-            errorMessage = errorData.non_field_errors;
-          }
-        } else if (errorData.detail) {
-          errorMessage = errorData.detail;
+      // Handle field-specific errors and set them on form fields
+      if (errorData?.dish) {
+        const dishError = Array.isArray(errorData.dish) ? errorData.dish[0] : errorData.dish;
+        if (dishError) {
+          errorMessage = dishError;
+          setError('dishId', { type: 'server', message: dishError });
         }
+      } else if (errorData?.schedule_datetime) {
+        const datetimeError = Array.isArray(errorData.schedule_datetime) 
+          ? errorData.schedule_datetime[0] 
+          : errorData.schedule_datetime;
+        if (datetimeError) {
+          errorMessage = datetimeError;
+          setError('scheduleDatetime', { type: 'server', message: datetimeError });
+        }
+      } else if (errorData?.holiday) {
+        const holidayError = Array.isArray(errorData.holiday) 
+          ? errorData.holiday[0] 
+          : errorData.holiday;
+        if (holidayError) {
+          errorMessage = holidayError;
+          setError('holidayId', { type: 'server', message: holidayError });
+        }
+      } else if (errorData?.season) {
+        const seasonError = Array.isArray(errorData.season) 
+          ? errorData.season[0] 
+          : errorData.season;
+        if (seasonError) {
+          errorMessage = seasonError;
+          setError('season', { type: 'server', message: seasonError });
+        }
+      } else if (errorData?.non_field_errors) {
+        const nonFieldError = Array.isArray(errorData.non_field_errors) 
+          ? errorData.non_field_errors[0] 
+          : errorData.non_field_errors;
+        if (nonFieldError) {
+          errorMessage = nonFieldError;
+        }
+      } else if (errorData?.detail) {
+        errorMessage = errorData.detail;
       } else if (error?.message) {
         errorMessage = error.message;
       }
@@ -370,9 +416,18 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
                   control={control}
                   render={({ field, fieldState: { error } }) => (
                     <DateTimePicker
-                      {...field}
                       label="Release Date & Time"
                       minDateTime={new Date()}
+                      value={field.value || null}
+                      onChange={(newValue) => {
+                        // Only set valid dates - check if it's a valid Date object
+                        if (newValue && newValue instanceof Date && !isNaN(newValue.getTime())) {
+                          field.onChange(newValue);
+                        } else {
+                          // Set null for invalid dates
+                          field.onChange(null);
+                        }
+                      }}
                       renderInput={(params) => (
                         <TextField
                           {...params}

@@ -124,6 +124,15 @@ export async function updateUser(id: string | number, data: UpdateUserRequest): 
 }
 
 /**
+ * Update profile (PATCH)
+ * Used for updating the current user's profile
+ */
+export async function updateProfile(id: string | number, data: UpdateUserRequest): Promise<IUserDetail> {
+  const response = await axiosInstance.patch<IUserApiResponse>(`/profile/${id}/`, data);
+  return response.data;
+}
+
+/**
  * Update user individual permissions
  */
 export interface UpdateUserIndividualPermissionsRequest {
@@ -144,6 +153,30 @@ export async function updateUserIndividualPermissions(
     '/user-permissions/set/',
     data
   );
+  return response.data;
+}
+
+/**
+ * Change password request
+ */
+export interface ChangePasswordRequest {
+  old_password: string;
+  new_password: string;
+}
+
+/**
+ * Change password response
+ */
+export interface ChangePasswordResponse {
+  detail?: string;
+  message?: string;
+}
+
+/**
+ * Change password (POST)
+ */
+export async function changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+  const response = await axiosInstance.post<ChangePasswordResponse>('/user-detail/change-password/', data);
   return response.data;
 }
 

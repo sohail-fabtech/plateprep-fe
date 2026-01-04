@@ -257,10 +257,8 @@ export default function SchedulingListPage() {
     }
   };
 
-  const handleStatusUpdate = (id: number) => {
-    // TODO: Open status update dialog/menu
-    console.log('Update status for scheduling:', id);
-    enqueueSnackbar('Status update functionality coming soon', { variant: 'info' });
+  const handleEditRow = (id: number) => {
+    navigate(PATH_DASHBOARD.scheduling.edit(String(id)));
   };
 
   const handleResetFilter = () => {
@@ -398,7 +396,7 @@ export default function SchedulingListPage() {
                               key={row.id}
                               row={row}
                               onDeleteRow={() => handleDeleteRow(row.id)}
-                              onStatusUpdate={() => handleStatusUpdate(row.id)}
+                              onEditRow={() => handleEditRow(row.id)}
                               columnVisibility={columnVisibility}
                               dense={dense}
                               isLoading={loadingDeleteId === row.id}

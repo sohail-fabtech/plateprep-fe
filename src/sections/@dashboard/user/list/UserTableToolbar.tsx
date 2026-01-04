@@ -22,16 +22,13 @@ import BranchSelect from '../../../../components/branch-select/BranchSelect';
 type Props = {
   filterName: string;
   filterRole: string;
-  filterLocation: string;
   filterBranch?: string | number | '';
   showBranchFilter?: boolean;
   isFiltered: boolean;
-  optionsRole: string[];
-  optionsLocation: string[];
+  optionsRole: Array<{ id: string; name: string }>;
   onResetFilter: VoidFunction;
   onFilterName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterRole: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onFilterLocation: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterBranch?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   columnVisibility: Record<string, boolean>;
   onToggleColumn: (columnId: string) => void;
@@ -43,14 +40,11 @@ export default function UserTableToolbar({
   isFiltered,
   filterName,
   filterRole,
-  filterLocation,
   filterBranch,
   showBranchFilter,
   optionsRole,
-  optionsLocation,
   onFilterName,
   onFilterRole,
-  onFilterLocation,
   onFilterBranch,
   onResetFilter,
   columnVisibility,
@@ -103,9 +97,9 @@ export default function UserTableToolbar({
         <TextField
           fullWidth
           select
-          label="Location"
-          value={filterLocation}
-          onChange={onFilterLocation}
+          label="Role"
+          value={filterRole || ''}
+          onChange={onFilterRole}
           SelectProps={{
             MenuProps: {
               PaperProps: {
@@ -120,21 +114,10 @@ export default function UserTableToolbar({
             ...formInputSx,
           }}
         >
-          <MenuItem
-            value="all"
-            sx={{
-              mx: 1,
-              borderRadius: 0.75,
-              typography: 'body2',
-              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-            }}
-          >
-            All Locations
-          </MenuItem>
-          {optionsLocation.map((option) => (
+          {optionsRole.map((option) => (
             <MenuItem
-              key={option}
-              value={option}
+              key={option.id}
+              value={option.id}
               sx={{
                 mx: 1,
                 borderRadius: 0.75,
@@ -142,7 +125,7 @@ export default function UserTableToolbar({
                 fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
               }}
             >
-              {option}
+              {option.name}
             </MenuItem>
           ))}
         </TextField>

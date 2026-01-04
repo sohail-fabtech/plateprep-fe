@@ -76,7 +76,7 @@ const FORM_INPUT_SX = {
 
 const STATUS_OPTIONS: ITaskFilterStatus[] = ['all', 'active', 'archived'];
 
-const PRIORITY_OPTIONS = ['all', 'low', 'medium', 'high', 'urgent'];
+const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'urgent'];
 
 const ITEMS_PER_PAGE = 10;
 
@@ -208,7 +208,7 @@ export default function TasksListPage() {
 
   const [filterName, setFilterName] = useState('');
 
-  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('');
 
   const [filterStatus, setFilterStatus] = useState<ITaskFilterStatus>('all');
 
@@ -252,7 +252,7 @@ export default function TasksListPage() {
     }
 
     // Priority filter - map UI priority to API format
-    if (filterPriority !== 'all') {
+    if (filterPriority) {
       const priorityMap: Record<string, string> = {
         'low': 'L',
         'medium': 'M',
@@ -337,7 +337,7 @@ export default function TasksListPage() {
     return sorted;
   }, [tableData, order, orderBy]);
 
-  const isFiltered = filterName !== '' || filterPriority !== 'all' || filterBranch !== '';
+  const isFiltered = filterName !== '' || filterPriority !== '' || filterBranch !== '';
 
   const isNotFound = !isLoading && !isError && dataFiltered.length === 0 && isFiltered;
   
@@ -446,7 +446,7 @@ export default function TasksListPage() {
 
   const handleResetFilter = () => {
     setFilterName('');
-    setFilterPriority('all');
+    setFilterPriority('');
     setFilterBranch('');
     // Reset to 'all' tab
     setFilterStatus('all');

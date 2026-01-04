@@ -8,12 +8,15 @@ import {
   restoreUser,
   permanentlyDeleteUser,
   updateUser,
+  updateProfile,
   updateUserIndividualPermissions,
+  changePassword,
   UserQueryParams,
   UserListResponse,
   UpdateUserIndividualPermissionsRequest,
   CreateUserRequest,
   UpdateUserRequest,
+  ChangePasswordRequest,
 } from './userService';
 
 // Re-export UserQueryParams and UserListResponse for use in other modules
@@ -125,6 +128,22 @@ export function useUpdateUser() {
 }
 
 /**
+ * Hook to update profile
+ * Used for updating the current user's profile
+ */
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string | number; data: UpdateUserRequest }) => updateProfile(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+    },
+  });
+}
+
+/**
  * Hook to update user individual permissions
  */
 export function useUpdateUserIndividualPermissions() {
@@ -135,6 +154,15 @@ export function useUpdateUserIndividualPermissions() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.user_id) });
     },
+  });
+}
+
+/**
+ * Hook to change password
+ */
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (data: ChangePasswordRequest) => changePassword(data),
   });
 }
 

@@ -151,6 +151,27 @@ export async function getScheduleDishById(id: string | number): Promise<ISchedul
   }
 }
 
+// ----------------------------------------------------------------------
+// Error Handling
+// ----------------------------------------------------------------------
+
+/**
+ * Custom error class for schedule dish errors
+ * Preserves the original error structure for better error handling
+ */
+export class ScheduleDishError extends Error {
+  originalError: any;
+  responseData?: any;
+
+  constructor(message: string, originalError: any) {
+    super(message);
+    this.name = 'ScheduleDishError';
+    this.originalError = originalError;
+    // Preserve response data - axios interceptor returns error.response.data directly
+    this.responseData = originalError?.response?.data || originalError?.data || originalError;
+  }
+}
+
 /**
  * Schedule a dish
  */
@@ -159,15 +180,21 @@ export async function scheduleDish(data: ScheduleDishRequest): Promise<ScheduleD
     const response = await axiosInstance.post<ScheduleDishResponse>('/schedule-dish/schedule/', data);
     return response.data;
   } catch (error: any) {
+    // Axios interceptor returns error.response.data directly, so error might be the data object
+    const errorData = error?.response?.data || error?.data || error;
+    
+    // Extract error message
     const errorMessage =
-      error?.response?.data?.non_field_errors?.[0] ||
-      error?.response?.data?.dish?.[0] ||
-      error?.response?.data?.schedule_datetime?.[0] ||
-      error?.response?.data?.holiday?.[0] ||
-      error?.response?.data?.detail ||
+      errorData?.non_field_errors?.[0] ||
+      errorData?.dish?.[0] ||
+      errorData?.schedule_datetime?.[0] ||
+      errorData?.holiday?.[0] ||
+      errorData?.detail ||
       error?.message ||
       'Failed to schedule dish';
-    throw new Error(errorMessage);
+    
+    // Throw custom error with preserved data structure
+    throw new ScheduleDishError(errorMessage, error);
   }
 }
 

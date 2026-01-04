@@ -13,6 +13,7 @@ import { useSettingsContext } from '../../components/settings';
 // sections
 import {
   AccountGeneral,
+  AccountRestaurant,
   AccountBilling,
   AccountSocialLinks,
   AccountNotifications,
@@ -32,6 +33,12 @@ export default function SettingsGeneralPage() {
       label: 'General',
       icon: <Iconify icon="ic:round-account-box" />,
       component: <AccountGeneral />,
+    },
+    {
+      value: 'restaurant',
+      label: 'Restaurant',
+      icon: <Iconify icon="eva:pin-fill" />,
+      component: <AccountRestaurant />,
     },
     {
       value: 'billing',

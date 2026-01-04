@@ -515,6 +515,7 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
                     <DatePicker
                       {...field}
                       label="Date of Birth"
+                      maxDate={new Date()}
                       renderInput={(params) => (
                         <TextField
                           {...params}

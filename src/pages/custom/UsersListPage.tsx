@@ -55,6 +55,7 @@ import {
   usePermanentlyDeleteUser,
   UserQueryParams,
   UserListResponse,
+  useRoles,
 } from '../../services';
 // utils
 import { transformApiResponseToUser } from '../../utils/userAdapter';
@@ -198,7 +199,7 @@ export default function UsersListPage() {
   }, [hasPermission]);
 
   const [filterName, setFilterName] = useState('');
-  const [filterLocation, setFilterLocation] = useState('all');
+  const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState<IUserFilterStatus>('all');
 
   // Debounce search input (500ms delay)
@@ -225,6 +226,22 @@ export default function UsersListPage() {
     }
   });
 
+  // Fetch roles for filter dropdown
+  const { data: rolesData } = useRoles({
+    page: 1,
+    page_size: 1000,
+    is_archived: false,
+  });
+
+  // Transform roles for filter dropdown
+  const roleOptions = useMemo(() => {
+    if (!rolesData?.results) return [];
+    return rolesData.results.map((role) => ({
+      id: String(role.id),
+      name: role.role_name || '',
+    }));
+  }, [rolesData]);
+
   // Build API query params from UI filters
   const queryParams: UserQueryParams = useMemo(() => {
     const params: UserQueryParams = {};
@@ -244,6 +261,11 @@ export default function UsersListPage() {
       params.branch = typeof branchIdForApi === 'string' ? parseInt(branchIdForApi, 10) : branchIdForApi;
     }
 
+    // Role filter: send user_role as role ID (string)
+    if (filterRole && filterRole !== 'all') {
+      params.user_role = filterRole;
+    }
+
     // Status filter mapping - only for non-"all" tabs
     if (filterStatus === 'archived') {
       params.is_archived = true;
@@ -253,7 +275,7 @@ export default function UsersListPage() {
     // For "all" tab, don't send is_archived (shows both active and archived)
 
     return params;
-  }, [debouncedFilterName, filterStatus, page, rowsPerPage, order, orderBy, branchIdForApi]);
+  }, [debouncedFilterName, filterStatus, filterRole, page, rowsPerPage, order, orderBy, branchIdForApi]);
 
   // Fetch users using TanStack Query
   const { data, isLoading, isFetching, isError, error } = useUsers(queryParams) as {
@@ -270,14 +292,6 @@ export default function UsersListPage() {
     
     return data.results.map((user: any) => transformApiResponseToUser(user));
   }, [data]);
-
-  // Get unique locations from tableData
-  const locationOptions = useMemo(() => {
-    const locations = Array.from(
-      new Set(tableData.map((user: IUser) => user.location).filter((loc): loc is string => Boolean(loc)))
-    );
-    return locations.sort();
-  }, [tableData]);
 
   // Save column visibility to localStorage whenever it changes
   useEffect(() => {
@@ -308,7 +322,7 @@ export default function UsersListPage() {
     return sorted;
   }, [tableData, order, orderBy]);
 
-  const isFiltered = filterName !== '' || filterLocation !== 'all' || filterBranch !== '';
+  const isFiltered = filterName !== '' || filterBranch !== '' || filterRole !== '';
 
   const isNotFound = !isLoading && !isError && dataFiltered.length === 0 && isFiltered;
   
@@ -326,9 +340,9 @@ export default function UsersListPage() {
     setFilterName(event.target.value);
   };
 
-  const handleFilterLocation = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilterRole = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPage(0);
-    setFilterLocation(event.target.value);
+    setFilterRole(event.target.value);
   };
 
   const handleViewRow = (id: string) => {
@@ -397,7 +411,7 @@ export default function UsersListPage() {
 
   const handleResetFilter = () => {
     setFilterName('');
-    setFilterLocation('all');
+    setFilterRole('');
     setFilterBranch('');
     // Reset to 'all' tab
     setFilterStatus('all');
@@ -481,15 +495,12 @@ export default function UsersListPage() {
           <UserTableToolbar
             isFiltered={isFiltered}
             filterName={filterName}
-            filterRole="all"
-            filterLocation={filterLocation}
+            filterRole={filterRole}
             filterBranch={filterBranch}
             showBranchFilter={showBranchFilter}
-            optionsRole={[]}
-            optionsLocation={locationOptions}
+            optionsRole={roleOptions}
             onFilterName={handleFilterName}
-            onFilterRole={() => {}}
-            onFilterLocation={handleFilterLocation}
+            onFilterRole={handleFilterRole}
             onFilterBranch={handleFilterBranch}
             onResetFilter={handleResetFilter}
             columnVisibility={columnVisibility}

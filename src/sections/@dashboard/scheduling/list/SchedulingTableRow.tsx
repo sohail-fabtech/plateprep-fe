@@ -22,7 +22,7 @@ import ConfirmDialog from '../../../../components/confirm-dialog';
 type Props = {
   row: IScheduling;
   onDeleteRow: VoidFunction;
-  onStatusUpdate: VoidFunction;
+  onEditRow: VoidFunction;
   columnVisibility: Record<string, boolean>;
   dense?: boolean;
   isLoading?: boolean;
@@ -31,7 +31,7 @@ type Props = {
 export default function SchedulingTableRow({
   row,
   onDeleteRow,
-  onStatusUpdate,
+  onEditRow,
   columnVisibility,
   dense = false,
   isLoading = false,
@@ -165,15 +165,15 @@ export default function SchedulingTableRow({
         <MenuItem
           onClick={() => {
             handleClosePopover();
-            onStatusUpdate();
+            onEditRow();
           }}
           sx={{
             fontSize: { xs: '0.8125rem', md: '0.875rem' },
             py: 1,
           }}
         >
-          <Iconify icon="eva:refresh-outline" sx={{ mr: 1 }} />
-          Status Update
+          <Iconify icon="eva:edit-fill" sx={{ mr: 1 }} />
+          Edit
         </MenuItem>
 
         <Divider sx={{ borderStyle: 'dashed', my: 0.5 }} />

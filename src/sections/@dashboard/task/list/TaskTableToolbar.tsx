@@ -86,7 +86,7 @@ export default function TaskTableToolbar({
           fullWidth
           select
           label="Priority"
-          value={filterPriority}
+          value={filterPriority || ''}
           onChange={onFilterPriority}
           SelectProps={{
             MenuProps: {
