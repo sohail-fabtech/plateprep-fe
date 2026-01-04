@@ -71,7 +71,7 @@ export async function getDictionaryCategories(params?: DictionaryCategoryQueryPa
   if (params?.ordering) queryParams.ordering = params.ordering;
 
   try {
-    const response = await axiosInstance.get<DictionaryCategoryListApiResponse>('/api/dictionary-category/', {
+    const response = await axiosInstance.get<DictionaryCategoryListApiResponse>('/dictionary-category/', {
       params: queryParams,
     });
 
@@ -92,7 +92,7 @@ export async function getDictionaryCategories(params?: DictionaryCategoryQueryPa
  */
 export async function getDictionaryCategoryById(id: string | number): Promise<IDictionaryCategory> {
   try {
-    const response = await axiosInstance.get<IDictionaryCategoryApiResponse>(`/api/dictionary-category/${id}/`);
+    const response = await axiosInstance.get<IDictionaryCategoryApiResponse>(`/dictionary-category/${id}/`);
     return transformApiResponseToCategory(response.data);
   } catch (error: any) {
     throw new Error(error?.response?.data?.detail || error?.message || 'Failed to fetch dictionary category');
@@ -104,7 +104,7 @@ export async function getDictionaryCategoryById(id: string | number): Promise<ID
  */
 export async function createDictionaryCategory(data: CreateDictionaryCategoryRequest): Promise<IDictionaryCategory> {
   try {
-    const response = await axiosInstance.post<IDictionaryCategoryApiResponse>('/api/dictionary-category/', data);
+    const response = await axiosInstance.post<IDictionaryCategoryApiResponse>('/dictionary-category/', data);
     return transformApiResponseToCategory(response.data);
   } catch (error: any) {
     const errorMessage = error?.response?.data?.name?.[0] || error?.response?.data?.detail || error?.message || 'Failed to create dictionary category';
@@ -120,7 +120,7 @@ export async function updateDictionaryCategory(
   data: UpdateDictionaryCategoryRequest
 ): Promise<IDictionaryCategory> {
   try {
-    const response = await axiosInstance.patch<IDictionaryCategoryApiResponse>(`/api/dictionary-category/${id}/`, data);
+    const response = await axiosInstance.patch<IDictionaryCategoryApiResponse>(`/dictionary-category/${id}/`, data);
     return transformApiResponseToCategory(response.data);
   } catch (error: any) {
     const errorMessage = error?.response?.data?.name?.[0] || error?.response?.data?.detail || error?.message || 'Failed to update dictionary category';
@@ -133,7 +133,7 @@ export async function updateDictionaryCategory(
  */
 export async function deleteDictionaryCategory(id: string | number): Promise<void> {
   try {
-    await axiosInstance.delete(`/api/dictionary-category/${id}/`);
+    await axiosInstance.delete(`/dictionary-category/${id}/`);
   } catch (error: any) {
     throw new Error(error?.response?.data?.detail || error?.message || 'Failed to delete dictionary category');
   }

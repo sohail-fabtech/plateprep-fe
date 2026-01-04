@@ -13,6 +13,7 @@ import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 import SearchNotFound from '../../components/search-not-found';
 import Iconify from '../../components/iconify';
 import { SubscriptionDialog } from '../../components/subscription-dialog';
+import { useSnackbar } from '../../components/snackbar';
 // sections
 import { DictionaryCategoryCard, DictionarySearch, DictionaryCategoryDialog } from '../../sections/@dashboard/dictionary';
 // hooks
@@ -22,7 +23,7 @@ import { useSubscription } from '../../hooks/useSubscription';
 // auth
 import PermissionGuard from '../../auth/PermissionGuard';
 // services
-import { useDictionaryCategories, DictionaryCategoryQueryParams } from '../../services';
+import { useDictionaryCategories, DictionaryCategoryQueryParams, useDeleteDictionaryCategory } from '../../services';
 
 // ----------------------------------------------------------------------
 
@@ -30,6 +31,7 @@ export default function DictionaryListPage() {
   const { themeStretch } = useSettingsContext();
   const { hasPermission } = usePermissions();
   const { hasSubscription } = useSubscription();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [filterName, setFilterName] = useState('');
   const [page, setPage] = useState(1);
@@ -70,6 +72,9 @@ export default function DictionaryListPage() {
     error,
   } = useDictionaryCategories(queryParams);
 
+  // Delete mutation
+  const deleteMutation = useDeleteDictionaryCategory();
+
   // Transform API data to IDictionaryCategory format
   const dataFiltered: IDictionaryCategory[] = useMemo(() => {
     if (!data?.results) return [];
@@ -98,6 +103,16 @@ export default function DictionaryListPage() {
 
   const handleCategorySuccess = () => {
     // Refetch will happen automatically via query invalidation
+  };
+
+  const handleDeleteCategory = async (category: IDictionaryCategory) => {
+    try {
+      await deleteMutation.mutateAsync(category.id);
+      enqueueSnackbar('Category deleted successfully', { variant: 'success' });
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to delete category';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    }
   };
 
   return (
@@ -203,7 +218,14 @@ export default function DictionaryListPage() {
           <Grid container spacing={3}>
             {dataFiltered.map((category) => (
               <Grid key={category.id} item xs={12} sm={6} md={4}>
-                <DictionaryCategoryCard category={category} />
+                <DictionaryCategoryCard
+                  category={category}
+                  onEdit={(cat) => {
+                    setEditingCategory(cat);
+                    setOpenCategoryDialog(true);
+                  }}
+                  onDelete={handleDeleteCategory}
+                />
               </Grid>
             ))}
           </Grid>

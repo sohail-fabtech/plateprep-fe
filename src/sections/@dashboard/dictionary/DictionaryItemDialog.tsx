@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 // @mui
@@ -98,6 +98,18 @@ export default function DictionaryItemDialog({
     handleSubmit,
     formState: { isSubmitting },
   } = methods;
+
+  // Reset form when dialog opens or currentItem changes
+  useEffect(() => {
+    if (open) {
+      reset({
+        term: currentItem?.term || '',
+        category: currentItem?.category?.id || categoryId || '',
+        definition: currentItem?.definition || '',
+        description: currentItem?.description || '',
+      });
+    }
+  }, [open, currentItem, categoryId, reset]);
 
   const onSubmit = async (data: {
     term: string;

@@ -50,6 +50,8 @@ export const PATH_DASHBOARD = {
     root: path(ROOTS_DASHBOARD, '/recipes'),
     list: path(ROOTS_DASHBOARD, '/recipes/list'),
     new: path(ROOTS_DASHBOARD, '/recipes/new'),
+    newAI: path(ROOTS_DASHBOARD, '/recipes/new/ai'),
+    previewAI: path(ROOTS_DASHBOARD, '/recipes/new/ai/preview'),
     view: (id: string) => path(ROOTS_DASHBOARD, `/recipes/${id}`),
     edit: (id: string) => path(ROOTS_DASHBOARD, `/recipes/${id}/edit`),
   },

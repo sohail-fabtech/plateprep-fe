@@ -13,6 +13,7 @@ import { useSettingsContext } from '../../components/settings';
 import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 import SearchNotFound from '../../components/search-not-found';
 import Iconify from '../../components/iconify';
+import { useSnackbar } from '../../components/snackbar';
 // sections
 import { DictionaryTermCard, DictionarySearch, DictionaryItemDialog } from '../../sections/@dashboard/dictionary';
 // hooks
@@ -24,7 +25,7 @@ import PermissionGuard from '../../auth/PermissionGuard';
 // components
 import { SubscriptionDialog } from '../../components/subscription-dialog';
 // services
-import { useDictionaryCategory, useDictionaryItems, DictionaryItemQueryParams } from '../../services';
+import { useDictionaryCategory, useDictionaryItems, DictionaryItemQueryParams, useDeleteDictionaryItem } from '../../services';
 
 // ----------------------------------------------------------------------
 
@@ -32,6 +33,7 @@ export default function DictionaryTermsPage() {
   const { themeStretch } = useSettingsContext();
   const { hasPermission } = usePermissions();
   const { hasSubscription } = useSubscription();
+  const { enqueueSnackbar } = useSnackbar();
 
   const { categoryId } = useParams<{ categoryId: string }>();
 
@@ -87,6 +89,9 @@ export default function DictionaryTermsPage() {
     error: itemsError,
   } = useDictionaryItems(queryParams);
 
+  // Delete mutation
+  const deleteMutation = useDeleteDictionaryItem();
+
   // Transform API data to IDictionaryTerm format
   const dataFiltered: IDictionaryTerm[] = useMemo(() => {
     if (!itemsData?.results) return [];
@@ -119,6 +124,16 @@ export default function DictionaryTermsPage() {
 
   const handleItemSuccess = () => {
     // Refetch will happen automatically via query invalidation
+  };
+
+  const handleDeleteItem = async (term: IDictionaryTerm) => {
+    try {
+      await deleteMutation.mutateAsync(term.id);
+      enqueueSnackbar('Term deleted successfully', { variant: 'success' });
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to delete term';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    }
   };
 
   // Show loading state for category
@@ -183,7 +198,7 @@ export default function DictionaryTermsPage() {
           ]}
           action={
             <Stack direction="row" spacing={2}>
-              <PermissionGuard permission="create_dictionary_item">
+              {/* <PermissionGuard permission="create_dictionary_item"> */}
                 <Button
                   variant="contained"
                   startIcon={<Iconify icon="eva:plus-fill" />}
@@ -204,7 +219,7 @@ export default function DictionaryTermsPage() {
                 >
                   Add Term
                 </Button>
-              </PermissionGuard>
+              {/* </PermissionGuard> */}
               <Button
                 variant="outlined"
                 startIcon={<Iconify icon="eva:arrow-back-fill" />}
@@ -279,7 +294,14 @@ export default function DictionaryTermsPage() {
           <Grid container spacing={3}>
             {dataFiltered.map((term) => (
               <Grid key={term.id} item xs={12} md={6}>
-                <DictionaryTermCard term={term} />
+                <DictionaryTermCard
+                  term={term}
+                  onEdit={(t) => {
+                    setEditingItem(t);
+                    setOpenItemDialog(true);
+                  }}
+                  onDelete={handleDeleteItem}
+                />
               </Grid>
             ))}
           </Grid>

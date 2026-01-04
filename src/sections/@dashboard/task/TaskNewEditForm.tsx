@@ -33,6 +33,7 @@ import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
 import BranchSelect from '../../../components/branch-select/BranchSelect';
+import { ProcessingDialog } from '../../../components/processing-dialog';
 // hooks
 import { useBranchForm } from '../../../hooks/useBranchForm';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -93,11 +94,12 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
   const theme = useTheme();
 
   // Branch form hook - get branch ID from current task if editing
-  // For ITaskDetail (from API), use branchId; for ITask (legacy), use branchId
+  // For ITaskDetail (from API), use branchId (which now includes fallback to staff_detail.branch.id)
+  // For ITask (legacy), use branchId
   const taskDetail = currentTask as ITaskDetail;
   const isTaskDetail = taskDetail && 'recipeId' in taskDetail;
   const taskBranchId = isTaskDetail 
-    ? taskDetail.branchId 
+    ? (taskDetail.branchId !== null && taskDetail.branchId !== undefined ? taskDetail.branchId : null)
     : (currentTask as ITask)?.branchId;
   
   const { branchIdForApi, showBranchSelect, initialBranchId } = useBranchForm(
@@ -152,8 +154,15 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
         dishSelection: hasRecipeId && recipeId ? String(recipeId) : (isCustomTask ? 'other' : ''),
         kitchenStation: isTaskDetail ? (taskDetail.kitchenStation || '') : '',
         assignTo: (isTaskDetail ? taskDetail.staffId : currentTask?.staffId) ? String(isTaskDetail ? taskDetail.staffId : currentTask?.staffId) : '',
-      email: '',
-        restaurantLocation: initialBranchId,
+        email: '',
+        restaurantLocation: (() => {
+          // When editing, prioritize task's branch ID
+          if (isEdit && taskBranchId !== null && taskBranchId !== undefined) {
+            return typeof taskBranchId === 'number' ? taskBranchId : (typeof taskBranchId === 'string' && /^\d+$/.test(taskBranchId) ? parseInt(taskBranchId, 10) : initialBranchId);
+          }
+          // Otherwise use initialBranchId from useBranchForm
+          return initialBranchId;
+        })(),
         taskStartTime: (isTaskDetail ? taskDetail.startedAt : (currentTask as any)?.startedAt)
           ? (() => {
               const startedAt = isTaskDetail ? taskDetail.startedAt : (currentTask as any)?.startedAt;
@@ -201,7 +210,7 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
         status: statusValue as ITaskStatus,
       };
     },
-    [currentTask, initialBranchId]
+    [currentTask, initialBranchId, isEdit, taskBranchId]
   );
 
   const methods = useForm<ITaskForm>({
@@ -233,9 +242,18 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
   const isOwner = user?.is_owner === true;
   
   const selectedBranchId = useMemo(() => {
-    // For non-owners, always use their profile branch ID
-    if (!isOwner && branchIdForApi) {
-      return typeof branchIdForApi === 'number' ? branchIdForApi : parseInt(String(branchIdForApi), 10);
+    // For non-owners editing: use task's branch ID if available, otherwise use their profile branch ID
+    // For non-owners creating: use their profile branch ID
+    if (!isOwner) {
+      // When editing, prioritize task's branch ID (from branchIdForApi when it comes from task)
+      if (isEdit && taskBranchId) {
+        return typeof taskBranchId === 'number' ? taskBranchId : parseInt(String(taskBranchId), 10);
+      }
+      // Otherwise use profile branch ID
+      if (branchIdForApi) {
+        return typeof branchIdForApi === 'number' ? branchIdForApi : parseInt(String(branchIdForApi), 10);
+      }
+      return undefined;
     }
     
     // For owners, prioritize form selection, then fallback to branchIdForApi (task's branch)
@@ -255,7 +273,7 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
     }
     
     return undefined;
-  }, [values.restaurantLocation, branchIdForApi, isOwner]);
+  }, [values.restaurantLocation, branchIdForApi, isOwner, isEdit, taskBranchId]);
 
   // Recipe select state for search and pagination
   const [recipePage, setRecipePage] = useState(1);
@@ -277,7 +295,7 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
   const recipeQueryParams: RecipeQueryParams = useMemo(() => {
     const params: RecipeQueryParams = {
       page: recipePage,
-      page_size: 50, // Fetch in pages for pagination
+      page_size: 500, // Increased page size for better data loading
       status: 'P', // Public only
       is_deleted: false,
     };
@@ -341,7 +359,7 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
   const userQueryParams: UserQueryParams = useMemo(() => {
     const params: UserQueryParams = {
       page: userPage,
-      page_size: 50, // Fetch in pages for pagination
+      page_size: 500, // Increased page size for better data loading
       is_deleted: false,
     };
     
@@ -426,6 +444,17 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
 
+  // Processing dialog state
+  const [processingDialog, setProcessingDialog] = useState<{
+    open: boolean;
+    state: 'processing' | 'success' | 'error';
+    message: string;
+  }>({
+    open: false,
+    state: 'processing',
+    message: '',
+  });
+
   useEffect(() => {
     if (isEdit && currentTask) {
       reset(defaultValues);
@@ -438,12 +467,25 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
   const onSubmit = async (data: ITaskForm) => {
     console.log('Form submitted with data:', data);
     console.log('Form validation errors:', errors);
+    
+    // Show processing dialog
+    setProcessingDialog({
+      open: true,
+      state: 'processing',
+      message: isEdit ? 'Updating task...' : 'Creating task...',
+    });
+
     try {
       let uploadedImageUrl: string | null = null;
       let uploadedVideoUrl: string | null = null;
 
       // Upload image if new file selected
       if (imageFile) {
+        setProcessingDialog({
+          open: true,
+          state: 'processing',
+          message: 'Uploading image...',
+        });
         const fileKey = generateFileKey('task_images', imageFile.name);
         uploadedImageUrl = await uploadFileWithPresignedUrl(imageFile, fileKey, imageFile.type);
       } else if (data.image && data.image.startsWith('http')) {
@@ -453,6 +495,11 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
 
       // Upload video file to S3 if new file selected
       if (videoFile) {
+        setProcessingDialog({
+          open: true,
+          state: 'processing',
+          message: 'Uploading video...',
+        });
         const fileKey = generateFileKey('task_videos', videoFile.name);
         uploadedVideoUrl = await uploadFileWithPresignedUrl(videoFile, fileKey, videoFile.type);
       } else if (data.video && data.video.url && data.video.url.startsWith('http') && !data.video.url.startsWith('blob:')) {
@@ -484,20 +531,38 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
         delete apiRequest.status;
       }
 
+      setProcessingDialog({
+        open: true,
+        state: 'processing',
+        message: isEdit ? 'Updating task...' : 'Creating task...',
+      });
+
       if (isEdit && currentTask) {
         // Update existing task
         await updateTaskMutation.mutateAsync({
           id: currentTask.id,
           data: apiRequest,
         });
-        enqueueSnackbar('Task updated successfully!', { variant: 'success' });
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'Task updated successfully!',
+        });
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.tasks.list);
+        }, 1500);
       } else {
         // Create new task
         await createTaskMutation.mutateAsync(apiRequest);
-        enqueueSnackbar('Task created successfully!', { variant: 'success' });
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'Task created successfully!',
+        });
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.tasks.list);
+        }, 1500);
       }
-
-      navigate(PATH_DASHBOARD.tasks.list);
     } catch (error: any) {
       console.error('Error saving task:', error);
       const errorMessage = error?.response?.data?.detail || 
@@ -505,7 +570,11 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
                             ? JSON.stringify(error.response.data) 
                             : error?.message) ||
                           'Something went wrong!';
-      enqueueSnackbar(errorMessage, { variant: 'error' });
+      setProcessingDialog({
+        open: true,
+        state: 'error',
+        message: errorMessage,
+      });
     }
   };
 
@@ -563,8 +632,15 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
   };
 
   return (
-    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit, onError)}>
-      <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+    <>
+      <ProcessingDialog
+        open={processingDialog.open}
+        state={processingDialog.state}
+        message={processingDialog.message}
+        onClose={() => setProcessingDialog({ open: false, state: 'processing', message: '' })}
+      />
+      <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit, onError)}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
         {/* Basic Task Information */}
         <Grid item xs={12}>
           <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
@@ -651,7 +727,7 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
                         label="Select Dish"
                         error={!!error}
                         helperText={error?.message}
-                        disabled={isLoadingRecipes || !selectedBranchId}
+                        disabled={isLoadingRecipes || (isEdit && !selectedBranchId && !taskBranchId) || (!isEdit && !selectedBranchId)}
                         SelectProps={{
                           open: recipeMenuOpen,
                           onOpen: () => setRecipeMenuOpen(true),
@@ -837,7 +913,7 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
                         label="Assign To"
                         error={!!error}
                         helperText={error?.message}
-                        disabled={isLoadingUsers || !selectedBranchId}
+                        disabled={isLoadingUsers || (isEdit && !selectedBranchId && !taskBranchId) || (!isEdit && !selectedBranchId)}
                         SelectProps={{
                           open: userMenuOpen,
                           onOpen: () => setUserMenuOpen(true),
@@ -1294,7 +1370,8 @@ export default function TaskNewEditForm({ isEdit = false, currentTask }: Props) 
           </Stack>
         </Grid>
       </Grid>
-    </FormProvider>
+      </FormProvider>
+    </>
   );
 }
 

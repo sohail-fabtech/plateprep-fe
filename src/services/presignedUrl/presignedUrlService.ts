@@ -59,7 +59,7 @@ export function constructS3Url(presignedUrl: string, s3Key: string): string {
   
   // Fallback: try to extract bucket domain from URL structure
   const urlParts = baseUrl.split('/');
-  for (let i = 0; i < urlParts.length; i++) {
+  for (let i = 0; i < urlParts.length; i += 1) {
     if (urlParts[i].includes('.amazonaws.com')) {
       const bucketDomain = urlParts.slice(0, i + 1).join('/');
       return `${bucketDomain}/${filename}`;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -26,6 +26,7 @@ import { IWineInventory, IWineInventoryForm } from '../../../@types/wineInventor
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
+import { ProcessingDialog } from '../../../components/processing-dialog';
 // validation
 import WineInventoryValidationSchema from './WineInventoryValidation';
 // sections
@@ -147,6 +148,17 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
 
   const values = watch();
 
+  // Processing dialog state
+  const [processingDialog, setProcessingDialog] = useState<{
+    open: boolean;
+    state: 'processing' | 'success' | 'error';
+    message: string;
+  }>({
+    open: false,
+    state: 'processing',
+    message: '',
+  });
+
   useEffect(() => {
     if (isEdit && currentWine) {
       reset(defaultValues);
@@ -157,6 +169,13 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
   }, [isEdit, currentWine, reset, defaultValues]);
 
   const onSubmit = async (data: IWineInventoryForm) => {
+    // Show processing dialog
+    setProcessingDialog({
+      open: true,
+      state: 'processing',
+      message: isEdit ? 'Updating wine...' : 'Creating wine...',
+    });
+
     try {
       // Transform to API payload format
       const apiPayload = {
@@ -188,12 +207,28 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
 
       console.log('WINE INVENTORY API PAYLOAD:', apiPayload);
 
+      setProcessingDialog({
+        open: true,
+        state: 'processing',
+        message: isEdit ? 'Updating wine...' : 'Creating wine...',
+      });
+
       await new Promise((resolve) => setTimeout(resolve, 500));
-      enqueueSnackbar(!isEdit ? 'Wine created successfully!' : 'Wine updated successfully!');
-      navigate(PATH_DASHBOARD.wineInventory.list);
+      setProcessingDialog({
+        open: true,
+        state: 'success',
+        message: isEdit ? 'Wine updated successfully!' : 'Wine created successfully!',
+      });
+      setTimeout(() => {
+        navigate(PATH_DASHBOARD.wineInventory.list);
+      }, 1500);
     } catch (error) {
       console.error(error);
-      enqueueSnackbar('Something went wrong!', { variant: 'error' });
+      setProcessingDialog({
+        open: true,
+        state: 'error',
+        message: 'Something went wrong!',
+      });
     }
   };
 
@@ -210,8 +245,15 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
   const isRegionOther = values.region === 'Other';
 
   return (
-    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
-      <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+    <>
+      <ProcessingDialog
+        open={processingDialog.open}
+        state={processingDialog.state}
+        message={processingDialog.message}
+        onClose={() => setProcessingDialog({ open: false, state: 'processing', message: '' })}
+      />
+      <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
         {/* Basic Wine Information */}
         <Grid item xs={12}>
           <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
@@ -651,7 +693,8 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
           </Stack>
         </Grid>
       </Grid>
-    </FormProvider>
+      </FormProvider>
+    </>
   );
 }
 

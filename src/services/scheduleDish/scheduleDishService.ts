@@ -123,7 +123,7 @@ export async function getScheduleDishes(params?: ScheduleDishQueryParams): Promi
   if (params?.ordering) queryParams.ordering = params.ordering;
 
   try {
-    const response = await axiosInstance.get<ScheduleDishListApiResponse>('/api/schedule-dish/', {
+    const response = await axiosInstance.get<ScheduleDishListApiResponse>('/schedule-dish/', {
       params: queryParams,
     });
 
@@ -144,7 +144,7 @@ export async function getScheduleDishes(params?: ScheduleDishQueryParams): Promi
  */
 export async function getScheduleDishById(id: string | number): Promise<IScheduleDish> {
   try {
-    const response = await axiosInstance.get<IScheduleDishApiResponse>(`/api/schedule-dish/${id}/`);
+    const response = await axiosInstance.get<IScheduleDishApiResponse>(`/schedule-dish/${id}/`);
     return transformApiResponseToSchedule(response.data);
   } catch (error: any) {
     throw new Error(error?.response?.data?.detail || error?.message || 'Failed to fetch scheduled dish');
@@ -156,7 +156,7 @@ export async function getScheduleDishById(id: string | number): Promise<ISchedul
  */
 export async function scheduleDish(data: ScheduleDishRequest): Promise<ScheduleDishResponse> {
   try {
-    const response = await axiosInstance.post<ScheduleDishResponse>('/api/schedule-dish/schedule/', data);
+    const response = await axiosInstance.post<ScheduleDishResponse>('/schedule-dish/schedule/', data);
     return response.data;
   } catch (error: any) {
     const errorMessage =
@@ -179,7 +179,7 @@ export async function updateScheduleDish(
   data: UpdateScheduleDishRequest
 ): Promise<IScheduleDish> {
   try {
-    const response = await axiosInstance.patch<IScheduleDishApiResponse>(`/api/schedule-dish/${id}/`, data);
+    const response = await axiosInstance.patch<IScheduleDishApiResponse>(`/schedule-dish/${id}/`, data);
     return transformApiResponseToSchedule(response.data);
   } catch (error: any) {
     const errorMessage =
@@ -199,7 +199,7 @@ export async function updateScheduleDish(
  */
 export async function deleteScheduleDish(id: string | number): Promise<void> {
   try {
-    await axiosInstance.delete(`/api/schedule-dish/${id}/`);
+    await axiosInstance.delete(`/schedule-dish/${id}/`);
   } catch (error: any) {
     throw new Error(error?.response?.data?.detail || error?.message || 'Failed to delete scheduled dish');
   }

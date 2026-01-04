@@ -25,6 +25,7 @@ import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
 import { PermissionMatrix } from '../../../components/permission-matrix';
+import { ProcessingDialog } from '../../../components/processing-dialog';
 // services
 import {
   useCreateRole,
@@ -117,6 +118,17 @@ export default function RoleNewEditForm({ isEdit = false, currentRole }: Props) 
 
   const values = watch();
 
+  // Processing dialog state
+  const [processingDialog, setProcessingDialog] = useState<{
+    open: boolean;
+    state: 'processing' | 'success' | 'error';
+    message: string;
+  }>({
+    open: false,
+    state: 'processing',
+    message: '',
+  });
+
   // Convert API permission IDs to UI permission IDs when role data is loaded
   useEffect(() => {
     if (isEdit && parsedRole && permissionsData && permissionsData.length > 0) {
@@ -135,9 +147,20 @@ export default function RoleNewEditForm({ isEdit = false, currentRole }: Props) 
   const isLoading = isLoadingPermissions || (isEdit && isLoadingRole);
 
   const onSubmit = async (data: IRoleForm) => {
+    // Show processing dialog
+    setProcessingDialog({
+      open: true,
+      state: 'processing',
+      message: isEdit ? 'Updating role...' : 'Creating role...',
+    });
+
     try {
       if (!permissionsData || permissionsData.length === 0) {
-        enqueueSnackbar('Permissions are not available. Please try again.', { variant: 'error' });
+        setProcessingDialog({
+          open: true,
+          state: 'error',
+          message: 'Permissions are not available. Please try again.',
+        });
         return;
       }
 
@@ -145,7 +168,11 @@ export default function RoleNewEditForm({ isEdit = false, currentRole }: Props) 
       const apiPermissionIds = convertUiPermissionIdsToApiIds(data.permission_ids, permissionsData);
 
       if (apiPermissionIds.length === 0) {
-        enqueueSnackbar('Please select at least one valid permission.', { variant: 'error' });
+        setProcessingDialog({
+          open: true,
+          state: 'error',
+          message: 'Please select at least one valid permission.',
+        });
         return;
       }
 
@@ -155,27 +182,49 @@ export default function RoleNewEditForm({ isEdit = false, currentRole }: Props) 
         permission_ids: apiPermissionIds,
       };
 
+      setProcessingDialog({
+        open: true,
+        state: 'processing',
+        message: isEdit ? 'Updating role...' : 'Creating role...',
+      });
+
       if (isEdit && roleId) {
         // Update role
         await updateRoleMutation.mutateAsync({
           id: roleId,
           data: apiPayload,
         });
-        enqueueSnackbar('Role updated successfully', { variant: 'success' });
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'Role updated successfully',
+        });
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.roles.list);
+        }, 1500);
       } else {
         // Create role
         await createRoleMutation.mutateAsync(apiPayload);
-        enqueueSnackbar('Role created successfully', { variant: 'success' });
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'Role created successfully',
+        });
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.roles.list);
+        }, 1500);
       }
-
-      navigate(PATH_DASHBOARD.roles.list);
     } catch (error) {
       console.error('Error submitting role form:', error);
       const errorMessage =
         error instanceof Error
           ? error.message
           : 'Failed to save role. Please try again.';
-      enqueueSnackbar(errorMessage, { variant: 'error' });
+      setProcessingDialog({
+        open: true,
+        state: 'error',
+        message: errorMessage,
+      });
     }
   };
 

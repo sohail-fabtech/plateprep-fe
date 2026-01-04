@@ -1,6 +1,5 @@
 import axiosInstance from '../../utils/axios';
-import { ITaskDetail, ITaskComment } from '../../@types/taskApi';
-import { ITaskApiResponse } from '../../@types/taskApi';
+import { ITaskDetail, ITaskComment, ITaskApiResponse } from '../../@types/taskApi';
 import { transformApiResponseToTask } from '../../utils/taskAdapter';
 import { QueryParams, PaginatedResponse } from '../common/types';
 

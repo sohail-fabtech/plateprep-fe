@@ -77,7 +77,6 @@ export default function BranchSelect({
         setSelectedBranchCache(found);
       } else if (selectedBranchCache?.id === value) {
         // Keep existing cache if it matches the value
-        return;
       } else {
         // Clear cache if value doesn't match any branch
         setSelectedBranchCache(null);

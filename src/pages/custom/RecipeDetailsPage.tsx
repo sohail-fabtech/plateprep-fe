@@ -141,7 +141,7 @@ export default function RecipeDetailsPage() {
           let current: any = updated;
           
           // Navigate to parent
-          for (let i = 0; i < keys.length - 1; i++) {
+          for (let i = 0; i < keys.length - 1; i += 1) {
             if (!current[keys[i]]) {
               current[keys[i]] = {};
             }

@@ -45,8 +45,7 @@ import {
 // utils
 import { getYouTubeVideoId } from '../../utils/taskAdapter';
 // types
-import { ITaskDetail } from '../../@types/taskApi';
-import { TASK_STATUS_OPTIONS } from '../../@types/taskApi';
+import { ITaskDetail, TASK_STATUS_OPTIONS } from '../../@types/taskApi';
 
 // ----------------------------------------------------------------------
 

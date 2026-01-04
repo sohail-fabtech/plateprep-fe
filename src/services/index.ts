@@ -18,6 +18,24 @@ export {
 // Export Recipe types
 export type { RecipeQueryParams, RecipeListResponse } from './recipes/recipeService';
 
+// Export Ingredient hooks
+export {
+  useIngredients,
+  ingredientKeys,
+} from './recipes/ingredientHooks';
+
+// Export Ingredient types
+export type { IIngredientApiResponse } from './recipes/ingredientService';
+
+// Export Step hooks
+export {
+  useSteps,
+  stepKeys,
+} from './recipes/stepHooks';
+
+// Export Step types
+export type { IStepApiResponse } from './recipes/stepService';
+
 // Export Task hooks
 export {
   useTask,
@@ -204,6 +222,7 @@ export {
   useDictionaryItems,
   useCreateDictionaryItem,
   useUpdateDictionaryItem,
+  useDeleteDictionaryItem,
   dictionaryItemKeys,
 } from './dictionaryItems/dictionaryItemHooks';
 
@@ -239,4 +258,13 @@ export {
 // Export Holiday types
 export type { HolidayQueryParams, HolidayListResponse } from './holidays/holidayHooks';
 export type { IHoliday } from './holidays/holidayService';
+
+// Export AI Recipe Generation hooks
+export {
+  useGenerateAIRecipe,
+  aiRecipeGenerationKeys,
+} from './aiRecipeGeneration/aiRecipeGenerationHooks';
+
+// Export AI Recipe Generation types
+export type { GenerateAIRecipeRequest, GenerateAIRecipeResponse } from './aiRecipeGeneration/aiRecipeGenerationService';
 

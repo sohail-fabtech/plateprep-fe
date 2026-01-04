@@ -10,17 +10,17 @@ import {
   Chip,
   CircularProgress,
   useTheme,
+  Button,
 } from '@mui/material';
-// routes
-import { PATH_DASHBOARD } from '../../../../routes/paths';
 // @types
 import { IRestaurantLocation } from '../../../../@types/restaurantLocation';
+// routes
+import { PATH_DASHBOARD } from '../../../../routes/paths';
 // components
 import Label from '../../../../components/label';
 import Iconify from '../../../../components/iconify';
 import MenuPopover from '../../../../components/menu-popover';
 import ConfirmDialog from '../../../../components/confirm-dialog';
-import { Button } from '@mui/material';
 
 // ----------------------------------------------------------------------
 

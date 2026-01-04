@@ -170,7 +170,7 @@ const KNOWN_PATH_SEGMENTS = [
  */
 function normalizeRoutePath(routePath: string): string {
   // Remove query strings
-  let normalized = routePath.split('?')[0];
+  const normalized = routePath.split('?')[0];
   
   // Split into segments
   const segments = normalized.split('/').filter(Boolean);

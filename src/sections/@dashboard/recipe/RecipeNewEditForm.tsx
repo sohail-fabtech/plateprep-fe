@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import * as Yup from 'yup';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -55,6 +55,7 @@ import {
 import { ImageUploadZone, VideoUploadZone, DynamicIngredientList, DynamicStepList } from './form';
 // constants
 import { KITCHEN_STATION_OPTIONS } from '../../../constants/kitchenStations';
+import { MENU_CLASS_OPTIONS } from '../../../constants/menuClasses';
 
 // ----------------------------------------------------------------------
 
@@ -129,13 +130,11 @@ const CENTER_OF_PLATE_OPTIONS = [
   'Vegetable-Centric',
 ];
 
-// Menu Class options (subcategories)
-const MENU_CLASS_OPTIONS = ['Commence', 'Soup', 'Salad', 'Appetizers', 'Main Course', 'Dessert', 'Side Dishes', 'Add On'];
-
 const TIME_UNIT_OPTIONS = ['minutes', 'hours'];
 
 export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
 
@@ -163,6 +162,95 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
   // Predefined items are already sorted and ready to use from hooks
 
+  // Map AI recipe data to form values
+  const mapAIDataToFormValues = useCallback((aiData: any): Partial<FormValuesProps> => {
+    if (!aiData) return {};
+
+    // Match cuisine type with API data
+    const matchedCuisineType = aiData.cuisine_style
+      ? (() => {
+          const cuisineName = aiData.cuisine_style;
+          const matched = menuCategories.find(
+            (cat) => cat.categoryName?.toLowerCase() === cuisineName.toLowerCase()
+          );
+          return matched?.categoryName || cuisineName;
+        })()
+      : '';
+
+    // Map ingredients
+    const mappedIngredients = (aiData.ingredients || []).map((ing: any) => ({
+      name: ing['Ingredient name'] || '',
+      quantity: parseFloat(ing.Quantity || '0') || 0,
+      unit: ing.Unit || '',
+    }));
+
+    // Map essentials (equipment)
+    const mappedEssentials = (aiData.essentials_needed || []).map((ess: any) => ({
+      name: ess['Equipment name'] || '',
+      quantity: parseFloat(ess.Quantity || '0') || 0,
+      unit: '',
+    }));
+
+    // Map steps to designYourPlate (preparation steps)
+    const mappedSteps = (aiData.steps || []).map((step: string) => step);
+
+    // Handle plating instructions - append to steps if both exist, otherwise use whichever is available
+    let platingSteps = [...mappedSteps];
+    if (aiData.plating_instructions) {
+      // If plating_instructions exist and steps are empty, use plating_instructions
+      // Otherwise, append plating_instructions to steps
+      if (mappedSteps.length === 0) {
+        platingSteps = aiData.plating_instructions.split('\n').filter((s: string) => s.trim());
+      } else {
+        // Append plating instructions as additional steps
+        const platingLines = aiData.plating_instructions.split('\n').filter((s: string) => s.trim());
+        platingSteps = [...mappedSteps, ...platingLines];
+      }
+    }
+
+    // Handle starch preparation
+    const starchTitle = aiData.starch_preparation && aiData.starch_preparation !== 'Not applicable for this recipe.'
+      ? aiData.starch_preparation
+      : '';
+    const starchSteps: string[] = [];
+
+    return {
+      dishName: aiData.dish_name || '',
+      cuisineType: matchedCuisineType ? [matchedCuisineType] : [],
+      menuClass: aiData.menu_class || 'Commence',
+      description: aiData.description || '',
+      menuPrice: aiData.price_range || 0,
+      ingredients: mappedIngredients,
+      essentials: mappedEssentials,
+      designYourPlate: platingSteps,
+      starchTitle,
+      starchSteps,
+      preparationTime: 30, // Default value
+      preparationTimeUnit: 'minutes',
+      costPerServing: 0,
+      station: '',
+      youtubeUrl: '',
+      restaurantLocation: initialBranchId ? String(initialBranchId) : '',
+      caseCost: 0,
+      caseWeight: 0,
+      servingWeight: 0,
+      servingsInCase: 16,
+      foodCostWanted: 20,
+      tags: [],
+      predefinedStarch: [],
+      predefinedVegetable: [],
+      predefinedIngredients: [],
+      availability: 'available',
+      cookingDeviationComments: [],
+      realtimeVariableComments: [],
+      status: 'public',
+      images: [],
+      primaryImageIndex: 0,
+      fullyPlatedImageIndex: -1,
+      video: null,
+    };
+  }, [menuCategories, initialBranchId]);
+
   const NewRecipeSchema = Yup.object().shape({
     dishName: Yup.string().required('Dish name is required'),
     cuisineType: Yup.array().min(1, 'At least one cuisine type is required'),
@@ -174,44 +262,94 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
     description: Yup.string().required('Description is required'),
   });
 
+  // Check for AI data from location state
+  const aiDataFromState = useMemo(() => {
+    const state = location.state as { approvedRecipeData?: any } | null;
+    return state?.approvedRecipeData || null;
+  }, [location.state]);
+
   const defaultValues = useMemo(
-    () => ({
-      dishName: currentRecipe?.dishName || '',
-      cuisineType: currentRecipe?.cuisineType ? [currentRecipe.cuisineType] : [],
-      centerOfPlate: currentRecipe?.plateDesign?.centerOfPlate?.category || '',
-      menuClass: 'Commence',
-      preparationTime: currentRecipe?.preparationTime || 30,
-      preparationTimeUnit: 'minutes',
-      menuPrice: currentRecipe?.costing?.salePrice || 0,
-      costPerServing: currentRecipe?.costing?.costPerServing || 0,
-      station: currentRecipe?.station || '',
-      youtubeUrl: currentRecipe?.youtubeUrl || '',
-      restaurantLocation: initialBranchId ? String(initialBranchId) : '',
-      caseCost: currentRecipe?.costing?.caseCost || 0,
-      caseWeight: currentRecipe?.costing?.caseWeightLb || 0,
-      servingWeight: currentRecipe?.costing?.servingWeightOz || 0,
-      servingsInCase: 16,
-      foodCostWanted: currentRecipe?.costing?.foodCostPct || 20,
-      description: currentRecipe?.description || '',
-      tags: currentRecipe?.tags || [],
-      ingredients: currentRecipe?.ingredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
-      essentials: currentRecipe?.essentialIngredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
-      starchTitle: currentRecipe?.starchPreparation?.type || '',
-      starchSteps: currentRecipe?.starchPreparation?.steps?.map(step => step.description) || [],
-      predefinedStarch: (currentRecipe as any)?.predefinedStarch?.map((item: any) => item.id) || [],
-      predefinedVegetable: (currentRecipe as any)?.predefinedVegetables?.map((item: any) => item.id) || [],
-      designYourPlate: currentRecipe?.plateDesign?.platingSteps?.map(step => step.description) || [],
-      predefinedIngredients: (currentRecipe as any)?.predefinedIngredients?.map((item: any) => item.id) || [],
-      availability: currentRecipe?.isAvailable ? 'available' : 'unavailable',
-      cookingDeviationComments: currentRecipe?.cookingDeviationComments?.map(comment => comment.step) || [],
-      realtimeVariableComments: currentRecipe?.realtimeVariableComments?.map(comment => comment.step) || [],
-      status: currentRecipe?.status === 'private' ? 'private' : 'public',
-      images: currentRecipe?.imageFiles || [],
-      primaryImageIndex: 0,
-      fullyPlatedImageIndex: -1,
-      video: currentRecipe?.videoFile ? { url: currentRecipe.videoFile, name: 'video.mp4', type: 'preparation' as 'preparation' | 'presentation' } : null,
-    }),
-    [currentRecipe, initialBranchId]
+    () => {
+      // If AI data is available and not editing, use AI data
+      if (aiDataFromState && !isEdit && !currentRecipe) {
+        const aiMappedValues = mapAIDataToFormValues(aiDataFromState);
+        return {
+          dishName: aiMappedValues.dishName || '',
+          cuisineType: aiMappedValues.cuisineType || [],
+          centerOfPlate: aiMappedValues.centerOfPlate || '',
+          menuClass: aiMappedValues.menuClass || 'Commence',
+          preparationTime: aiMappedValues.preparationTime || 30,
+          preparationTimeUnit: aiMappedValues.preparationTimeUnit || 'minutes',
+          menuPrice: aiMappedValues.menuPrice || 0,
+          costPerServing: aiMappedValues.costPerServing || 0,
+          station: aiMappedValues.station || '',
+          youtubeUrl: aiMappedValues.youtubeUrl || '',
+          restaurantLocation: aiMappedValues.restaurantLocation || (initialBranchId ? String(initialBranchId) : ''),
+          caseCost: aiMappedValues.caseCost || 0,
+          caseWeight: aiMappedValues.caseWeight || 0,
+          servingWeight: aiMappedValues.servingWeight || 0,
+          servingsInCase: aiMappedValues.servingsInCase || 16,
+          foodCostWanted: aiMappedValues.foodCostWanted || 20,
+          description: aiMappedValues.description || '',
+          tags: aiMappedValues.tags || [],
+          ingredients: aiMappedValues.ingredients || [],
+          essentials: aiMappedValues.essentials || [],
+          starchTitle: aiMappedValues.starchTitle || '',
+          starchSteps: aiMappedValues.starchSteps || [],
+          predefinedStarch: aiMappedValues.predefinedStarch || [],
+          predefinedVegetable: aiMappedValues.predefinedVegetable || [],
+          designYourPlate: aiMappedValues.designYourPlate || [],
+          predefinedIngredients: aiMappedValues.predefinedIngredients || [],
+          availability: aiMappedValues.availability || 'available',
+          cookingDeviationComments: aiMappedValues.cookingDeviationComments || [],
+          realtimeVariableComments: aiMappedValues.realtimeVariableComments || [],
+          status: aiMappedValues.status || 'public',
+          images: aiMappedValues.images || [],
+          primaryImageIndex: aiMappedValues.primaryImageIndex || 0,
+          fullyPlatedImageIndex: aiMappedValues.fullyPlatedImageIndex || -1,
+          video: aiMappedValues.video || null,
+        };
+      }
+
+      // Otherwise, use existing logic for currentRecipe or defaults
+      return {
+        dishName: currentRecipe?.dishName || '',
+        cuisineType: currentRecipe?.cuisineType ? [currentRecipe.cuisineType] : [],
+        centerOfPlate: currentRecipe?.plateDesign?.centerOfPlate?.category || '',
+        menuClass: 'Commence',
+        preparationTime: currentRecipe?.preparationTime || 30,
+        preparationTimeUnit: 'minutes',
+        menuPrice: currentRecipe?.costing?.salePrice || 0,
+        costPerServing: currentRecipe?.costing?.costPerServing || 0,
+        station: currentRecipe?.station || '',
+        youtubeUrl: currentRecipe?.youtubeUrl || '',
+        restaurantLocation: initialBranchId ? String(initialBranchId) : '',
+        caseCost: currentRecipe?.costing?.caseCost || 0,
+        caseWeight: currentRecipe?.costing?.caseWeightLb || 0,
+        servingWeight: currentRecipe?.costing?.servingWeightOz || 0,
+        servingsInCase: 16,
+        foodCostWanted: currentRecipe?.costing?.foodCostPct || 20,
+        description: currentRecipe?.description || '',
+        tags: currentRecipe?.tags || [],
+        ingredients: currentRecipe?.ingredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
+        essentials: currentRecipe?.essentialIngredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
+        starchTitle: currentRecipe?.starchPreparation?.type || '',
+        starchSteps: currentRecipe?.starchPreparation?.steps?.map(step => step.description) || [],
+        predefinedStarch: (currentRecipe as any)?.predefinedStarch?.map((item: any) => item.id) || [],
+        predefinedVegetable: (currentRecipe as any)?.predefinedVegetables?.map((item: any) => item.id) || [],
+        designYourPlate: currentRecipe?.plateDesign?.platingSteps?.map(step => step.description) || [],
+        predefinedIngredients: (currentRecipe as any)?.predefinedIngredients?.map((item: any) => item.id) || [],
+        availability: currentRecipe?.isAvailable ? 'available' : 'unavailable',
+        cookingDeviationComments: currentRecipe?.cookingDeviationComments?.map(comment => comment.step) || [],
+        realtimeVariableComments: currentRecipe?.realtimeVariableComments?.map(comment => comment.step) || [],
+        status: currentRecipe?.status === 'private' ? 'private' : 'public',
+        images: currentRecipe?.imageFiles || [],
+        primaryImageIndex: 0,
+        fullyPlatedImageIndex: -1,
+        video: currentRecipe?.videoFile ? { url: currentRecipe.videoFile, name: 'video.mp4', type: 'preparation' as 'preparation' | 'presentation' } : null,
+      };
+    },
+    [currentRecipe, initialBranchId, aiDataFromState, isEdit, mapAIDataToFormValues]
   );
 
   const methods = useForm<FormValuesProps>({

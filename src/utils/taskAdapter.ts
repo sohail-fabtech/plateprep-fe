@@ -18,9 +18,28 @@ export function transformApiResponseToTask(apiResponse: ITaskApiResponse): ITask
     || 'Untitled Task';
 
   // Extract recipe ID if task is recipe-based
-  const recipeId = apiResponse.task_name && typeof apiResponse.task_name === 'object' 
-    ? apiResponse.task_name.id 
-    : null;
+  // Handle both "id" and "id " (with space) from API response
+  // The recipe ID is stored in task_name.id (or task_name['id '] if API has typo with space)
+  const taskNameObj = apiResponse.task_name;
+  let recipeId: number | null = null;
+  if (taskNameObj && typeof taskNameObj === 'object') {
+    // Try standard "id" first
+    if ('id' in taskNameObj && taskNameObj.id !== null && taskNameObj.id !== undefined) {
+      recipeId = typeof taskNameObj.id === 'number' ? taskNameObj.id : parseInt(String(taskNameObj.id), 10);
+    }
+    // Fallback to "id " (with space) if standard id doesn't exist
+    else if ('id ' in taskNameObj) {
+      const idWithSpace = (taskNameObj as any)['id '];
+      recipeId = typeof idWithSpace === 'number' ? idWithSpace : parseInt(String(idWithSpace), 10);
+    }
+  }
+
+  // Extract branch ID with fallback: first try apiResponse.branch, then staff_detail.branch.id
+  const branchId = apiResponse.branch !== null && apiResponse.branch !== undefined
+    ? apiResponse.branch
+    : (apiResponse.staff_detail?.branch?.id !== null && apiResponse.staff_detail?.branch?.id !== undefined
+      ? apiResponse.staff_detail.branch.id
+      : null);
 
   return {
     id: apiResponse.id,
@@ -58,7 +77,7 @@ export function transformApiResponseToTask(apiResponse: ITaskApiResponse): ITask
     video: apiResponse.video,
     image: apiResponse.image,
     youtubeUrl: apiResponse.youtube_url,
-    branchId: apiResponse.branch || null, // Extract branch ID from task payload
+    branchId, // Extract branch ID with fallback to staff_detail.branch.id
   };
 }
 

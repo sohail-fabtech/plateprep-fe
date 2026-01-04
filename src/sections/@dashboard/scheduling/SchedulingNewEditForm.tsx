@@ -187,10 +187,10 @@ export default function SchedulingNewEditForm({ isEdit = false, currentSchedulin
 
   const onSubmit = async (data: ISchedulingForm) => {
     // Permission check
-    if (!hasPermission(isEdit ? 'edit_schedule_dish' : 'create_schedule_dish')) {
-      enqueueSnackbar('You do not have permission to perform this action.', { variant: 'error' });
-      return;
-    }
+    // if (!hasPermission(isEdit ? 'edit_schedule_dish' : 'create_schedule_dish')) {
+    //   enqueueSnackbar('You do not have permission to perform this action.', { variant: 'error' });
+    //   return;
+    // }
 
     // Subscription check
     if (!hasSubscription()) {

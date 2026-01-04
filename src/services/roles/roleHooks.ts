@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IRoleDetail } from '../../@types/roleApi';
+import { IRoleDetail, IPermission } from '../../@types/roleApi';
 import {
   getRoleById,
   getRoles,
@@ -14,7 +14,6 @@ import {
   CreateRoleRequest,
   UpdateRoleRequest,
 } from './roleService';
-import { IPermission } from '../../@types/roleApi';
 
 // Re-export RoleQueryParams and RoleListResponse for use in other modules
 export type { RoleQueryParams, RoleListResponse };

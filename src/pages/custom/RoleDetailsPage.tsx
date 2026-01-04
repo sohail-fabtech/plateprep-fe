@@ -2,8 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // @mui
-import { styled } from '@mui/material/styles';
-import { useTheme } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 import {
   Container,
   Button,
@@ -120,7 +119,7 @@ export default function RoleDetailsPage() {
 
       try {
         // Map UI field names to API field names
-        let updateData: Partial<IRoleDetail> = {};
+        const updateData: Partial<IRoleDetail> = {};
 
         if (fieldName === 'roleName') {
           updateData.role_name = value as string;

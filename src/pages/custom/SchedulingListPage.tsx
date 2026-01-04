@@ -35,7 +35,11 @@ import {
 } from '../../components/table';
 import { SubscriptionDialog } from '../../components/subscription-dialog';
 // sections
-import { SchedulingTableRow, SchedulingTableToolbar } from '../../sections/@dashboard/scheduling/list';
+import {
+  SchedulingTableRow,
+  SchedulingTableToolbar,
+  SchedulingTableSkeleton,
+} from '../../sections/@dashboard/scheduling/list';
 import { useSnackbar } from '../../components/snackbar';
 // hooks
 import { useDebounce } from '../../hooks/useDebounce';
@@ -50,8 +54,6 @@ import {
   ScheduleDishQueryParams,
   IScheduleDish,
 } from '../../services';
-// skeleton
-import { SchedulingTableSkeleton } from '../../sections/@dashboard/scheduling/list';
 
 // ----------------------------------------------------------------------
 

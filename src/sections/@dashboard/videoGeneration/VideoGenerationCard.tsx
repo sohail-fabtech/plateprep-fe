@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useTheme } from '@mui/material/styles';
 // @mui
-import { alpha } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import { Box, Card, Stack, Typography, IconButton } from '@mui/material';
 // @types
 import { IVideoGeneration } from '../../../@types/videoGeneration';

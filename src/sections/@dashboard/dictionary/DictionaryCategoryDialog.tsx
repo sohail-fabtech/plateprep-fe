@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 // @mui
@@ -90,6 +90,16 @@ export default function DictionaryCategoryDialog({
     handleSubmit,
     formState: { isSubmitting },
   } = methods;
+
+  // Reset form when dialog opens or currentCategory changes
+  useEffect(() => {
+    if (open) {
+      reset({
+        name: currentCategory?.name || '',
+        description: currentCategory?.description || '',
+      });
+    }
+  }, [open, currentCategory, reset]);
 
   const onSubmit = async (data: { name: string; description: string | null }) => {
     try {

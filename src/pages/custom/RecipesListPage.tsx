@@ -1,8 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { useState, useMemo, useEffect } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-// hooks
-import { useDebounce } from '../../hooks/useDebounce';
 // @mui
 import {
   Tab,
@@ -38,11 +36,13 @@ import { useSettingsContext } from '../../components/settings';
 import { SkeletonRecipeCard } from '../../components/skeleton';
 import { useSnackbar } from '../../components/snackbar';
 import { SubscriptionDialog } from '../../components/subscription-dialog';
+import RecipeCreationDialog from '../../components/recipe-creation-dialog';
 // auth
 import { useAuthContext } from '../../auth/useAuthContext';
 import PermissionGuard from '../../auth/PermissionGuard';
 import { usePermissions } from '../../hooks/usePermissions';
 // hooks
+import { useDebounce } from '../../hooks/useDebounce';
 import { useBranchFilter } from '../../hooks/useBranchFilter';
 import { useSubscription } from '../../hooks/useSubscription';
 // sections
@@ -85,6 +85,9 @@ export default function RecipesListPage() {
 
   // Subscription dialog state
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  
+  // Recipe creation dialog state
+  const [recipeCreationDialogOpen, setRecipeCreationDialogOpen] = useState(false);
 
   // Mutation hooks
   const archiveMutation = useDeleteRecipe();
@@ -350,6 +353,17 @@ export default function RecipesListPage() {
         }}
       />
 
+      <RecipeCreationDialog
+        open={recipeCreationDialogOpen}
+        onClose={() => setRecipeCreationDialogOpen(false)}
+        onManualClick={() => {
+          navigate(PATH_DASHBOARD.recipes.new);
+        }}
+        onAIClick={() => {
+          navigate(PATH_DASHBOARD.recipes.newAI);
+        }}
+      />
+
       <Container maxWidth={themeStretch ? false : 'xl'}>
         <CustomBreadcrumbs
           heading="Recipe List"
@@ -367,7 +381,7 @@ export default function RecipesListPage() {
                   if (!hasSubscription()) {
                     setSubscriptionDialogOpen(true);
                   } else {
-                    navigate(PATH_DASHBOARD.recipes.new);
+                    setRecipeCreationDialogOpen(true);
                   }
                 }}
               >

@@ -95,6 +95,8 @@ export const KanbanPage = Loadable(lazy(() => import('../pages/dashboard/KanbanP
 export const DashboardOverviewPage = Loadable(lazy(() => import('../pages/custom/DashboardOverviewPage')));
 export const RecipesListPage = Loadable(lazy(() => import('../pages/custom/RecipesListPage')));
 export const RecipeCreatePage = Loadable(lazy(() => import('../pages/custom/RecipeCreatePage')));
+export const RecipeCreateAIPage = Loadable(lazy(() => import('../pages/custom/RecipeCreateAIPage')));
+export const RecipeAIPreviewPage = Loadable(lazy(() => import('../pages/custom/RecipeAIPreviewPage')));
 export const RecipeEditPage = Loadable(lazy(() => import('../pages/custom/RecipeEditPage')));
 export const RecipeDetailsPage = Loadable(lazy(() => import('../pages/custom/RecipeDetailsPage')));
 export const WineInventoryListPage = Loadable(lazy(() => import('../pages/custom/WineInventoryListPage')));

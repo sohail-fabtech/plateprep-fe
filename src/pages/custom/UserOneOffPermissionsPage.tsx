@@ -239,7 +239,7 @@ export default function UserOneOffPermissionsPage() {
                   fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
                 }}
               >
-                Assign additional permissions that are not part of the user's role. Role permissions are shown as
+                Assign additional permissions that are not part of the user&apos;s role. Role permissions are shown as
                 checked and disabled.
               </Typography>
             </Box>

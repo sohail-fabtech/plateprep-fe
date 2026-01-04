@@ -1,5 +1,5 @@
 import { useTheme, alpha } from '@mui/material/styles';
-import { Box, Card, Stack, Typography } from '@mui/material';
+import { Box, Card, Stack, Typography, FormHelperText } from '@mui/material';
 // @types
 import { IVideoTemplate } from '../../../../@types/videoGeneration';
 
@@ -9,9 +9,11 @@ type Props = {
   templates: IVideoTemplate[];
   selectedTemplate: string;
   onSelect: (templateId: string) => void;
+  error?: boolean;
+  helperText?: string;
 };
 
-export default function VideoTemplateSelector({ templates, selectedTemplate, onSelect }: Props) {
+export default function VideoTemplateSelector({ templates, selectedTemplate, onSelect, error, helperText }: Props) {
   const theme = useTheme();
 
   return (
@@ -44,6 +46,8 @@ export default function VideoTemplateSelector({ templates, selectedTemplate, onS
       >
         {templates.map((template) => {
           const isSelected = selectedTemplate === template.id;
+          // Show error border on all templates if error exists and no template is selected
+          const showErrorBorder = error && !selectedTemplate;
 
           return (
             <Card
@@ -54,7 +58,13 @@ export default function VideoTemplateSelector({ templates, selectedTemplate, onS
                 flexShrink: 0,
                 width: { xs: 200, sm: 240, md: 280 },
                 cursor: 'pointer',
-                border: `2px solid ${isSelected ? theme.palette.primary.main : 'transparent'}`,
+                border: `2px solid ${
+                  showErrorBorder
+                    ? theme.palette.error.main
+                    : isSelected
+                    ? theme.palette.primary.main
+                    : 'transparent'
+                }`,
                 borderRadius: 2,
                 overflow: 'hidden',
                 transition: theme.transitions.create(['border-color', 'transform', 'box-shadow'], {
@@ -99,6 +109,19 @@ export default function VideoTemplateSelector({ templates, selectedTemplate, onS
           );
         })}
       </Box>
+      
+      {error && helperText && (
+        <FormHelperText
+          error
+          sx={{
+            mt: 1,
+            mx: 0,
+            fontSize: { xs: '0.75rem', md: '0.75rem' },
+          }}
+        >
+          {helperText}
+        </FormHelperText>
+      )}
     </Box>
   );
 }

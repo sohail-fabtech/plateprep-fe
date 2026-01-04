@@ -200,6 +200,25 @@ function getErrorMessage(error: any): string {
 }
 
 /**
+ * Custom error class that preserves original error response
+ */
+export class VideoGenerationError extends Error {
+  originalError: any;
+  response?: any;
+  responseData?: any;
+
+  constructor(message: string, originalError?: any, responseData?: any) {
+    super(message);
+    this.name = 'VideoGenerationError';
+    this.originalError = originalError;
+    this.response = originalError?.response;
+    // Preserve the raw response data for field-level error handling
+    // responseData parameter takes priority (for when axios interceptor returns data directly)
+    this.responseData = responseData || originalError?.response?.data || originalError;
+  }
+}
+
+/**
  * Generate a video for a recipe
  */
 export async function generateVideo(data: GenerateVideoRequest): Promise<GenerateVideoResponse> {
@@ -210,8 +229,16 @@ export async function generateVideo(data: GenerateVideoRequest): Promise<Generat
 
     return response.data;
   } catch (error: any) {
+    // The axios interceptor returns error.response.data directly, so error might be the data object itself
+    // Check if error is the data object (has recipe field or other API error fields) or the full axios error
+    const isDataObject = error && typeof error === 'object' && !error.response && (error.recipe || error.error || error.detail);
+    
+    // If error is already the data object, preserve it directly
+    const errorData = isDataObject ? error : (error?.response?.data || error);
     const errorMessage = getErrorMessage(error);
-    throw new Error(errorMessage);
+    
+    // Preserve original error and data for field-level error handling
+    throw new VideoGenerationError(errorMessage, error, errorData);
   }
 }
 

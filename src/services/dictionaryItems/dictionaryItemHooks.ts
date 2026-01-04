@@ -3,6 +3,7 @@ import {
   getDictionaryItems,
   createDictionaryItem,
   updateDictionaryItem,
+  deleteDictionaryItem,
   DictionaryItemQueryParams,
   DictionaryItemListResponse,
   CreateDictionaryItemRequest,
@@ -54,6 +55,20 @@ export function useUpdateDictionaryItem() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string | number; data: UpdateDictionaryItemRequest }) =>
       updateDictionaryItem(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dictionaryItemKeys.lists() });
+    },
+  });
+}
+
+/**
+ * Hook to delete dictionary item
+ */
+export function useDeleteDictionaryItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string | number) => deleteDictionaryItem(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dictionaryItemKeys.lists() });
     },

@@ -67,7 +67,7 @@ export async function getHolidays(params?: HolidayQueryParams): Promise<HolidayL
   if (params?.ordering) queryParams.ordering = params.ordering;
 
   try {
-    const response = await axiosInstance.get<HolidayListApiResponse>('/api/select-holiday/', {
+    const response = await axiosInstance.get<HolidayListApiResponse>('/select-holiday/', {
       params: queryParams,
     });
 

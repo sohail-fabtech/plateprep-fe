@@ -36,6 +36,7 @@ import { useRoles } from '../../../services/roles/roleHooks';
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect, RHFUploadAvatar } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
+import { ProcessingDialog } from '../../../components/processing-dialog';
 // assets
 import { countries } from '../../../assets/data';
 // validation
@@ -213,6 +214,17 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
 
   const values = watch();
 
+  // Processing dialog state
+  const [processingDialog, setProcessingDialog] = useState<{
+    open: boolean;
+    state: 'processing' | 'success' | 'error';
+    message: string;
+  }>({
+    open: false,
+    state: 'processing',
+    message: '',
+  });
+
   useEffect(() => {
     if (isEdit && currentUser) {
       reset(defaultValues);
@@ -223,6 +235,13 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
   }, [isEdit, currentUser, reset, defaultValues]);
 
   const onSubmit = async (data: IUserForm) => {
+    // Show processing dialog
+    setProcessingDialog({
+      open: true,
+      state: 'processing',
+      message: isEdit ? 'Updating user...' : 'Creating user...',
+    });
+
     try {
       // Clear previous errors
       clearErrors();
@@ -231,11 +250,20 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
       let profileImageUrl: string | null = null;
       if (profileImageFile) {
         try {
+          setProcessingDialog({
+            open: true,
+            state: 'processing',
+            message: 'Uploading profile image...',
+          });
           const fileKey = generateFileKey('user_profile_images', profileImageFile.name);
           profileImageUrl = await uploadFileWithPresignedUrl(profileImageFile, fileKey, profileImageFile.type);
         } catch (imageError) {
           console.error('Error uploading profile image:', imageError);
-          enqueueSnackbar('Failed to upload profile image. Please try again.', { variant: 'error' });
+          setProcessingDialog({
+            open: true,
+            state: 'error',
+            message: 'Failed to upload profile image. Please try again.',
+          });
           return; // Don't proceed if image upload fails
         }
       } else if (typeof data.profileImage === 'string' && data.profileImage.startsWith('http')) {
@@ -275,19 +303,36 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
       }
 
       // Step 3: Call API
+      setProcessingDialog({
+        open: true,
+        state: 'processing',
+        message: isEdit ? 'Updating user...' : 'Creating user...',
+      });
+
       if (isEdit && currentUser && 'id' in currentUser) {
         await updateUserMutation.mutateAsync({
           id: (currentUser as IUserDetail).id,
           data: apiPayload,
         });
-        enqueueSnackbar('User updated successfully!', { variant: 'success' });
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'User updated successfully!',
+        });
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.users.root);
+        }, 1500);
       } else {
         await createUserMutation.mutateAsync(apiPayload);
-        enqueueSnackbar('User created successfully!', { variant: 'success' });
+        setProcessingDialog({
+          open: true,
+          state: 'success',
+          message: 'User created successfully!',
+        });
+        setTimeout(() => {
+          navigate(PATH_DASHBOARD.users.root);
+        }, 1500);
       }
-
-      // Step 4: Navigate back to users list
-      navigate(PATH_DASHBOARD.users.root);
     } catch (error: any) {
       console.error('Error saving user:', error);
       console.error('Error response data:', error?.response?.data);
@@ -332,15 +377,17 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
         });
       });
 
-      // Show general error message
-      if (parsedError.general) {
-        enqueueSnackbar(parsedError.general, { variant: 'error' });
-      } else if (Object.keys(fieldErrors).length > 0) {
-        // If we have field errors but no general message, show a generic message
-        enqueueSnackbar('Please correct the errors below and try again.', { variant: 'error' });
-      } else {
-        enqueueSnackbar('Failed to save user. Please try again.', { variant: 'error' });
-      }
+      // Show general error message in processing dialog
+      const errorMessage = parsedError.general || 
+        (Object.keys(fieldErrors).length > 0 
+          ? 'Please correct the errors below and try again.' 
+          : 'Failed to save user. Please try again.');
+      
+      setProcessingDialog({
+        open: true,
+        state: 'error',
+        message: errorMessage,
+      });
     }
   };
 
@@ -361,8 +408,15 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
   );
 
   return (
-    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
-      <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+    <>
+      <ProcessingDialog
+        open={processingDialog.open}
+        state={processingDialog.state}
+        message={processingDialog.message}
+        onClose={() => setProcessingDialog({ open: false, state: 'processing', message: '' })}
+      />
+      <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
         {/* Profile Image */}
         <Grid item xs={12}>
           <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
@@ -785,6 +839,7 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
           </Stack>
         </Grid>
       </Grid>
-    </FormProvider>
+      </FormProvider>
+    </>
   );
 }

@@ -86,7 +86,7 @@ export async function getDictionaryItems(params?: DictionaryItemQueryParams): Pr
   if (params?.ordering) queryParams.ordering = params.ordering;
 
   try {
-    const response = await axiosInstance.get<DictionaryItemListApiResponse>('/api/dictionary-items/', {
+    const response = await axiosInstance.get<DictionaryItemListApiResponse>('/dictionary-items/', {
       params: queryParams,
     });
 
@@ -121,7 +121,7 @@ export interface UpdateDictionaryItemRequest {
  */
 export async function createDictionaryItem(data: CreateDictionaryItemRequest): Promise<IDictionaryItem> {
   try {
-    const response = await axiosInstance.post<IDictionaryItemApiResponse>('/api/dictionary-items/', data);
+    const response = await axiosInstance.post<IDictionaryItemApiResponse>('/dictionary-items/', data);
     return transformApiResponseToItem(response.data);
   } catch (error: any) {
     const errorMessage = error?.response?.data?.term?.[0] || 
@@ -141,7 +141,7 @@ export async function updateDictionaryItem(
   data: UpdateDictionaryItemRequest
 ): Promise<IDictionaryItem> {
   try {
-    const response = await axiosInstance.patch<IDictionaryItemApiResponse>(`/api/dictionary-items/${id}/`, data);
+    const response = await axiosInstance.patch<IDictionaryItemApiResponse>(`/dictionary-items/${id}/`, data);
     return transformApiResponseToItem(response.data);
   } catch (error: any) {
     const errorMessage = error?.response?.data?.term?.[0] || 
@@ -150,6 +150,17 @@ export async function updateDictionaryItem(
                         error?.message || 
                         'Failed to update dictionary item';
     throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Delete dictionary item
+ */
+export async function deleteDictionaryItem(id: string | number): Promise<void> {
+  try {
+    await axiosInstance.delete(`/dictionary-items/${id}/`);
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.detail || error?.message || 'Failed to delete dictionary item');
   }
 }
 

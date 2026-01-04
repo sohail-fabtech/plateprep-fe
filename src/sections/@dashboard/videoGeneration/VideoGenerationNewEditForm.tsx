@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { useForm, Controller } from 'react-hook-form';
@@ -23,7 +23,6 @@ import {
 import { PATH_DASHBOARD } from '../../../routes/paths';
 // @types
 import { IVideoGenerationForm } from '../../../@types/videoGeneration';
-import { IRecipe } from '../../../@types/recipe';
 // components
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect } from '../../../components/hook-form';
@@ -38,7 +37,7 @@ import { DynamicStepList } from '../recipe/form';
 // mock
 import { _videoTemplates } from '../../../_mock/arrays';
 // services
-import { useRecipes, useRecipe, useGenerateVideo, RecipeQueryParams } from '../../../services';
+import { useRecipes, useIngredients, useSteps, useGenerateVideo, RecipeQueryParams } from '../../../services';
 
 // ----------------------------------------------------------------------
 
@@ -68,10 +67,6 @@ export default function VideoGenerationNewEditForm({ isEdit = false }: Props) {
   const { enqueueSnackbar } = useSnackbar();
   const { hasPermission } = usePermissions();
   const { hasSubscription } = useSubscription();
-  
-  // State for loading ingredients and steps
-  const [loadingIngredients, setLoadingIngredients] = useState(false);
-  const [loadingSteps, setLoadingSteps] = useState(false);
   
   // Fetch public recipes (is_deleted: false, status: 'P', no branch_id)
   const recipeQueryParams: RecipeQueryParams = useMemo(() => ({
@@ -136,41 +131,70 @@ export default function VideoGenerationNewEditForm({ isEdit = false }: Props) {
     control,
     handleSubmit,
     setValue,
-    formState: { isSubmitting },
+    setError,
+    clearErrors,
+    formState: { isSubmitting, errors },
   } = methods;
 
   const selectedRecipe = watch('recipe');
   const selectedTemplate = watch('selectedTemplate');
   
-  // Fetch recipe details when recipe is selected
-  const { data: recipeDetail, isLoading: isLoadingRecipeDetail } = useRecipe(
-    selectedRecipe && selectedRecipe !== 'other' ? selectedRecipe : undefined
-  );
+  // Fetch ingredients and steps when recipe is selected
+  const recipeIdForFetch = selectedRecipe && selectedRecipe !== 'other' ? selectedRecipe : undefined;
+  const { data: ingredientsData, isLoading: isLoadingIngredients } = useIngredients(recipeIdForFetch);
+  const { data: stepsData, isLoading: isLoadingSteps } = useSteps(recipeIdForFetch);
+
+  // Get selected recipe from the list to display recipe name
+  const selectedRecipeData = useMemo(() => {
+    if (!selectedRecipe || selectedRecipe === 'other' || !recipesData?.results) {
+      return null;
+    }
+    return recipesData.results.find((recipe) => String(recipe.id) === selectedRecipe);
+  }, [selectedRecipe, recipesData]);
 
   // Load recipe data when recipe is selected
   useEffect(() => {
-    if (selectedRecipe && selectedRecipe !== 'other' && recipeDetail) {
-      setLoadingIngredients(true);
-      setLoadingSteps(true);
+    if (selectedRecipe && selectedRecipe !== 'other') {
+      // Set recipe name from the selected recipe in the list
+      if (selectedRecipeData) {
+        setValue('recipeName', selectedRecipeData.dishName || '');
+      }
       
-      // Map recipe ingredients to form format (just names)
-      const ingredients = recipeDetail.ingredients?.map((ing) => ing.title) || [];
-      // Map recipe steps to form format
-      const steps = recipeDetail.steps?.map((step) => step.description) || [];
-
-      setValue('ingredients', ingredients.length > 0 ? ingredients : ['']);
-      setValue('steps', steps.length > 0 ? steps : ['']);
-      setValue('recipeName', recipeDetail.dishName || '');
+      // Only update ingredients/steps when data is loaded (not loading)
+      if (!isLoadingIngredients && ingredientsData !== undefined) {
+        // Map ingredients from API response to form format (just titles)
+        if (ingredientsData.length > 0) {
+          const ingredients = ingredientsData.map((ing) => ing.title);
+          setValue('ingredients', ingredients);
+        } else {
+          // If API returns empty array, set to [''] so user can add items
+          setValue('ingredients', ['']);
+        }
+      }
       
-      setLoadingIngredients(false);
-      setLoadingSteps(false);
+      if (!isLoadingSteps && stepsData !== undefined) {
+        // Map steps from API response to form format (just titles)
+        if (stepsData.length > 0) {
+          const steps = stepsData.map((step) => step.title);
+          setValue('steps', steps);
+        } else {
+          // If API returns empty array, set to [''] so user can add items
+          setValue('steps', ['']);
+        }
+      }
     } else if (selectedRecipe === 'other') {
       // Clear ingredients and steps when "Other" is selected
       setValue('ingredients', ['']);
       setValue('steps', ['']);
       setValue('recipeName', '');
     }
-  }, [selectedRecipe, recipeDetail, setValue]);
+  }, [selectedRecipe, selectedRecipeData, ingredientsData, stepsData, isLoadingIngredients, isLoadingSteps, setValue]);
+
+  // Handle form validation errors
+  const onError = (errors: any) => {
+    console.error('Form validation errors:', errors);
+    enqueueSnackbar('Please fix the form errors before submitting', { variant: 'error' });
+  };
 
   const onSubmit = async (data: IVideoGenerationForm) => {
     try {
@@ -235,11 +259,98 @@ export default function VideoGenerationNewEditForm({ isEdit = false }: Props) {
         language: languageMap[data.language] || 'en',
       };
       
+      // Clear previous errors before submission
+      clearErrors();
+      
       await generateVideoMutation.mutateAsync(apiPayload);
       
       enqueueSnackbar('Video generation started successfully!', { variant: 'success' });
       navigate(PATH_DASHBOARD.videoGeneration.library);
     } catch (error: any) {
+      console.error('Error generating video:', error);
+      console.error('Error originalError:', error?.originalError);
+      console.error('Error response:', error?.response);
+      console.error('Error responseData:', error?.responseData);
+      
+      // The axios interceptor returns error.response.data directly, so the service preserves it in responseData
+      // Check responseData first (preserved by VideoGenerationError)
+      const errorData = error?.responseData || error?.originalError || null;
+      
+      console.error('Error response data (final):', errorData);
+      
+      // Handle field-specific errors from API (check original response first)
+      if (errorData && typeof errorData === 'object') {
+        let hasFieldErrors = false;
+        
+        // Handle recipe field error (e.g., "This recipe already has a video")
+        if (errorData.recipe) {
+          let recipeErrorMessage: string;
+          
+          if (Array.isArray(errorData.recipe)) {
+            recipeErrorMessage = errorData.recipe[0] || 'Recipe error occurred.';
+          } else if (typeof errorData.recipe === 'string') {
+            recipeErrorMessage = errorData.recipe;
+          } else {
+            recipeErrorMessage = 'Recipe error occurred.';
+          }
+          
+          // Trim whitespace from error message
+          recipeErrorMessage = recipeErrorMessage.trim();
+          
+          // Set error on recipe field
+          setError('recipe', {
+            type: 'server',
+            message: recipeErrorMessage,
+          });
+          
+          // Show the specific error message in snackbar
+          enqueueSnackbar(recipeErrorMessage, { variant: 'error' });
+          hasFieldErrors = true;
+        }
+        
+        // Handle other field-specific errors
+        Object.keys(errorData).forEach((field) => {
+          // Skip generic error fields and recipe (already handled)
+          if (field === 'error' || field === 'detail' || field === 'message' || field === 'non_field_errors' || field === 'recipe') {
+            return;
+          }
+          
+          const fieldErrors = errorData[field];
+          let errorMessage: string;
+          
+          if (Array.isArray(fieldErrors)) {
+            errorMessage = fieldErrors[0] || `${field} error occurred.`;
+          } else if (typeof fieldErrors === 'string') {
+            errorMessage = fieldErrors;
+          } else {
+            return; // Skip invalid error formats
+          }
+          
+          // Trim whitespace
+          errorMessage = errorMessage.trim();
+          
+          // Map API field names to form field names
+          const formFieldName = 
+            field === 'template_id' ? 'selectedTemplate' :
+            field === 'ingredient' ? 'ingredients' :
+            field === 'last_words' ? 'lastWords' :
+            field;
+          
+          setError(formFieldName as any, {
+            type: 'server',
+            message: errorMessage,
+          });
+          hasFieldErrors = true;
+        });
+        
+        // If we set field errors, don't show general error message
+        if (hasFieldErrors) {
+          return;
+        }
+      }
+      
+      // Show general error message only if no field-specific errors were found
+      // Use the processed error message from the service as fallback
       const errorMessage = error?.message || 'Failed to generate video. Please try again.';
       enqueueSnackbar(errorMessage, { variant: 'error' });
     }
@@ -262,7 +373,7 @@ export default function VideoGenerationNewEditForm({ isEdit = false }: Props) {
   };
 
   return (
-    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
+    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit, onError)}>
       <Grid container spacing={{ xs: 2, md: 3 }}>
         {/* Video Template Selection */}
         <Grid item xs={12}>
@@ -270,7 +381,11 @@ export default function VideoGenerationNewEditForm({ isEdit = false }: Props) {
             <VideoTemplateSelector
               templates={_videoTemplates}
               selectedTemplate={selectedTemplate}
-              onSelect={(templateId) => setValue('selectedTemplate', templateId)}
+              onSelect={(templateId) => {
+                setValue('selectedTemplate', templateId, { shouldValidate: true });
+              }}
+              error={!!errors.selectedTemplate}
+              helperText={errors.selectedTemplate?.message}
             />
           </Card>
         </Grid>
@@ -403,7 +518,7 @@ export default function VideoGenerationNewEditForm({ isEdit = false }: Props) {
             <Stack spacing={{ xs: 2, md: 3 }}>
               {/* Ingredients */}
               <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-                {loadingIngredients || isLoadingRecipeDetail ? (
+                {isLoadingIngredients ? (
                   <SkeletonIngredientList title="Ingredients" count={3} />
                 ) : (
                   <Controller
@@ -426,7 +541,7 @@ export default function VideoGenerationNewEditForm({ isEdit = false }: Props) {
 
               {/* Steps */}
               <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-                {loadingSteps || isLoadingRecipeDetail ? (
+                {isLoadingSteps ? (
                   <SkeletonStepList title="Steps" count={3} />
                 ) : (
                   <Controller

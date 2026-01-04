@@ -2,8 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // @mui
-import { styled } from '@mui/material/styles';
-import { useTheme, alpha } from '@mui/material/styles';
+import { styled, useTheme, alpha } from '@mui/material/styles';
 import {
   Container,
   Button,
@@ -162,7 +161,7 @@ export default function UserDetailsPage() {
           location: 'branch_id', // Will handle separately
         };
 
-        let updateData: Partial<IUserDetailApi> = {};
+        const updateData: Partial<IUserDetailApi> = {};
 
         if (fieldName === 'name') {
           // Split name into first and last name

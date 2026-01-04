@@ -11,6 +11,7 @@ import {
   Stack,
   CircularProgress,
   useTheme,
+  Button,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../../../routes/paths';
@@ -21,7 +22,6 @@ import Label from '../../../../components/label';
 import Iconify from '../../../../components/iconify';
 import MenuPopover from '../../../../components/menu-popover';
 import ConfirmDialog from '../../../../components/confirm-dialog';
-import { Button } from '@mui/material';
 import { defaultTableCellStyles } from '../../../../components/table';
 // utils
 import { truncateText } from '../../../../utils/truncateText';

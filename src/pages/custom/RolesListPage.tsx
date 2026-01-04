@@ -1,8 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { useState, useEffect, useMemo } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-// hooks
-import { useDebounce } from '../../hooks/useDebounce';
 // @mui
 import {
   Tab,
@@ -21,6 +19,8 @@ import {
   Alert,
   LinearProgress,
 } from '@mui/material';
+// hooks
+import { useDebounce } from '../../hooks/useDebounce';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // @types

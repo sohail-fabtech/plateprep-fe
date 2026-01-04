@@ -9,19 +9,18 @@ import {
   Typography,
   CircularProgress,
   useTheme,
+  Button,
 } from '@mui/material';
 // @types
 import { TASK_STATUS_OPTIONS } from '../../../../@types/taskApi';
+import { ITask } from '../../../../@types/task';
 // routes
 import { PATH_DASHBOARD } from '../../../../routes/paths';
-// @types
-import { ITask } from '../../../../@types/task';
 // components
 import Label from '../../../../components/label';
 import Iconify from '../../../../components/iconify';
 import MenuPopover from '../../../../components/menu-popover';
 import ConfirmDialog from '../../../../components/confirm-dialog';
-import { Button } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
