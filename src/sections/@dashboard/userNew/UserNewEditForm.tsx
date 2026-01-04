@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -21,12 +21,17 @@ import {
 import { DatePicker } from '@mui/x-date-pickers';
 // utils
 import { fData } from '../../../utils/formatNumber';
+import { generateFileKey, uploadFileWithPresignedUrl } from '../../../services/presignedUrl/presignedUrlService';
+import { parseUserError, getFieldErrors } from '../../../utils/userErrorHandler';
 // routes
 import { PATH_DASHBOARD } from '../../../routes/paths';
 // @types
 import { IUser } from '../../../@types/user';
-// _mock
-import { _restaurantLocationList } from '../../../_mock/arrays';
+import { IUserDetail } from '../../../@types/userApi';
+// services
+import { useCreateUser, useUpdateUser } from '../../../services';
+import { useBranches } from '../../../services/branches/branchHooks';
+import { useRoles } from '../../../services/roles/roleHooks';
 // components
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect, RHFUploadAvatar } from '../../../components/hook-form';
@@ -59,26 +64,10 @@ type IUserForm = {
 
 type Props = {
   isEdit?: boolean;
-  currentUser?: IUser;
+  currentUser?: IUser | IUserDetail;
 };
 
 // ----------------------------------------------------------------------
-
-// Role Options (A = Admin, M = Manager, S = Staff)
-const ROLE_OPTIONS = [
-  { value: 'A', label: 'Admin' },
-  { value: 'M', label: 'Manager' },
-  { value: 'S', label: 'Staff' },
-];
-
-// User Role Options (mock - should come from API)
-const USER_ROLE_OPTIONS = [
-  { id: 1, name: 'Super Admin' },
-  { id: 2, name: 'Admin' },
-  { id: 3, name: 'Manager' },
-  { id: 4, name: 'Staff' },
-  { id: 5, name: 'Viewer' },
-];
 
 // Consistent Form Styling System (Matching Task & Recipe Forms)
 const FORM_INPUT_SX = {
@@ -98,30 +87,88 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
 
+  // Fetch branches and roles from API
+  const { data: branchesData } = useBranches({
+    page: 1,
+    page_size: 1000,
+    is_archived: false,
+  });
+
+  const { data: rolesData } = useRoles({
+    page: 1,
+    page_size: 1000,
+    is_archived: false,
+  });
+
+  const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
+
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+
+  // Transform branches to dropdown options
+  const branchOptions = useMemo(() => {
+    if (!branchesData?.results) return [];
+    return branchesData.results.map((branch) => ({
+      id: branch.id,
+      name: branch.branchName,
+    }));
+  }, [branchesData]);
+
+  // Transform roles to dropdown options
+  const roleOptions = useMemo(() => {
+    if (!rolesData?.results) return [];
+    return rolesData.results.map((role) => ({
+      id: role.id,
+      name: role.role_name,
+    }));
+  }, [rolesData]);
+
   // Parse currentUser data if editing
   const parsedUser = useMemo(() => {
     if (!currentUser || !isEdit) return null;
-    
-    // Split name into first and last name
-    const nameParts = currentUser.name?.split(' ') || [];
+
+    // Handle IUserDetail (from API)
+    if ('first_name' in currentUser) {
+      const apiUser = currentUser as IUserDetail;
+      return {
+        firstName: apiUser.first_name || '',
+        lastName: apiUser.last_name || '',
+        email: apiUser.email || '',
+        phoneNumber: apiUser.phone_number || '',
+        dateOfBirth: apiUser.date_of_birth ? new Date(apiUser.date_of_birth) : null,
+        streetAddress: apiUser.street_address || '',
+        city: apiUser.city || '',
+        stateProvince: apiUser.state_province || '',
+        postalCode: apiUser.postal_code || '',
+        country: apiUser.country || '',
+        role: apiUser.role || 'A',
+        userRoleId: apiUser.user_role?.id || 0,
+        branchId: apiUser.branch?.id || 0,
+        isActive: apiUser.is_active ?? true,
+        profileImage: apiUser.profile_image_url || apiUser.profile || null,
+      };
+    }
+
+    // Handle IUser (legacy format)
+    const nameParts = (currentUser as IUser).name?.split(' ') || [];
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
 
     return {
       firstName,
       lastName,
-      email: currentUser.email || '',
-      phoneNumber: currentUser.phoneNumber || '',
-      streetAddress: currentUser.address || '',
+      email: (currentUser as IUser).email || '',
+      phoneNumber: (currentUser as IUser).phoneNumber || '',
+      streetAddress: (currentUser as IUser).address || '',
       city: '',
       stateProvince: '',
       postalCode: '',
       country: '',
-      role: currentUser.role || 'S',
-      userRoleId: 4, // Default
-      branchId: 1, // Default
-      isActive: currentUser.status === 'active',
-      profileImage: currentUser.avatarUrl || null,
+      role: (currentUser as IUser).role || 'A',
+      userRoleId: 0,
+      branchId: 0,
+      isActive: (currentUser as IUser).status === 'active',
+      profileImage: (currentUser as IUser).avatarUrl || null,
     };
   }, [currentUser, isEdit]);
 
@@ -129,7 +176,7 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
     () => ({
       firstName: parsedUser?.firstName || '',
       lastName: parsedUser?.lastName || '',
-      dateOfBirth: null,
+      dateOfBirth: parsedUser?.dateOfBirth || null,
       email: parsedUser?.email || '',
       phoneNumber: parsedUser?.phoneNumber || '',
       password: null,
@@ -139,9 +186,9 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
       postalCode: parsedUser?.postalCode || '',
       country: parsedUser?.country || '',
       isActive: parsedUser?.isActive ?? true,
-      role: parsedUser?.role || 'S',
-      userRoleId: parsedUser?.userRoleId || 4,
-      branchId: parsedUser?.branchId || 1,
+      role: 'A', // Always default to "A" (Admin)
+      userRoleId: parsedUser?.userRoleId || 0,
+      branchId: parsedUser?.branchId || 0,
       profileImage: parsedUser?.profileImage || null,
     }),
     [parsedUser]
@@ -159,6 +206,8 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
     control,
     setValue,
     handleSubmit,
+    setError,
+    clearErrors,
     formState: { isSubmitting },
   } = methods;
 
@@ -175,34 +224,123 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
 
   const onSubmit = async (data: IUserForm) => {
     try {
-      // Transform to API payload format
-      const apiPayload = {
-        first_name: data.firstName,
-        last_name: data.lastName,
-        date_of_birth: data.dateOfBirth ? data.dateOfBirth.toISOString().split('T')[0] : null,
-        email: data.email,
-        phone_number: data.phoneNumber,
-        ...(data.password && { password: data.password }),
-        street_address: data.streetAddress,
-        city: data.city,
-        state_province: data.stateProvince,
-        postal_code: data.postalCode,
-        country: data.country,
-        is_active: data.isActive,
-        role: data.role,
-        user_role_id: data.userRoleId,
-        branch_id: data.branchId,
-        profile_image_url: typeof data.profileImage === 'string' ? data.profileImage : null,
+      // Clear previous errors
+      clearErrors();
+
+      // Step 1: Upload profile image if new file is selected
+      let profileImageUrl: string | null = null;
+      if (profileImageFile) {
+        try {
+          const fileKey = generateFileKey('user_profile_images', profileImageFile.name);
+          profileImageUrl = await uploadFileWithPresignedUrl(profileImageFile, fileKey, profileImageFile.type);
+        } catch (imageError) {
+          console.error('Error uploading profile image:', imageError);
+          enqueueSnackbar('Failed to upload profile image. Please try again.', { variant: 'error' });
+          return; // Don't proceed if image upload fails
+        }
+      } else if (typeof data.profileImage === 'string' && data.profileImage.startsWith('http')) {
+        // Use existing image URL if it's already an HTTP URL
+        profileImageUrl = data.profileImage;
+      }
+
+      // Step 2: Transform to API payload format
+      const apiPayload: any = {
+        first_name: data.firstName.trim(),
+        last_name: data.lastName.trim(),
+        email: data.email.trim(),
+        role: 'A', // Always set to "A" (Admin) as default
+        ...(data.dateOfBirth && { date_of_birth: data.dateOfBirth.toISOString().split('T')[0] }),
+        ...(data.phoneNumber && data.phoneNumber.trim() && { phone_number: data.phoneNumber.trim() }),
+        ...(data.streetAddress && data.streetAddress.trim() && { street_address: data.streetAddress.trim() }),
+        ...(data.city && data.city.trim() && { city: data.city.trim() }),
+        ...(data.stateProvince && data.stateProvince.trim() && { state_province: data.stateProvince.trim() }),
+        ...(data.postalCode && data.postalCode.trim() && { postal_code: data.postalCode.trim() }),
+        ...(data.country && data.country.trim() && { country: data.country.trim() }),
+        ...(data.userRoleId && data.userRoleId > 0 && { user_role_id: data.userRoleId }),
+        ...(data.branchId && data.branchId > 0 && { branch_id: data.branchId }),
+        ...(profileImageUrl && { profile_image_url: profileImageUrl }),
       };
 
-      console.log('USER API PAYLOAD:', apiPayload);
+      // Add password only for create mode
+      if (!isEdit && data.password) {
+        apiPayload.password = data.password;
+      } else if (isEdit && data.password) {
+        // Allow password update in edit mode
+        apiPayload.password = data.password;
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      enqueueSnackbar(!isEdit ? 'User created successfully!' : 'User updated successfully!');
+      // Add is_active for edit mode
+      if (isEdit) {
+        apiPayload.is_active = data.isActive;
+      }
+
+      // Step 3: Call API
+      if (isEdit && currentUser && 'id' in currentUser) {
+        await updateUserMutation.mutateAsync({
+          id: (currentUser as IUserDetail).id,
+          data: apiPayload,
+        });
+        enqueueSnackbar('User updated successfully!', { variant: 'success' });
+      } else {
+        await createUserMutation.mutateAsync(apiPayload);
+        enqueueSnackbar('User created successfully!', { variant: 'success' });
+      }
+
+      // Step 4: Navigate back to users list
       navigate(PATH_DASHBOARD.users.root);
-    } catch (error) {
-      console.error(error);
-      enqueueSnackbar('Something went wrong!', { variant: 'error' });
+    } catch (error: any) {
+      console.error('Error saving user:', error);
+      console.error('Error response data:', error?.response?.data);
+
+      // Parse error and set field-level errors
+      const parsedError = parseUserError(error);
+      const fieldErrors = getFieldErrors(error);
+
+      console.log('Parsed error:', parsedError);
+      console.log('Field errors:', fieldErrors);
+
+      // Set field-level errors using react-hook-form's setError
+      Object.keys(fieldErrors).forEach((fieldName) => {
+        const errorMessage = fieldErrors[fieldName];
+        // Map API field names to form field names
+        const formFieldName =
+          fieldName === 'first_name' || fieldName === 'firstName'
+            ? 'firstName'
+            : fieldName === 'last_name' || fieldName === 'lastName'
+            ? 'lastName'
+            : fieldName === 'phone_number' || fieldName === 'phoneNumber'
+            ? 'phoneNumber'
+            : fieldName === 'date_of_birth' || fieldName === 'dateOfBirth'
+            ? 'dateOfBirth'
+            : fieldName === 'street_address' || fieldName === 'streetAddress'
+            ? 'streetAddress'
+            : fieldName === 'state_province' || fieldName === 'stateProvince'
+            ? 'stateProvince'
+            : fieldName === 'postal_code' || fieldName === 'postalCode'
+            ? 'postalCode'
+            : fieldName === 'user_role_id' || fieldName === 'userRoleId'
+            ? 'userRoleId'
+            : fieldName === 'branch_id' || fieldName === 'branchId'
+            ? 'branchId'
+            : fieldName === 'profile_image_url' || fieldName === 'profileImage'
+            ? 'profileImage'
+            : fieldName; // Keep as-is for fields like 'email', 'password', 'role'
+
+        setError(formFieldName as any, {
+          type: 'server',
+          message: errorMessage,
+        });
+      });
+
+      // Show general error message
+      if (parsedError.general) {
+        enqueueSnackbar(parsedError.general, { variant: 'error' });
+      } else if (Object.keys(fieldErrors).length > 0) {
+        // If we have field errors but no general message, show a generic message
+        enqueueSnackbar('Please correct the errors below and try again.', { variant: 'error' });
+      } else {
+        enqueueSnackbar('Failed to save user. Please try again.', { variant: 'error' });
+      }
     }
   };
 
@@ -215,6 +353,7 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
       });
 
       if (file) {
+        setProfileImageFile(file);
         setValue('profileImage', newFile, { shouldValidate: true });
       }
     },
@@ -509,29 +648,17 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
                 fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' },
               }}
             >
-              Role & Branch
+              Assignment
             </Typography>
 
             <Grid container spacing={{ xs: 2, md: 3 }}>
-              {/* Role */}
-              <Grid item xs={12} sm={6}>
-                <RHFSelect name="role" label="Role" sx={FORM_INPUT_SX}>
-                  {ROLE_OPTIONS.map((option) => (
-                    <MenuItem
-                      key={option.value}
-                      value={option.value}
-                      sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}
-                    >
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </RHFSelect>
-              </Grid>
-
               {/* User Role */}
-              {/* <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <RHFSelect name="userRoleId" label="User Role" sx={FORM_INPUT_SX}>
-                  {USER_ROLE_OPTIONS.map((option) => (
+                  <MenuItem value={0} sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>
+                    Select Role
+                  </MenuItem>
+                  {roleOptions.map((option) => (
                     <MenuItem
                       key={option.id}
                       value={option.id}
@@ -541,56 +668,61 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
                     </MenuItem>
                   ))}
                 </RHFSelect>
-              </Grid> */}
+              </Grid>
 
               {/* Branch */}
               <Grid item xs={12} sm={6}>
-                <RHFSelect name="branchId" label="Branch" sx={FORM_INPUT_SX}>
-                  {_restaurantLocationList.map((branch) => (
+                <RHFSelect name="branchId" label="Restaurant Location" sx={FORM_INPUT_SX}>
+                  <MenuItem value={0} sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>
+                    Select Location
+                  </MenuItem>
+                  {branchOptions.map((branch) => (
                     <MenuItem
                       key={branch.id}
                       value={branch.id}
                       sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}
                     >
-                      {branch.branchName}
+                      {branch.name}
                     </MenuItem>
                   ))}
                 </RHFSelect>
               </Grid>
 
               {/* Active Status */}
-              {/* <Grid item xs={12} sm={6}>
-                <Controller
-                  name="isActive"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          {...field}
-                          checked={field.value}
-                          sx={{
-                            '& .MuiSwitch-switchBase.Mui-checked': {
-                              color: theme.palette.primary.main,
-                            },
-                          }}
-                        />
-                      }
-                      label={
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                          }}
-                        >
-                          Active Status
-                        </Typography>
-                      }
-                      sx={{ m: 0 }}
-                    />
-                  )}
-                />
-              </Grid> */}
+              {isEdit && (
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="isActive"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            {...field}
+                            checked={field.value}
+                            sx={{
+                              '& .MuiSwitch-switchBase.Mui-checked': {
+                                color: theme.palette.primary.main,
+                              },
+                            }}
+                          />
+                        }
+                        label={
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                            }}
+                          >
+                            Active Status
+                          </Typography>
+                        }
+                        sx={{ m: 0 }}
+                      />
+                    )}
+                  />
+                </Grid>
+              )}
             </Grid>
           </Card>
         </Grid>
@@ -629,9 +761,9 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
                   postalCode: '',
                   country: '',
                   isActive: true,
-                  role: 'S',
-                  userRoleId: 4,
-                  branchId: 1,
+                  role: 'A',
+                  userRoleId: 0,
+                  branchId: 0,
                   profileImage: null,
                 };
                 reset(emptyValues);
@@ -645,7 +777,7 @@ export default function UserNewEditForm({ isEdit = false, currentUser }: Props) 
               type="submit"
               variant="contained"
               size="large"
-              loading={isSubmitting}
+              loading={isSubmitting || createUserMutation.isPending || updateUserMutation.isPending}
               sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 140 } }}
             >
               {isEdit ? 'Update User' : 'Create User'}

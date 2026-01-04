@@ -3,6 +3,7 @@ import { IUserDetail } from '../../@types/userApi';
 import {
   getUserById,
   getUsers,
+  createUser,
   deleteUser,
   restoreUser,
   permanentlyDeleteUser,
@@ -11,6 +12,8 @@ import {
   UserQueryParams,
   UserListResponse,
   UpdateUserIndividualPermissionsRequest,
+  CreateUserRequest,
+  UpdateUserRequest,
 } from './userService';
 
 // Re-export UserQueryParams and UserListResponse for use in other modules
@@ -93,13 +96,27 @@ export function usePermanentlyDeleteUser() {
 }
 
 /**
+ * Hook to create user
+ */
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateUserRequest) => createUser(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+    },
+  });
+}
+
+/**
  * Hook to update user
  */
 export function useUpdateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string | number; data: Partial<IUserDetail> }) => updateUser(id, data),
+    mutationFn: ({ id, data }: { id: string | number; data: UpdateUserRequest }) => updateUser(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });

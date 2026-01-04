@@ -71,3 +71,40 @@ export interface PermanentlyDeleteUserResponse {
   message: string;
 }
 
+export interface CreateUserRequest {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  role?: string;
+  phone_number?: string | null;
+  date_of_birth?: string | null;
+  street_address?: string | null;
+  city?: string | null;
+  state_province?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  branch_id?: number | null;
+  user_role_id?: number | null;
+  profile_image_url?: string | null;
+}
+
+export interface UpdateUserRequest {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  password?: string;
+  role?: string;
+  phone_number?: string | null;
+  date_of_birth?: string | null;
+  street_address?: string | null;
+  city?: string | null;
+  state_province?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  branch_id?: number | null;
+  user_role_id?: number | null;
+  is_active?: boolean;
+  profile_image_url?: string | null;
+}
+

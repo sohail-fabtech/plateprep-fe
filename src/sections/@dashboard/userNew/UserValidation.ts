@@ -23,57 +23,90 @@ export const UserValidationSchema = Yup.object().shape({
     .max(100, 'Email must not exceed 100 characters'),
   
   phoneNumber: Yup.string()
-    .required('Phone number is required')
-    .trim()
-    .matches(/^[\d\s\-\+\(\)]+$/, 'Please enter a valid phone number')
-    .min(10, 'Phone number must be at least 10 characters')
-    .max(20, 'Phone number must not exceed 20 characters'),
+    .nullable()
+    .transform((value) => (value === '' ? null : value))
+    .when('$isEdit', {
+      is: false,
+      then: (schema) =>
+        schema
+          .required('Phone number is required')
+          .trim()
+          .matches(/^[\d\s\-\+\(\)]+$/, 'Phone number can only contain digits, +, -, (), and spaces.')
+          .min(10, 'Phone number must be at least 10 characters')
+          .max(20, 'Phone number must not exceed 20 characters'),
+      otherwise: (schema) =>
+        schema
+          .trim()
+          .matches(/^[\d\s\-\+\(\)]*$/, 'Phone number can only contain digits, +, -, (), and spaces.')
+          .max(20, 'Phone number must not exceed 20 characters'),
+    }),
   
   streetAddress: Yup.string()
-    .required('Street address is required')
+    .nullable()
+    .transform((value) => (value === '' ? null : value))
     .trim()
-    .min(5, 'Street address must be at least 5 characters')
-    .max(200, 'Street address must not exceed 200 characters'),
+    .max(256, 'Street address must not exceed 256 characters'),
   
   city: Yup.string()
-    .required('City is required')
+    .nullable()
+    .transform((value) => (value === '' ? null : value))
     .trim()
-    .min(2, 'City must be at least 2 characters')
-    .max(100, 'City must not exceed 100 characters'),
+    .max(256, 'City must not exceed 256 characters'),
   
   stateProvince: Yup.string()
-    .required('State/Province is required')
+    .nullable()
+    .transform((value) => (value === '' ? null : value))
     .trim()
-    .min(2, 'State/Province must be at least 2 characters')
-    .max(100, 'State/Province must not exceed 100 characters'),
+    .max(256, 'State/Province must not exceed 256 characters'),
   
   postalCode: Yup.string()
-    .required('Postal code is required')
+    .nullable()
+    .transform((value) => (value === '' ? null : value))
     .trim()
-    .min(3, 'Postal code must be at least 3 characters')
     .max(20, 'Postal code must not exceed 20 characters'),
   
   country: Yup.string()
-    .required('Country is required')
-    .trim(),
+    .nullable()
+    .transform((value) => (value === '' ? null : value))
+    .trim()
+    .max(256, 'Country must not exceed 256 characters'),
   
   role: Yup.string()
-    .required('Role is required')
-    .oneOf(['A', 'M', 'S'], 'Invalid role'),
+    .default('A')
+    .oneOf(['SA', 'A', 'HF', 'S'], 'Invalid role'),
   
   userRoleId: Yup.number()
-    .required('User role is required')
-    .min(1, 'User role is required'),
+    .nullable()
+    .transform((value) => (value === '' || value === 0 ? null : value))
+    .test('min-value', 'User role ID must be greater than 0', function (value) {
+      if (value === null || value === undefined) return true; // Allow null/undefined
+      return value >= 1;
+    }),
   
   branchId: Yup.number()
-    .required('Branch is required')
-    .min(1, 'Branch is required'),
+    .nullable()
+    .transform((value) => (value === '' || value === 0 ? null : value))
+    .test('min-value', 'Branch ID must be greater than 0', function (value) {
+      if (value === null || value === undefined) return true; // Allow null/undefined
+      return value >= 1;
+    }),
 
   // ===== OPTIONAL FIELDS WITH VALIDATION =====
   
   dateOfBirth: Yup.date()
     .nullable()
     .max(new Date(), 'Date of birth cannot be in the future')
+    .test('age', 'User must be at least 18 years old to work here', function (value) {
+      if (!value) return true; // Allow null/empty dates
+      const today = new Date();
+      const birthDate = new Date(value);
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        return age - 1 >= 18;
+      }
+      return age >= 18;
+    })
     .transform((value, originalValue) => (originalValue === '' ? null : value)),
   
   password: Yup.string()

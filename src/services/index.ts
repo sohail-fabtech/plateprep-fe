@@ -41,6 +41,7 @@ export type { TaskQueryParams, TaskListResponse, ITaskApiRequest } from './tasks
 export {
   useUser,
   useUsers,
+  useCreateUser,
   useUpdateUser,
   useUpdateUserIndividualPermissions,
   useDeleteUser,

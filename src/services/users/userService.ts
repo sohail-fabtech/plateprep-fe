@@ -1,12 +1,26 @@
 import axiosInstance from '../../utils/axios';
-import { IUserDetail, IUserApiResponse, UserListResponse, RestoreUserResponse, PermanentlyDeleteUserResponse } from '../../@types/userApi';
+import {
+  IUserDetail,
+  IUserApiResponse,
+  UserListResponse,
+  RestoreUserResponse,
+  PermanentlyDeleteUserResponse,
+  CreateUserRequest,
+  UpdateUserRequest,
+} from '../../@types/userApi';
 import { transformApiResponseToUser } from '../../utils/userAdapter';
 import { QueryParams } from '../common/types';
 
 // ----------------------------------------------------------------------
 
 // Re-export types for use in other modules
-export type { UserListResponse, RestoreUserResponse, PermanentlyDeleteUserResponse };
+export type {
+  UserListResponse,
+  RestoreUserResponse,
+  PermanentlyDeleteUserResponse,
+  CreateUserRequest,
+  UpdateUserRequest,
+};
 
 export interface UserQueryParams extends QueryParams {
   search?: string;
@@ -94,9 +108,17 @@ export async function permanentlyDeleteUser(id: string | number): Promise<Perman
 }
 
 /**
+ * Create user (POST)
+ */
+export async function createUser(data: CreateUserRequest): Promise<IUserDetail> {
+  const response = await axiosInstance.post<IUserApiResponse>('/user-detail/', data);
+  return response.data;
+}
+
+/**
  * Update user (PATCH)
  */
-export async function updateUser(id: string | number, data: Partial<IUserApiResponse>): Promise<IUserDetail> {
+export async function updateUser(id: string | number, data: UpdateUserRequest): Promise<IUserDetail> {
   const response = await axiosInstance.patch<IUserApiResponse>(`/user-detail/${id}/`, data);
   return response.data;
 }
