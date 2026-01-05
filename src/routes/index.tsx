@@ -121,6 +121,7 @@ import {
   PaymentPage,
   ComingSoonPage,
   MaintenancePage,
+  TemplateEditorPage,
   //
   ComponentsOverviewPage,
   FoundationColorsPage,
@@ -332,13 +333,14 @@ export default function Router() {
             { path: 'create', element: <TemplatesCreatePage /> },
           ],
         },
-        {
-          path: 'editor-template',
-          children: [
-            { element: <Navigate to="/dashboard/editor-template/edit" replace />, index: true },
-            { path: 'edit', element: <EditorTemplatePage /> },
-          ],
-        },
+        // {
+        //   path: 'editor-template',
+        //   children: [
+        //     { element: <Navigate to="/dashboard/editor-template/list" replace />, index: true },
+        //     { path: 'list', element: <TemplatesListPage /> },
+        //     { path: 'edit', element: <EditorTemplatePage /> },
+        //   ],
+        // },
         {
           path: 'tracking',
           children: [
@@ -455,6 +457,9 @@ export default function Router() {
         { path: 'blank', element: <BlankPage /> },
       ],
     },
+
+    // Template Editor (Standalone - No Layout)
+    { path: 'template-editor', element: <TemplateEditorPage /> },
 
     // Main Routes
     {

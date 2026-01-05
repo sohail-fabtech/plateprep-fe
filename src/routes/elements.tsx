@@ -156,6 +156,7 @@ export const Page403 = Loadable(lazy(() => import('../pages/Page403')));
 export const Page404 = Loadable(lazy(() => import('../pages/Page404')));
 export const HomePage = Loadable(lazy(() => import('../pages/HomePage')));
 export const FaqsPage = Loadable(lazy(() => import('../pages/FaqsPage')));
+export const TemplateEditorPage = Loadable(lazy(() => import('../pages/main/TemplateEditorPage')));
 export const AboutPage = Loadable(lazy(() => import('../pages/AboutPage')));
 export const Contact = Loadable(lazy(() => import('../pages/ContactPage')));
 export const PricingPage = Loadable(lazy(() => import('../pages/PricingPage')));

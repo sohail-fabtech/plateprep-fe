@@ -33,6 +33,7 @@ export const PATH_PAGE = {
   page404: '/404',
   page500: '/500',
   components: '/components',
+  templateEditor: '/template-editor',
 };
 
 export const PATH_DASHBOARD = {
@@ -107,6 +108,7 @@ export const PATH_DASHBOARD = {
   },
   editorTemplate: {
     root: path(ROOTS_DASHBOARD, '/editor-template'),
+    list: path(ROOTS_DASHBOARD, '/editor-template/list'),
     edit: path(ROOTS_DASHBOARD, '/editor-template/edit'),
   },
   tracking: path(ROOTS_DASHBOARD, '/tracking'),

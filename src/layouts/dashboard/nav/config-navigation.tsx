@@ -105,12 +105,12 @@ const navConfig = [
         icon: ICONS.chef,
         permission: 'view_templates',
       },
-      {
-        title: 'Editor Template',
-        path: PATH_DASHBOARD.editorTemplate.root,
-        icon: ICONS.editorTemplate,
-        permission: 'view_editor_template',
-      },
+      // {
+      //   title: 'Editor Template',
+      //   path: PATH_DASHBOARD.editorTemplate.root,
+      //   icon: ICONS.editorTemplate,
+      //   permission: 'view_editor_template',
+      // },
       {
         title: 'Tracking',
         path: PATH_DASHBOARD.tracking,

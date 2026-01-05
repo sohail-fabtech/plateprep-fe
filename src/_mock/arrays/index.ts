@@ -17,3 +17,4 @@ export * from './_scheduling';
 export * from './_howTo';
 export * from './_dictionary';
 export * from './_videoGeneration';
+export * from './_templateEditor';
