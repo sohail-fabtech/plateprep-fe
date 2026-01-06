@@ -70,6 +70,7 @@ export type IWineInventoryForm = {
   };
   minStockLevel: number;
   maxStockLevel: number;
+  stock: number;
   purchasePrice?: number | null;
   supplierName?: string | null;
   locationId: string;

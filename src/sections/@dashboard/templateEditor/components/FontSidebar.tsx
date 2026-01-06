@@ -56,7 +56,7 @@ export default function FontSidebar({ editor, activeTool, onChangeActiveTool }: 
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Font" description="Change the text font" />
+        <ToolSidebarHeader title="Font" description="Change the text font" icon="solar:text-bold" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 1, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
           <List disablePadding>

@@ -37,7 +37,7 @@ export default function FilterSidebar({ editor, activeTool, onChangeActiveTool }
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Filters" description="Apply filters to your image" />
+        <ToolSidebarHeader title="Filters" description="Apply filters to your image" icon="solar:filter-bold" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 1 }}>
           <List disablePadding>

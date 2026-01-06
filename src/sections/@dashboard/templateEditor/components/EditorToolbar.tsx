@@ -10,6 +10,8 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Divider,
+  useTheme,
+  alpha,
 } from '@mui/material';
 // components
 import Iconify from '../../../../components/iconify';
@@ -27,6 +29,7 @@ interface EditorToolbarProps {
 }
 
 export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }: EditorToolbarProps) {
+  const theme = useTheme();
   const selectedObject = editor?.selectedObjects[0];
   const selectedObjectType = editor?.selectedObjects[0]?.type;
 
@@ -151,8 +154,9 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
         bgcolor: 'background.paper',
         zIndex: (theme) => theme.zIndex.appBar - 1,
         px: 2,
-        gap: 1,
+        gap: 0.75,
         overflowX: 'auto',
+        alignItems: 'center',
       }}
     >
       {/* Fill Color - Not for images */}
@@ -162,10 +166,18 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
             size="small"
             onClick={() => onChangeActiveTool('fill')}
             sx={{
-              bgcolor: activeTool === 'fill' ? 'action.selected' : 'transparent',
-              border: (theme) => `1px solid ${theme.palette.divider}`,
-              width: 32,
-              height: 32,
+              bgcolor: activeTool === 'fill' ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+              color: activeTool === 'fill' ? 'primary.main' : 'text.secondary',
+              borderRadius: 1,
+              width: 36,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              '&:hover': {
+                bgcolor: activeTool === 'fill' ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+              },
             }}
           >
             <Box
@@ -189,21 +201,21 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={() => onChangeActiveTool('stroke-color')}
               sx={{
-                bgcolor: activeTool === 'stroke-color' ? 'action.selected' : 'transparent',
-                border: (theme) => `1px solid ${theme.palette.divider}`,
-                width: 32,
-                height: 32,
+                bgcolor: activeTool === 'stroke-color' ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: activeTool === 'stroke-color' ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                '&:hover': {
+                  bgcolor: activeTool === 'stroke-color' ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Box
-                sx={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 0.5,
-                  border: (theme) => `2px solid ${properties.strokeColor}`,
-                  bgcolor: 'background.paper',
-                }}
-              />
+              <Iconify icon="material-symbols:stroke-partial" width={22} height={22} />
             </IconButton>
           </Tooltip>
 
@@ -212,10 +224,21 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={() => onChangeActiveTool('stroke-width')}
               sx={{
-                bgcolor: activeTool === 'stroke-width' ? 'action.selected' : 'transparent',
+                bgcolor: activeTool === 'stroke-width' ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: activeTool === 'stroke-width' ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                '&:hover': {
+                  bgcolor: activeTool === 'stroke-width' ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Iconify icon="solar:line-width-bold" width={20} />
+              <Iconify icon="material-symbols:line-weight" width={22} height={22} />
             </IconButton>
           </Tooltip>
         </>
@@ -231,12 +254,20 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={() => onChangeActiveTool('font')}
               sx={{
-                bgcolor: activeTool === 'font' ? 'action.selected' : 'transparent',
-                minWidth: 100,
-                textTransform: 'none',
+                bgcolor: activeTool === 'font' ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: activeTool === 'font' ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                px: 1,
+                '&:hover': {
+                  bgcolor: activeTool === 'font' ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Box component="span" sx={{ fontSize: 12, mr: 0.5, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Box component="span" sx={{ fontSize: 12, mr: 0.5, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {properties.fontFamily}
               </Box>
               <Iconify icon="eva:arrow-ios-downward-fill" width={16} />
@@ -248,10 +279,20 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={toggleBold}
               sx={{
-                bgcolor: properties.fontWeight > 500 ? 'action.selected' : 'transparent',
+                bgcolor: properties.fontWeight > 500 ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: properties.fontWeight > 500 ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&:hover': {
+                  bgcolor: properties.fontWeight > 500 ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Iconify icon="solar:bold-bold" width={20} />
+              <Iconify icon="solar:text-bold-circle-bold" width={22} height={22} />
             </IconButton>
           </Tooltip>
 
@@ -260,10 +301,20 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={toggleItalic}
               sx={{
-                bgcolor: properties.fontStyle === 'italic' ? 'action.selected' : 'transparent',
+                bgcolor: properties.fontStyle === 'italic' ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: properties.fontStyle === 'italic' ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&:hover': {
+                  bgcolor: properties.fontStyle === 'italic' ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Iconify icon="solar:italic-bold" width={20} />
+              <Iconify icon="solar:text-italic-circle-bold" width={22} height={22} />
             </IconButton>
           </Tooltip>
 
@@ -272,10 +323,20 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={toggleUnderline}
               sx={{
-                bgcolor: properties.fontUnderline ? 'action.selected' : 'transparent',
+                bgcolor: properties.fontUnderline ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: properties.fontUnderline ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&:hover': {
+                  bgcolor: properties.fontUnderline ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Iconify icon="solar:underline-bold" width={20} />
+              <Iconify icon="solar:text-underline-circle-bold" width={22} height={22} />
             </IconButton>
           </Tooltip>
 
@@ -284,10 +345,20 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={toggleLinethrough}
               sx={{
-                bgcolor: properties.fontLinethrough ? 'action.selected' : 'transparent',
+                bgcolor: properties.fontLinethrough ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: properties.fontLinethrough ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&:hover': {
+                  bgcolor: properties.fontLinethrough ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Iconify icon="solar:strikethrough-bold" width={20} />
+              <Iconify icon="solar:text-cross-circle-bold" width={22} height={22} />
             </IconButton>
           </Tooltip>
 
@@ -298,16 +369,51 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
             exclusive
             onChange={(_, value) => value && onChangeTextAlign(value)}
             size="small"
-            sx={{ height: 32 }}
+            sx={{
+              height: 36,
+              border: "none",
+              '& .MuiToggleButton-root': {
+                border: 'none',
+                borderRadius: 1,
+                mx: 0.5,
+                width: 36,
+                height: 36,
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+                color: 'text.secondary',
+                padding: 0,
+                marginTop: 0,
+                '&:first-of-type': {
+                  ml: 0,
+                  mt: 0,
+                },
+                '&:last-of-type': {
+                  mr: 0,
+                  mt: 0,
+                },
+                '&:center-of-type': {
+                  mt: 0,
+                },
+                '&.Mui-selected': {
+                  bgcolor: 'action.selected',
+                  color: 'primary.main',
+                  '&:hover': {
+                    bgcolor: 'action.selected',
+                  },
+                },
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                },
+              },
+            }}
           >
-            <ToggleButton value="left">
-              <Iconify icon="solar:align-left-bold" width={18} />
+            <ToggleButton value="left" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Iconify icon="solar:align-left-bold" width={22} height={22} />
             </ToggleButton>
-            <ToggleButton value="center">
-              <Iconify icon="solar:align-center-bold" width={18} />
+            <ToggleButton value="center" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Iconify icon="solar:align-horizontal-center-bold-duotone" width={22} height={22} />
             </ToggleButton>
-            <ToggleButton value="right">
-              <Iconify icon="solar:align-right-bold" width={18} />
+            <ToggleButton value="right" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Iconify icon="solar:align-right-bold" width={22} height={22} />
             </ToggleButton>
           </ToggleButtonGroup>
 
@@ -331,10 +437,21 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={() => onChangeActiveTool('filter')}
               sx={{
-                bgcolor: activeTool === 'filter' ? 'action.selected' : 'transparent',
+                bgcolor: activeTool === 'filter' ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: activeTool === 'filter' ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                '&:hover': {
+                  bgcolor: activeTool === 'filter' ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Iconify icon="solar:filter-bold" width={20} />
+              <Iconify icon="solar:filter-bold" width={22} height={22} />
             </IconButton>
           </Tooltip>
 
@@ -343,10 +460,21 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
               size="small"
               onClick={() => onChangeActiveTool('remove-bg')}
               sx={{
-                bgcolor: activeTool === 'remove-bg' ? 'action.selected' : 'transparent',
+                bgcolor: activeTool === 'remove-bg' ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+                color: activeTool === 'remove-bg' ? 'primary.main' : 'text.secondary',
+                borderRadius: 1,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                '&:hover': {
+                  bgcolor: activeTool === 'remove-bg' ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+                },
               }}
             >
-              <Iconify icon="solar:layers-split-bold" width={20} />
+              <Iconify icon="material-symbols:background-replace-rounded" width={22} height={22} />
             </IconButton>
           </Tooltip>
         </>
@@ -356,14 +484,48 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
 
       {/* Common controls */}
       <Tooltip title="Bring Forward">
-        <IconButton size="small" onClick={() => editor?.bringForward()}>
-          <Iconify icon="solar:alt-arrow-up-bold" width={20} />
+        <IconButton
+          size="small"
+          onClick={() => editor?.bringForward()}
+          sx={{
+            bgcolor: alpha(theme.palette.primary.main, 0.08),
+            color: 'text.secondary',
+            borderRadius: 1,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            '&:hover': {
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+            },
+          }}
+        >
+          <Iconify icon="solar:alt-arrow-up-bold" width={22} height={22} />
         </IconButton>
       </Tooltip>
 
       <Tooltip title="Send Backward">
-        <IconButton size="small" onClick={() => editor?.sendBackwards()}>
-          <Iconify icon="solar:alt-arrow-down-bold" width={20} />
+        <IconButton
+          size="small"
+          onClick={() => editor?.sendBackwards()}
+          sx={{
+            bgcolor: alpha(theme.palette.primary.main, 0.08),
+            color: 'text.secondary',
+            borderRadius: 1,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            '&:hover': {
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+            },
+          }}
+        >
+          <Iconify icon="solar:alt-arrow-down-bold" width={22} height={22} />
         </IconButton>
       </Tooltip>
 
@@ -372,10 +534,21 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
           size="small"
           onClick={() => onChangeActiveTool('opacity')}
           sx={{
-            bgcolor: activeTool === 'opacity' ? 'action.selected' : 'transparent',
+            bgcolor: activeTool === 'opacity' ? 'action.selected' : alpha(theme.palette.primary.main, 0.08),
+            color: activeTool === 'opacity' ? 'primary.main' : 'text.secondary',
+            borderRadius: 1,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            '&:hover': {
+              bgcolor: activeTool === 'opacity' ? 'action.selected' : alpha(theme.palette.primary.main, 0.12),
+            },
           }}
         >
-          <Iconify icon="solar:transparency-bold" width={20} />
+          <Iconify icon="material-symbols:opacity" width={22} height={22} />
         </IconButton>
       </Tooltip>
 
@@ -386,14 +559,45 @@ export default function EditorToolbar({ editor, activeTool, onChangeActiveTool }
             editor?.onCopy();
             editor?.onPaste();
           }}
+          sx={{
+            bgcolor: alpha(theme.palette.primary.main, 0.08),
+            color: 'text.secondary',
+            borderRadius: 1,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            '&:hover': {
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+            },
+          }}
         >
-          <Iconify icon="solar:copy-bold" width={20} />
+          <Iconify icon="solar:copy-bold" width={22} height={22} />
         </IconButton>
       </Tooltip>
 
       <Tooltip title="Delete">
-        <IconButton size="small" onClick={() => editor?.delete()} sx={{ color: 'error.main' }}>
-          <Iconify icon="solar:trash-bin-trash-bold" width={20} />
+        <IconButton
+          size="small"
+          onClick={() => editor?.delete()}
+          sx={{
+            bgcolor: alpha(theme.palette.error.main, 0.08),
+            color: 'error.main',
+            borderRadius: 1,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            '&:hover': {
+              bgcolor: alpha(theme.palette.error.main, 0.12),
+            },
+          }}
+        >
+          <Iconify icon="solar:trash-bin-trash-bold" width={22} height={22} />
         </IconButton>
       </Tooltip>
     </Toolbar>

@@ -1,4 +1,4 @@
-import { Box, List, ListItemButton, Stack, Typography, Tooltip } from '@mui/material';
+import { Box, List, ListItemButton, Stack, Typography, Tooltip, useTheme, alpha } from '@mui/material';
 // components
 import Iconify from '../../../../components/iconify';
 // types
@@ -18,16 +18,17 @@ interface SidebarItem {
 }
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
-  { tool: 'templates', icon: 'eva:grid-outline', label: 'Design' },
-  { tool: 'images', icon: 'eva:image-outline', label: 'Image' },
-  { tool: 'text', icon: 'eva:type-outline', label: 'Text' },
-  { tool: 'shapes', icon: 'eva:square-outline', label: 'Shapes' },
-  { tool: 'draw', icon: 'eva:edit-outline', label: 'Draw' },
-  { tool: 'ai', icon: 'eva:star-outline', label: 'AI' },
-  { tool: 'settings', icon: 'eva:settings-outline', label: 'Settings' },
+  { tool: 'templates', icon: 'material-symbols:dashboard-rounded', label: 'Design' },
+  { tool: 'images', icon: 'material-symbols:image', label: 'Image' },
+  { tool: 'text', icon: 'material-symbols:text-fields-rounded', label: 'Text' },
+  { tool: 'shapes', icon: 'material-symbols:shapes', label: 'Shapes' },
+  { tool: 'draw', icon: 'material-symbols:draw-rounded', label: 'Draw' },
+  // { tool: 'ai', icon: 'material-symbols:kid-star', label: 'AI' },
+  { tool: 'settings', icon: 'material-symbols:settings-alert-rounded', label: 'Settings' },
 ];
 
 export default function EditorSidebar({ activeTool, onChangeActiveTool }: EditorSidebarProps) {
+  const theme = useTheme();
   return (
     <Box
       sx={{
@@ -59,14 +60,22 @@ export default function EditorSidebar({ activeTool, onChangeActiveTool }: Editor
                 },
               }}
             >
-              <Iconify
-                icon={item.icon}
-                width={24}
+              <Box
                 sx={{
                   mb: 1,
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  borderRadius: 1.5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: theme.transitions.create(['background-color', 'color']),
+                  bgcolor: activeTool === item.tool ? alpha(theme.palette.primary.main, 0.16) : 'transparent',
                   color: activeTool === item.tool ? 'primary.main' : 'text.secondary',
                 }}
-              />
+              >
+                <Iconify icon={item.icon} width={24} />
+              </Box>
               <Typography
                 variant="caption"
                 sx={{

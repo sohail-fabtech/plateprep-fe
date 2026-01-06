@@ -52,11 +52,11 @@ export default function DrawSidebar({ editor, activeTool, onChangeActiveTool }: 
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Draw" description="Draw on your canvas" />
+        <ToolSidebarHeader title="Draw" description="Draw on your canvas" icon="solar:pen-bold" />
 
-        <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
-          <Stack spacing={3}>
-            <Box>
+        <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2, width: '100%', boxSizing: 'border-box' }}>
+          <Stack spacing={3} sx={{ width: '100%' }}>
+            <Box sx={{ width: '100%', overflow: 'hidden' }}>
               <Typography variant="body2" sx={{ mb: 2 }}>
                 Brush Size: {currentBrushWidth}px
               </Typography>
@@ -75,11 +75,50 @@ export default function DrawSidebar({ editor, activeTool, onChangeActiveTool }: 
               />
             </Box>
 
-            <Box>
+            <Box sx={{ width: '100%', overflow: 'hidden' }}>
               <Typography variant="body2" sx={{ mb: 2 }}>
                 Brush Color
               </Typography>
-              <SketchPicker color={currentBrushColor} onChange={handleBrushColorChange} disableAlpha={false} />
+              <Box
+                sx={{
+                  width: '100%',
+                  overflow: 'hidden',
+                  '& .sketch-picker': {
+                    width: '100% !important',
+                    boxShadow: 'none !important',
+                    border: (theme) => `1px solid ${theme.palette.divider} !important`,
+                    borderRadius: '8px !important',
+                    background: (theme) => `${theme.palette.background.paper} !important`,
+                    padding: '16px !important',
+                    boxSizing: 'border-box !important',
+                  },
+                  '& .sketch-picker > div:first-of-type > div:first-of-type': {
+                    borderRadius: '4px !important',
+                  },
+                  '& .sketch-picker input': {
+                    background: (theme) => `${theme.palette.background.default} !important`,
+                    border: (theme) => `1px solid ${theme.palette.divider} !important`,
+                    borderRadius: '4px !important',
+                    color: (theme) => `${theme.palette.text.primary} !important`,
+                    fontSize: '14px !important',
+                    width: '100% !important',
+                  },
+                  '& .sketch-picker label': {
+                    color: (theme) => `${theme.palette.text.secondary} !important`,
+                    fontSize: '12px !important',
+                  },
+                  '& .flexbox-fix': {
+                    width: '100% !important',
+                  },
+                }}
+              >
+                <SketchPicker 
+                  color={currentBrushColor} 
+                  onChange={handleBrushColorChange} 
+                  disableAlpha={false}
+                  width="100%"
+                />
+              </Box>
             </Box>
           </Stack>
         </Box>

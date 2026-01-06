@@ -22,17 +22,36 @@ export default function ShapeSidebar({ editor, activeTool, onChangeActiveTool }:
   };
 
   const shapes = [
-    { icon: 'solar:circle-bold', label: 'Circle', onClick: () => editor?.addCircle() },
-    { icon: 'solar:square-bold', label: 'Rounded Square', onClick: () => editor?.addSoftRectangle() },
-    { icon: 'solar:square-academic-bold', label: 'Square', onClick: () => editor?.addRectangle() },
-    { icon: 'solar:triangle-bold', label: 'Triangle', onClick: () => editor?.addTriangle() },
+    { 
+      shape: <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: 'text.primary' }} />,
+      label: 'Circle', 
+      onClick: () => editor?.addCircle() 
+    },
+    { 
+      shape: <Box sx={{ width: 40, height: 40, borderRadius: 1.5, bgcolor: 'text.primary' }} />,
+      label: 'Rounded Square', 
+      onClick: () => editor?.addSoftRectangle() 
+    },
+    { 
+      shape: <Box sx={{ width: 40, height: 40, bgcolor: 'text.primary' }} />,
+      label: 'Square', 
+      onClick: () => editor?.addRectangle() 
+    },
+    { 
+      shape: <Box sx={{ width: 0, height: 0, borderLeft: '20px solid transparent', borderRight: '20px solid transparent', borderBottom: (theme) => `35px solid ${theme.palette.text.primary}` }} />,
+      label: 'Triangle', 
+      onClick: () => editor?.addTriangle() 
+    },
     {
-      icon: 'solar:triangle-bold',
+      shape: <Box sx={{ width: 0, height: 0, borderLeft: '20px solid transparent', borderRight: '20px solid transparent', borderTop: (theme) => `35px solid ${theme.palette.text.primary}` }} />,
       label: 'Inverse Triangle',
       onClick: () => editor?.addInverseTriangle(),
-      sx: { transform: 'rotate(180deg)' },
     },
-    { icon: 'solar:diamond-bold', label: 'Diamond', onClick: () => editor?.addDiamond() },
+    { 
+      shape: <Box sx={{ width: 40, height: 40, transform: 'rotate(45deg)', bgcolor: 'text.primary' }} />,
+      label: 'Diamond', 
+      onClick: () => editor?.addDiamond() 
+    },
   ];
 
   return (
@@ -51,7 +70,7 @@ export default function ShapeSidebar({ editor, activeTool, onChangeActiveTool }:
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Shapes" description="Add shapes to your canvas" />
+        <ToolSidebarHeader title="Shapes" description="Add shapes to your canvas" icon="material-symbols:shapes" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
           <Grid container spacing={2}>
@@ -65,10 +84,12 @@ export default function ShapeSidebar({ editor, activeTool, onChangeActiveTool }:
                       aspectRatio: '1',
                       border: (theme) => `1px solid ${theme.palette.divider}`,
                       borderRadius: 1,
-                      ...shape.sx,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
-                    <Iconify icon={shape.icon} width={32} />
+                    {shape.shape}
                   </IconButton>
                 </Tooltip>
               </Grid>

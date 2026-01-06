@@ -46,7 +46,7 @@ export default function StrokeWidthSidebar({ editor, activeTool, onChangeActiveT
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Stroke width" description="Change the stroke width of your element" />
+        <ToolSidebarHeader title="Stroke width" description="Change the stroke width of your element" icon="material-symbols:line-weight" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
           <Box sx={{ mb: 3, pb: 2, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
@@ -111,7 +111,7 @@ export default function StrokeWidthSidebar({ editor, activeTool, onChangeActiveT
                   sx={{
                     width: '100%',
                     height: 4,
-                    borderTop: (theme) => `4px dashed ${theme.palette.text.primary}`,
+                    background: (theme) => `repeating-linear-gradient(to right, ${theme.palette.text.primary} 0px, ${theme.palette.text.primary} 15px, transparent 15px, transparent 25px)`,
                     borderRadius: 1,
                   }}
                 />

@@ -11,6 +11,8 @@ import {
   MenuItem,
   Typography,
   CircularProgress,
+  useTheme,
+  alpha,
 } from '@mui/material';
 // components
 import Iconify from '../../../../components/iconify';
@@ -33,6 +35,7 @@ export default function EditorNavbar({
   activeTool,
   onChangeActiveTool,
 }: EditorNavbarProps) {
+  const theme = useTheme();
   const [fileMenuOpen, setFileMenuOpen] = useState<HTMLElement | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState<HTMLElement | null>(null);
   const fileMenuRef = useRef<HTMLElement>(null);
@@ -130,7 +133,21 @@ export default function EditorNavbar({
                 px: 2,
               }}
             >
-              <Iconify icon="eva:file-outline" width={24} sx={{ mr: 2 }} />
+              <Box
+                sx={{
+                  mr: 2,
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  borderRadius: 1.5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                  color: 'primary.main',
+                }}
+              >
+                <Iconify icon="eva:file-outline" width={24} />
+              </Box>
               <Box>
                 <Typography variant="body2">Open</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -187,7 +204,19 @@ export default function EditorNavbar({
           )}
           {saveStatus === 'error' && (
             <Stack direction="row" spacing={1} alignItems="center">
-              <Iconify icon="eva:cloud-upload-fill" width={20} sx={{ color: 'error.main' }} />
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  borderRadius: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(theme.palette.error.main, 0.08),
+                }}
+              >
+                <Iconify icon="eva:cloud-upload-fill" width={18} sx={{ color: 'error.main' }} />
+              </Box>
               <Typography variant="caption" color="error">
                 Failed to save
               </Typography>
@@ -195,7 +224,19 @@ export default function EditorNavbar({
           )}
           {saveStatus === 'saved' && (
             <Stack direction="row" spacing={1} alignItems="center">
-              <Iconify icon="eva:checkmark-circle-2-fill" width={20} sx={{ color: 'success.main' }} />
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  borderRadius: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(theme.palette.success.main, 0.08),
+                }}
+              >
+                <Iconify icon="eva:checkmark-circle-2-fill" width={18} sx={{ color: 'success.main' }} />
+              </Box>
               <Typography variant="caption" color="text.secondary">
                 Saved
               </Typography>
@@ -233,7 +274,21 @@ export default function EditorNavbar({
                 px: 2,
               }}
             >
-              <Iconify icon="eva:file-text-outline" width={24} sx={{ mr: 2 }} />
+              <Box
+                sx={{
+                  mr: 2,
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  borderRadius: 1.5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(theme.palette.info.main, 0.08),
+                  color: 'info.main',
+                }}
+              >
+                <Iconify icon="eva:file-text-outline" width={24} />
+              </Box>
               <Box>
                 <Typography variant="body2">JSON</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -248,7 +303,21 @@ export default function EditorNavbar({
                 px: 2,
               }}
             >
-              <Iconify icon="eva:image-outline" width={24} sx={{ mr: 2 }} />
+              <Box
+                sx={{
+                  mr: 2,
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  borderRadius: 1.5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(theme.palette.success.main, 0.08),
+                  color: 'success.main',
+                }}
+              >
+                <Iconify icon="eva:image-outline" width={24} />
+              </Box>
               <Box>
                 <Typography variant="body2">PNG</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -263,7 +332,21 @@ export default function EditorNavbar({
                 px: 2,
               }}
             >
-              <Iconify icon="eva:image-outline" width={24} sx={{ mr: 2 }} />
+              <Box
+                sx={{
+                  mr: 2,
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  borderRadius: 1.5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(theme.palette.warning.main, 0.08),
+                  color: 'warning.main',
+                }}
+              >
+                <Iconify icon="eva:image-outline" width={24} />
+              </Box>
               <Box>
                 <Typography variant="body2">JPG</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -278,7 +361,21 @@ export default function EditorNavbar({
                 px: 2,
               }}
             >
-              <Iconify icon="eva:image-outline" width={24} sx={{ mr: 2 }} />
+              <Box
+                sx={{
+                  mr: 2,
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  borderRadius: 1.5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                  color: 'secondary.main',
+                }}
+              >
+                <Iconify icon="eva:image-outline" width={24} />
+              </Box>
               <Box>
                 <Typography variant="body2">SVG</Typography>
                 <Typography variant="caption" color="text.secondary">

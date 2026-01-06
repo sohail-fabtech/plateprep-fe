@@ -63,7 +63,7 @@ export default function RemoveBgSidebar({ editor, activeTool, onChangeActiveTool
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Remove Background" description="Remove the background from your image" />
+        <ToolSidebarHeader title="Remove Background" description="Remove the background from your image" icon="material-symbols:background-replace-rounded" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 3 }}>
           <Stack spacing={2}>
@@ -80,7 +80,7 @@ export default function RemoveBgSidebar({ editor, activeTool, onChangeActiveTool
               fullWidth
               onClick={handleRemoveBackground}
               disabled={processing || !editor?.selectedObjects.length}
-              startIcon={processing ? <CircularProgress size={16} /> : <Iconify icon="solar:layers-split-bold" />}
+              startIcon={processing ? <CircularProgress size={16} /> : <Iconify icon="material-symbols:background-replace-rounded" />}
             >
               {processing ? 'Processing...' : 'Remove Background'}
             </Button>

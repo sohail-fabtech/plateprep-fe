@@ -1,13 +1,18 @@
-import { Box, Typography, Stack } from '@mui/material';
+import { Box, Typography, Stack, useTheme, alpha } from '@mui/material';
+// components
+import Iconify from '../../../../components/iconify';
 
 // ----------------------------------------------------------------------
 
 interface ToolSidebarHeaderProps {
   title: string;
   description?: string;
+  icon?: string;
 }
 
-export default function ToolSidebarHeader({ title, description }: ToolSidebarHeaderProps) {
+export default function ToolSidebarHeader({ title, description, icon }: ToolSidebarHeaderProps) {
+  const theme = useTheme();
+
   return (
     <Box
       sx={{
@@ -19,9 +24,27 @@ export default function ToolSidebarHeader({ title, description }: ToolSidebarHea
         justifyContent: 'center',
       }}
     >
-      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-        {title}
-      </Typography>
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: description ? 0.5 : 0 }}>
+        {icon && (
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 1,
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              color: 'primary.main',
+            }}
+          >
+            <Iconify icon={icon} width={18} />
+          </Box>
+        )}
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          {title}
+        </Typography>
+      </Stack>
       {description && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
           {description}

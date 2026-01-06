@@ -67,7 +67,7 @@ export default function SettingsSidebar({ editor, activeTool, onChangeActiveTool
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Settings" description="Change the look of your workspace" />
+        <ToolSidebarHeader title="Settings" description="Change the look of your workspace" icon="solar:settings-bold" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
           <form onSubmit={handleSubmit}>
@@ -100,11 +100,50 @@ export default function SettingsSidebar({ editor, activeTool, onChangeActiveTool
                 />
               </Box>
 
-              <Box>
+              <Box sx={{ width: '100%', overflow: 'hidden' }}>
                 <Typography variant="body2" sx={{ mb: 1 }}>
                   Background Color
                 </Typography>
-                <SketchPicker color={background} onChange={handleBackgroundChange} disableAlpha={false} />
+                <Box
+                  sx={{
+                    width: '100%',
+                    overflow: 'hidden',
+                    '& .sketch-picker': {
+                      width: '100% !important',
+                      boxShadow: 'none !important',
+                      border: (theme) => `1px solid ${theme.palette.divider} !important`,
+                      borderRadius: '8px !important',
+                      background: (theme) => `${theme.palette.background.paper} !important`,
+                      padding: '16px !important',
+                      boxSizing: 'border-box !important',
+                    },
+                    '& .sketch-picker > div:first-of-type > div:first-of-type': {
+                      borderRadius: '4px !important',
+                    },
+                    '& .sketch-picker input': {
+                      background: (theme) => `${theme.palette.background.default} !important`,
+                      border: (theme) => `1px solid ${theme.palette.divider} !important`,
+                      borderRadius: '4px !important',
+                      color: (theme) => `${theme.palette.text.primary} !important`,
+                      fontSize: '14px !important',
+                      width: '100% !important',
+                    },
+                    '& .sketch-picker label': {
+                      color: (theme) => `${theme.palette.text.secondary} !important`,
+                      fontSize: '12px !important',
+                    },
+                    '& .flexbox-fix': {
+                      width: '100% !important',
+                    },
+                  }}
+                >
+                  <SketchPicker 
+                    color={background} 
+                    onChange={handleBackgroundChange} 
+                    disableAlpha={false}
+                    width="100%"
+                  />
+                </Box>
               </Box>
 
               <Button type="submit" variant="contained" fullWidth>

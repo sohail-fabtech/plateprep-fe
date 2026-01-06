@@ -120,6 +120,11 @@ export const WineInventoryValidationSchema = Yup.object().shape({
       otherwise: (schema) => schema,
     }),
 
+  stock: Yup.number()
+    .required('Stock is required')
+    .min(0, 'Stock cannot be negative')
+    .integer('Stock must be a whole number'),
+
   // ===== BUSINESS INFORMATION =====
   purchasePrice: Yup.number()
     .nullable()
@@ -132,9 +137,14 @@ export const WineInventoryValidationSchema = Yup.object().shape({
     .nullable()
     .transform((value) => (value === '' ? null : value)),
 
-  locationId: Yup.string()
+  locationId: Yup.mixed<string | number>()
     .required('Restaurant location is required')
-    .trim(),
+    .test('locationId', 'Restaurant location is required', (value) => {
+      if (value === null || value === undefined || value === '') {
+        return false;
+      }
+      return true;
+    }),
 
   // ===== IMAGE =====
   image: Yup.mixed()

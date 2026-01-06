@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Box, Stack, Slider, Typography } from '@mui/material';
 // components
 import ToolSidebarHeader from './ToolSidebarHeader';
@@ -15,14 +16,24 @@ interface OpacitySidebarProps {
 
 export default function OpacitySidebar({ editor, activeTool, onChangeActiveTool }: OpacitySidebarProps) {
   const open = activeTool === 'opacity';
-  const value = editor?.getActiveOpacity() || 1;
+  const [sliderValue, setSliderValue] = useState(100);
+
+  // Update slider value when selection changes
+  useEffect(() => {
+    if (editor && editor.selectedObjects.length > 0) {
+      const currentOpacity = editor.getActiveOpacity() || 1;
+      setSliderValue(currentOpacity * 100);
+    }
+  }, [editor, editor?.selectedObjects.length, editor?.canvas?.getActiveObject()]);
 
   const onClose = () => {
     onChangeActiveTool('select');
   };
 
   const onChange = (_: Event, newValue: number | number[]) => {
-    editor?.changeOpacity((newValue as number) / 100);
+    const newOpacity = (newValue as number) / 100;
+    setSliderValue(newValue as number);
+    editor?.changeOpacity(newOpacity);
   };
 
   return (
@@ -41,14 +52,14 @@ export default function OpacitySidebar({ editor, activeTool, onChangeActiveTool 
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Opacity" description="Change the opacity of your element" />
+        <ToolSidebarHeader title="Opacity" description="Change the opacity of your element" icon="material-symbols:opacity" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 3 }}>
           <Typography variant="body2" sx={{ mb: 2 }}>
-            Opacity: {Math.round(value * 100)}%
+            Opacity: {Math.round(sliderValue)}%
           </Typography>
           <Slider
-            value={value * 100}
+            value={sliderValue}
             onChange={onChange}
             min={0}
             max={100}

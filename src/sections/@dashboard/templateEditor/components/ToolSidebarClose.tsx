@@ -1,4 +1,4 @@
-import { IconButton, Box } from '@mui/material';
+import { IconButton, Box, useTheme, alpha } from '@mui/material';
 // components
 import Iconify from '../../../../components/iconify';
 
@@ -9,6 +9,7 @@ interface ToolSidebarCloseProps {
 }
 
 export default function ToolSidebarClose({ onClick }: ToolSidebarCloseProps) {
+  const theme = useTheme();
   return (
     <Box
       sx={{
@@ -33,7 +34,20 @@ export default function ToolSidebarClose({ onClick }: ToolSidebarCloseProps) {
       }}
       onClick={onClick}
     >
-      <Iconify icon="eva:arrow-ios-back-outline" width={16} />
+      <Box
+        sx={{
+          width: 32,
+          height: 32,
+          display: 'flex',
+          borderRadius: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: alpha(theme.palette.primary.main, 0.08),
+          color: 'primary.main',
+        }}
+      >
+        <Iconify icon="eva:arrow-ios-back-outline" width={16} />
+      </Box>
     </Box>
   );
 }

@@ -57,7 +57,7 @@ export default function AiSidebar({ editor, activeTool, onChangeActiveTool }: Ai
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="AI" description="Generate an image using AI" />
+        <ToolSidebarHeader title="AI" description="Generate an image using AI" icon="solar:magic-stick-bold" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
           <form onSubmit={handleGenerate}>

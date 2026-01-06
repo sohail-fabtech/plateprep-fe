@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 // @mui
 import {
@@ -16,13 +16,14 @@ import {
   Typography,
   TableRow,
   TableCell,
+  LinearProgress,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../routes/paths';
 // @types
 import { IWineInventory, IWineInventoryFilterStatus } from '../../@types/wineInventory';
-// _mock_
-import { _wineInventoryList } from '../../_mock/arrays';
+// constants
+import { WINE_TYPE_OPTIONS, REGION_OPTIONS } from '../../constants/wineInventoryOptions';
 // components
 import Iconify from '../../components/iconify';
 import Scrollbar from '../../components/scrollbar';
@@ -30,15 +31,29 @@ import CustomBreadcrumbs from '../../components/custom-breadcrumbs';
 import { useSettingsContext } from '../../components/settings';
 import {
   useTable,
-  getComparator,
   emptyRows,
   TableEmptyRows,
   TableHeadCustom,
   TablePaginationCustom,
 } from '../../components/table';
 // sections
-import { WineInventoryTableRow, WineInventoryTableToolbar } from '../../sections/@dashboard/wineInventory/list';
+import {
+  WineInventoryTableRow,
+  WineInventoryTableToolbar,
+  WineInventoryTableSkeleton,
+} from '../../sections/@dashboard/wineInventory/list';
 import { useSnackbar } from '../../components/snackbar';
+// hooks
+import { useDebounce } from '../../hooks/useDebounce';
+import { useBranchFilter } from '../../hooks/useBranchFilter';
+// services
+import {
+  useWineInventoryList,
+  useDeleteWineInventory,
+  useRestoreWineInventory,
+  usePermanentlyDeleteWineInventory,
+  WineInventoryQueryParams,
+} from '../../services/wineInventory/wineInventoryHooks';
 
 // ----------------------------------------------------------------------
 
@@ -57,9 +72,7 @@ const FORM_INPUT_SX = {
 
 const STATUS_OPTIONS: IWineInventoryFilterStatus[] = ['all', 'active', 'archived'];
 
-const WINE_TYPE_OPTIONS = ['all', 'Red', 'White', 'Rosé', 'Sparkling', 'Fortified', 'Dessert'];
-
-const STOCK_STATUS_OPTIONS = ['all', 'IN_STOCK', 'LOW', 'OUT'];
+const STOCK_STATUS_OPTIONS = ['IN_STOCK', 'LOW', 'OUT'];
 
 // Table head configuration
 const TABLE_HEAD = [
@@ -124,13 +137,23 @@ export default function WineInventoryListPage() {
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
 
-  const [tableData, setTableData] = useState(_wineInventoryList);
+  // Branch filter hook
+  const { filterBranch, setFilterBranch, branchIdForApi, showBranchFilter } = useBranchFilter();
+
   const [filterName, setFilterName] = useState('');
-  const [filterWineType, setFilterWineType] = useState('all');
-  const [filterRegion, setFilterRegion] = useState('all');
-  const [filterStockStatus, setFilterStockStatus] = useState('all');
-  const [filterLocation, setFilterLocation] = useState('all');
+  const [filterWineType, setFilterWineType] = useState('');
+  const [filterRegion, setFilterRegion] = useState('');
+  const [filterStockStatus, setFilterStockStatus] = useState('');
   const [filterStatus, setFilterStatus] = useState<IWineInventoryFilterStatus>('all');
+  const [loadingWineId, setLoadingWineId] = useState<string | null>(null);
+
+  // Debounce search input
+  const debouncedFilterName = useDebounce(filterName, 500);
+
+  // Mutation hooks
+  const archiveMutation = useDeleteWineInventory();
+  const restoreMutation = useRestoreWineInventory();
+  const permanentDeleteMutation = usePermanentlyDeleteWineInventory();
 
   // Initialize column visibility from localStorage
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -161,29 +184,95 @@ export default function WineInventoryListPage() {
     }
   }, [dense]);
 
-  // Get unique regions and locations from table data
-  const regionOptions = ['all', ...Array.from(new Set(tableData.map((wine) => wine.region)))];
-  const locationOptions = ['all', ...Array.from(new Set(tableData.map((wine) => wine.location)))];
+  // Build API query params from UI filters
+  const queryParams: WineInventoryQueryParams = useMemo(() => {
+    const params: WineInventoryQueryParams = {};
 
-  const dataFiltered = applySortFilter({
-    tableData,
-    comparator: getComparator(order, orderBy),
-    filterName,
+    // Common filters for all tabs
+    params.page = page + 1; // API uses 1-based pagination
+    params.page_size = rowsPerPage;
+    params.ordering = orderBy ? `${order === 'desc' ? '-' : ''}${orderBy}` : '-created_at';
+
+    // Search parameter - use debounced value
+    if (debouncedFilterName) {
+      params.search = debouncedFilterName;
+    }
+
+    // Wine type filter
+    if (filterWineType) {
+      params.wine_type = filterWineType;
+    }
+
+    // Region filter
+    if (filterRegion) {
+      params.region = filterRegion;
+    }
+
+    // Stock status filter - map UI values to API format
+    if (filterStockStatus) {
+      const stockStatusMap: Record<string, string> = {
+        IN_STOCK: 'in_stock',
+        LOW: 'low_stock',
+        OUT: 'out_of_stock',
+      };
+      params.stock_status = stockStatusMap[filterStockStatus] || filterStockStatus;
+    }
+
+    // Branch filter: use selected branch if owner, otherwise use user's branch
+    if (branchIdForApi) {
+      params.branch =
+        typeof branchIdForApi === 'string' ? parseInt(branchIdForApi, 10) : branchIdForApi;
+    }
+
+    // Status filter mapping - only for non-"all" tabs
+    if (filterStatus === 'archived') {
+      params.is_deleted = true;
+    } else if (filterStatus === 'active') {
+      params.is_deleted = false;
+    }
+    // For "all" tab, don't send is_deleted (shows both active and archived)
+
+    return params;
+  }, [
+    debouncedFilterName,
     filterWineType,
     filterRegion,
     filterStockStatus,
-    filterLocation,
     filterStatus,
-  });
+    page,
+    rowsPerPage,
+    order,
+    orderBy,
+    branchIdForApi,
+  ]);
+
+  // Fetch wine inventory using TanStack Query
+  const { data, isLoading, isFetching, isError, error } = useWineInventoryList(queryParams) as {
+    data:
+      | { count: number; next: string | null; previous: string | null; results: IWineInventory[] }
+      | undefined;
+    isLoading: boolean;
+    isFetching: boolean;
+    isError: boolean;
+    error: Error | null;
+  };
+
+  // Transform API data to IWineInventory format for table
+  const tableData: IWineInventory[] = useMemo(() => {
+    if (!data?.results) return [];
+    return data.results;
+  }, [data]);
 
   const isFiltered =
     filterName !== '' ||
-    filterWineType !== 'all' ||
-    filterRegion !== 'all' ||
-    filterStockStatus !== 'all' ||
-    filterLocation !== 'all';
+    filterWineType !== '' ||
+    filterRegion !== '' ||
+    filterStockStatus !== '' ||
+    (showBranchFilter && filterBranch !== '');
 
-  const isNotFound = (!dataFiltered.length && !!filterName) || (!dataFiltered.length && isFiltered);
+  const isNotFound =
+    !isLoading && !isError && data?.results && data.results.length === 0 && isFiltered;
+  const totalCount = data?.count || 0;
 
   const denseHeight = dense ? 52 : 72;
 
@@ -215,9 +304,9 @@ export default function WineInventoryListPage() {
     setFilterStockStatus(event.target.value);
   };
 
-  const handleFilterLocation = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilterBranch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPage(0);
-    setFilterLocation(event.target.value);
+    setFilterBranch(event.target.value);
   };
 
   const handleViewRow = (id: string) => {
@@ -228,24 +317,59 @@ export default function WineInventoryListPage() {
     navigate(PATH_DASHBOARD.wineInventory.edit(id));
   };
 
-  const handleDeleteRow = (id: string) => {
-    const deleteRow = tableData.filter((row) => row.id !== id);
-    setTableData(deleteRow);
-    enqueueSnackbar('Wine deleted successfully!', { variant: 'success' });
+  const handleArchiveRow = async (id: string) => {
+    setLoadingWineId(id);
+    try {
+      await archiveMutation.mutateAsync(id);
+      enqueueSnackbar('Wine archived successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error archiving wine:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to archive wine. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingWineId(null);
+    }
   };
 
-  const handleArchiveRow = (id: string) => {
-    const updatedData = tableData.map((row) => (row.id === id ? { ...row, isDeleted: true } : row));
-    setTableData(updatedData);
-    enqueueSnackbar('Wine archived successfully!', { variant: 'success' });
+  const handleRestoreRow = async (id: string) => {
+    setLoadingWineId(id);
+    try {
+      await restoreMutation.mutateAsync(id);
+      enqueueSnackbar('Wine restored successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error restoring wine:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to restore wine. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingWineId(null);
+    }
+  };
+
+  const handlePermanentDeleteRow = async (id: string) => {
+    setLoadingWineId(id);
+    try {
+      await permanentDeleteMutation.mutateAsync(id);
+      enqueueSnackbar('Wine deleted permanently', { variant: 'success' });
+    } catch (error) {
+      console.error('Error permanently deleting wine:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to delete wine. Please try again.';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } finally {
+      setLoadingWineId(null);
+    }
   };
 
   const handleResetFilter = () => {
     setFilterName('');
-    setFilterWineType('all');
-    setFilterRegion('all');
-    setFilterStockStatus('all');
-    setFilterLocation('all');
+    setFilterWineType('');
+    setFilterRegion('');
+    setFilterStockStatus('');
+    if (showBranchFilter) {
+      setFilterBranch('');
+    }
   };
 
   const handleToggleColumn = (columnId: string) => {
@@ -308,23 +432,23 @@ export default function WineInventoryListPage() {
             filterWineType={filterWineType}
             filterRegion={filterRegion}
             filterStockStatus={filterStockStatus}
-            filterLocation={filterLocation}
+            filterLocation={showBranchFilter ? filterBranch || '' : ''}
             optionsWineType={WINE_TYPE_OPTIONS}
-            optionsRegion={regionOptions}
+            optionsRegion={REGION_OPTIONS}
             optionsStockStatus={STOCK_STATUS_OPTIONS}
-            optionsLocation={locationOptions}
             onFilterName={handleFilterName}
             onFilterWineType={handleFilterWineType}
             onFilterRegion={handleFilterRegion}
             onFilterStockStatus={handleFilterStockStatus}
-            onFilterLocation={handleFilterLocation}
+            onFilterLocation={showBranchFilter ? handleFilterBranch : undefined}
             onResetFilter={handleResetFilter}
             columnVisibility={columnVisibility}
             onToggleColumn={handleToggleColumn}
             tableHead={TABLE_HEAD}
             formInputSx={FORM_INPUT_SX}
+            showBranchFilter={showBranchFilter}
           />
-
+          {isLoading && <LinearProgress />}
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
             <Scrollbar sx={{ maxWidth: '100%' }}>
               <Table size={dense ? 'small' : 'medium'} sx={{ minWidth: { xs: 800, md: 1200 } }}>
@@ -354,28 +478,68 @@ export default function WineInventoryListPage() {
                 />
 
                 <TableBody>
-                  {dataFiltered
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row) => (
-                      <WineInventoryTableRow
-                        key={row.id}
-                        row={row}
-                        onViewRow={() => handleViewRow(row.id)}
-                        onEditRow={() => handleEditRow(row.id)}
-                        onDeleteRow={() => handleDeleteRow(row.id)}
-                        onArchiveRow={() => handleArchiveRow(row.id)}
-                        filterStatus={filterStatus}
+                  {isLoading ? (
+                    Array.from({ length: rowsPerPage }).map((_, index) => (
+                      <WineInventoryTableSkeleton
+                        key={`skeleton-${index}`}
                         columnVisibility={columnVisibility}
                         dense={dense}
                       />
-                    ))}
+                    ))
+                  ) : isError ? (
+                    <TableRow>
+                      <TableCell colSpan={9} sx={{ py: 10 }}>
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography
+                            variant="h6"
+                            paragraph
+                            sx={{
+                              fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' },
+                              fontWeight: 700,
+                            }}
+                          >
+                            Error loading wine inventory
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                            }}
+                          >
+                            {error instanceof Error
+                              ? error.message
+                              : 'Failed to load wine inventory. Please try again.'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <>
+                      {tableData.map((row) => (
+                        <WineInventoryTableRow
+                          key={row.id}
+                          row={row}
+                          onViewRow={() => handleViewRow(row.id)}
+                          onEditRow={() => handleEditRow(row.id)}
+                          onDeleteRow={() => handlePermanentDeleteRow(row.id)}
+                          onArchiveRow={() => handleArchiveRow(row.id)}
+                          onRestoreRow={() => handleRestoreRow(row.id)}
+                          filterStatus={filterStatus}
+                          columnVisibility={columnVisibility}
+                          dense={dense}
+                          isLoading={loadingWineId === row.id}
+                        />
+                      ))}
 
-                  <TableEmptyRows
-                    height={denseHeight}
-                    emptyRows={emptyRows(page, rowsPerPage, dataFiltered.length)}
-                  />
+                      <TableEmptyRows
+                        height={denseHeight}
+                        emptyRows={emptyRows(page, rowsPerPage, tableData.length)}
+                      />
+                    </>
+                  )}
 
-                  {isNotFound && (
+                  {isNotFound && !isLoading && (
                     <TableRow>
                       <TableCell colSpan={9} sx={{ py: 10 }}>
                         <Box sx={{ textAlign: 'center' }}>
@@ -408,7 +572,7 @@ export default function WineInventoryListPage() {
           </TableContainer>
 
           <TablePaginationCustom
-            count={dataFiltered.length}
+            count={totalCount}
             page={page}
             rowsPerPage={rowsPerPage}
             onPageChange={onChangePage}
@@ -425,75 +589,4 @@ export default function WineInventoryListPage() {
       </Container>
     </>
   );
-}
-
-// ----------------------------------------------------------------------
-
-function applySortFilter({
-  tableData,
-  comparator,
-  filterName,
-  filterWineType,
-  filterRegion,
-  filterStockStatus,
-  filterLocation,
-  filterStatus,
-}: {
-  tableData: IWineInventory[];
-  comparator: (a: any, b: any) => number;
-  filterName: string;
-  filterWineType: string;
-  filterRegion: string;
-  filterStockStatus: string;
-  filterLocation: string;
-  filterStatus: IWineInventoryFilterStatus;
-}) {
-  const stabilizedThis = tableData.map((el, index) => [el, index] as const);
-
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
-
-  let inputData = stabilizedThis.map((el) => el[0]);
-
-  // Filter by status (all, active, archived)
-  if (filterStatus === 'archived') {
-    inputData = inputData.filter((wine) => wine.isDeleted);
-  } else if (filterStatus === 'active') {
-    inputData = inputData.filter((wine) => !wine.isDeleted);
-  }
-
-  // Filter by name (wine name or producer)
-  if (filterName) {
-    const searchLower = filterName.toLowerCase();
-    inputData = inputData.filter(
-      (wine) =>
-        wine.wineName.toLowerCase().indexOf(searchLower) !== -1 ||
-        (wine.producer && wine.producer.toLowerCase().indexOf(searchLower) !== -1)
-    );
-  }
-
-  // Filter by wine type
-  if (filterWineType !== 'all') {
-    inputData = inputData.filter((wine) => wine.wineType === filterWineType);
-  }
-
-  // Filter by region
-  if (filterRegion !== 'all') {
-    inputData = inputData.filter((wine) => wine.region === filterRegion);
-  }
-
-  // Filter by stock status
-  if (filterStockStatus !== 'all') {
-    inputData = inputData.filter((wine) => wine.stockStatus === filterStockStatus);
-  }
-
-  // Filter by location
-  if (filterLocation !== 'all') {
-    inputData = inputData.filter((wine) => wine.location === filterLocation);
-  }
-
-  return inputData;
 }

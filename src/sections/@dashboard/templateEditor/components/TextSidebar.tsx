@@ -36,7 +36,7 @@ export default function TextSidebar({ editor, activeTool, onChangeActiveTool }: 
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Text" description="Add text to your canvas" />
+        <ToolSidebarHeader title="Text" description="Add text to your canvas" icon="solar:text-bold" />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
           <Stack spacing={2}>

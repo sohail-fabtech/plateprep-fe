@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -26,13 +26,26 @@ import { IWineInventory, IWineInventoryForm } from '../../../@types/wineInventor
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
-import { ProcessingDialog } from '../../../components/processing-dialog';
+import BranchSelect from '../../../components/branch-select/BranchSelect';
+// hooks
+import { useBranchForm } from '../../../hooks/useBranchForm';
+import {
+  useCreateWineInventory,
+  useUpdateWineInventory,
+} from '../../../services/wineInventory/wineInventoryHooks';
 // validation
 import WineInventoryValidationSchema from './WineInventoryValidation';
 // sections
 import { SingleImageUpload } from '../recipe/form';
 // assets
 import { countries } from '../../../assets/data';
+// constants
+import {
+  WINE_TYPE_OPTIONS,
+  WINE_PROFILE_OPTIONS,
+  REGION_OPTIONS,
+} from '../../../constants/wineInventoryOptions';
+import { ProcessingDialog } from 'src/components/processing-dialog';
 
 // ----------------------------------------------------------------------
 
@@ -42,37 +55,6 @@ type Props = {
 };
 
 // ----------------------------------------------------------------------
-
-// Dropdown Options
-const WINE_TYPE_OPTIONS: IWineInventory['wineType'][] = ['Red', 'White', 'Rosé', 'Sparkling', 'Fortified', 'Dessert'];
-
-const WINE_PROFILE_OPTIONS: IWineInventory['wineProfile'][] = [
-  'Bone Dry – Bold Bitter Finish',
-  'Bone Dry – Savory',
-  'Dry – Vegetables & Herbs',
-  'Dry – Tart Fruits & Flowers',
-  'Dry – Ripe Fruits & Spices',
-  'Dry – Fruit Sauce & Vanilla',
-  'Semi-Sweet – Candied Fruit & Flowers',
-  'Sweet – Fruit Jam & Chocolate',
-  'Very Sweet – Figs, Raisins & Dates',
-];
-
-const REGION_OPTIONS = [
-  'Napa Valley',
-  'Burgundy',
-  'Bordeaux',
-  'Tuscany',
-  'Rioja',
-  'Barossa Valley',
-  'Marlborough',
-  'Champagne',
-  'Mosel',
-  'Mendoza',
-  'Other',
-];
-
-const LOCATION_OPTIONS = ['Main Restaurant', 'Wine Cellar', 'Bar Area', 'Storage Room'];
 
 const BOTTLE_SIZE_LABELS = {
   '187.5': 'Split / Piccolo (187.5ml)',
@@ -100,6 +82,11 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
 
+  // Branch form hook
+  const { branchIdForApi, showBranchSelect, initialBranchId } = useBranchForm(
+    currentWine?.locationId ? String(currentWine.locationId) : ''
+  );
+
   const defaultValues = useMemo<IWineInventoryForm>(() => {
     // Check if region is in standard options, otherwise set to "Other"
     const region = currentWine?.region || '';
@@ -117,20 +104,29 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
       wineType: currentWine?.wineType || 'Red',
       wineProfile: currentWine?.wineProfile || 'Dry – Ripe Fruits & Spices',
       tags: currentWine?.tags || [],
-      inventory: currentWine?.inventory || {
-        '187.5': null,
-        '375': null,
-        '750': null,
-        '1500': null,
-        '3000': null,
-      },
+      inventory: currentWine?.inventory
+        ? {
+            '187.5': currentWine.inventory['187.5'] ?? null,
+            '375': currentWine.inventory['375'] ?? null,
+            '750': currentWine.inventory['750'] ?? null,
+            '1500': currentWine.inventory['1500'] ?? null,
+            '3000': currentWine.inventory['3000'] ?? null,
+          }
+        : {
+            '187.5': null,
+            '375': null,
+            '750': null,
+            '1500': null,
+            '3000': null,
+          },
       minStockLevel: currentWine?.minStockLevel || 0,
       maxStockLevel: currentWine?.maxStockLevel || 0,
+      stock: currentWine?.totalStock || 0,
       purchasePrice: currentWine?.purchasePrice || null,
       supplierName: currentWine?.supplierName || null,
-      locationId: currentWine?.locationId || '',
+      locationId: initialBranchId ? String(initialBranchId) : currentWine?.locationId || '',
     };
-  }, [currentWine]);
+  }, [currentWine, initialBranchId]);
 
   const methods = useForm<IWineInventoryForm>({
     resolver: yupResolver(WineInventoryValidationSchema),
@@ -147,6 +143,10 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
   } = methods;
 
   const values = watch();
+  const imageFileRef = useRef<File | null>(null);
+
+  const { mutateAsync: createWineInventory, isPending: isCreating } = useCreateWineInventory();
+  const { mutateAsync: updateWineInventory, isPending: isUpdating } = useUpdateWineInventory();
 
   // Processing dialog state
   const [processingDialog, setProcessingDialog] = useState<{
@@ -168,6 +168,13 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
     }
   }, [isEdit, currentWine, reset, defaultValues]);
 
+  // Set locationId for non-owners when field is not shown
+  useEffect(() => {
+    if (!showBranchSelect && branchIdForApi) {
+      setValue('locationId', String(branchIdForApi));
+    }
+  }, [showBranchSelect, branchIdForApi, setValue]);
+
   const onSubmit = async (data: IWineInventoryForm) => {
     // Show processing dialog
     setProcessingDialog({
@@ -177,67 +184,85 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
     });
 
     try {
+      // Determine location ID - use branchIdForApi from hook if available, otherwise use form value
+      let locationIdForApi: number | null = null;
+      if (branchIdForApi) {
+        locationIdForApi = branchIdForApi;
+      } else if (data.locationId) {
+        const locationValue =
+          typeof data.locationId === 'string' && /^\d+$/.test(data.locationId)
+            ? parseInt(data.locationId, 10)
+            : typeof data.locationId === 'number'
+            ? data.locationId
+            : null;
+        locationIdForApi = locationValue;
+      }
+
+      const regionValue = data.region === 'Other' ? data.regionOther || '' : data.region;
+
+      const inventory = {
+        '187.5': data.inventory['187.5'] || 0,
+        '375': data.inventory['375'] || 0,
+        '750': data.inventory['750'] || 0,
+        '1500': data.inventory['1500'] || 0,
+        '3000': data.inventory['3000'] || 0,
+      };
+
       // Transform to API payload format
       const apiPayload = {
         wine_name: data.wineName,
         producer: data.producer || null,
         vintage: data.vintage || null,
         country: data.country,
-        region: {
-          type: data.region === 'Other' ? 'CUSTOM' : 'STANDARD',
-          value: data.region === 'Other' ? data.regionOther : data.region,
-        },
+        region: regionValue,
         wine_type: data.wineType,
         wine_profile: data.wineProfile,
         description: data.description || null,
         tags: data.tags,
-        inventory: {
-          '187.5': data.inventory['187.5'] || 0,
-          '375': data.inventory['375'] || 0,
-          '750': data.inventory['750'] || 0,
-          '1500': data.inventory['1500'] || 0,
-          '3000': data.inventory['3000'] || 0,
-        },
+        inventory,
+        stock: data.stock || 0,
         min_stock_level: data.minStockLevel,
         max_stock_level: data.maxStockLevel,
         purchase_price: data.purchasePrice || null,
         supplier_name: data.supplierName || null,
-        location_id: data.locationId,
+        branch: locationIdForApi,
       };
 
-      console.log('WINE INVENTORY API PAYLOAD:', apiPayload);
+      if (isEdit && currentWine?.id) {
+        await updateWineInventory({
+          id: currentWine.id,
+          data: apiPayload,
+          imageFile: imageFileRef.current,
+        });
+        enqueueSnackbar('Wine updated successfully!');
+      } else {
+        await createWineInventory({
+          data: apiPayload,
+          imageFile: imageFileRef.current,
+        });
+        enqueueSnackbar('Wine created successfully!');
+      }
 
-      setProcessingDialog({
-        open: true,
-        state: 'processing',
-        message: isEdit ? 'Updating wine...' : 'Creating wine...',
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setProcessingDialog({
-        open: true,
-        state: 'success',
-        message: isEdit ? 'Wine updated successfully!' : 'Wine created successfully!',
-      });
-      setTimeout(() => {
-        navigate(PATH_DASHBOARD.wineInventory.list);
-      }, 1500);
+      navigate(PATH_DASHBOARD.wineInventory.list);
     } catch (error) {
       console.error(error);
-      setProcessingDialog({
-        open: true,
-        state: 'error',
-        message: 'Something went wrong!',
-      });
+      const message =
+        (error as any)?.response?.data?.detail ||
+        (error as any)?.response?.data?.message ||
+        (error as Error)?.message ||
+        'Something went wrong!';
+      enqueueSnackbar(message, { variant: 'error' });
     }
   };
 
   const handleImageUpload = (file: File) => {
     const url = URL.createObjectURL(file);
+    imageFileRef.current = file;
     setValue('image', url);
   };
 
   const handleImageRemove = () => {
+    imageFileRef.current = null;
     setValue('image', null);
   };
 
@@ -447,7 +472,16 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
                 <Autocomplete
                   multiple
                   freeSolo
-                  options={['House Favorite', 'By the Glass', 'Popular', 'Premium', 'Special Occasion', 'Celebration', 'Dessert Wine', 'Seasonal']}
+                  options={[
+                    'House Favorite',
+                    'By the Glass',
+                    'Popular',
+                    'Premium',
+                    'Special Occasion',
+                    'Celebration',
+                    'Dessert Wine',
+                    'Seasonal',
+                  ]}
                   value={field.value || []}
                   onChange={(_, newValue) => {
                     setValue('tags', newValue);
@@ -507,7 +541,7 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
                         fullWidth
                         error={!!error}
                         helperText={error?.message}
-                        value={field.value || ''}
+                        value={field.value !== null && field.value !== undefined ? field.value : ''}
                         onChange={(e) => {
                           const value = e.target.value === '' ? null : parseInt(e.target.value, 10);
                           field.onChange(value);
@@ -546,7 +580,7 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
 
             <Grid container spacing={{ xs: 2, md: 3 }}>
               {/* Minimum Stock Level */}
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6} md={4}>
                 <RHFTextField
                   name="minStockLevel"
                   label="Minimum Stock Level"
@@ -565,7 +599,7 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
               </Grid>
 
               {/* Maximum Stock Level */}
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6} md={4}>
                 <RHFTextField
                   name="maxStockLevel"
                   label="Maximum Stock Level"
@@ -577,6 +611,25 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
                     startAdornment: (
                       <InputAdornment position="start">
                         <Iconify icon="eva:checkmark-circle-2-outline" width={20} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              {/* Stock */}
+              <Grid item xs={12} sm={6} md={4}>
+                <RHFTextField
+                  name="stock"
+                  label="Stock"
+                  type="number"
+                  placeholder="e.g., 250"
+                  sx={FORM_INPUT_SX}
+                  InputProps={{
+                    inputProps: { min: 0 },
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Iconify icon="eva:hash-outline" width={20} />
                       </InputAdornment>
                     ),
                   }}
@@ -638,19 +691,45 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
               </Grid>
 
               {/* Restaurant Location */}
-              <Grid item xs={12} sm={6} md={4}>
-                <RHFSelect name="locationId" label="Restaurant Location" sx={FORM_INPUT_SX}>
-                  {LOCATION_OPTIONS.map((option, index) => (
-                    <MenuItem
-                      key={option}
-                      value={`loc_${index + 1}`}
-                      sx={{ fontSize: { xs: '0.8125rem', md: '0.875rem' } }}
-                    >
-                      {option}
-                    </MenuItem>
-                  ))}
-                </RHFSelect>
-              </Grid>
+              {showBranchSelect && (
+                <Grid item xs={12} sm={6} md={4}>
+                  <Controller
+                    name="locationId"
+                    control={control}
+                    render={({ field, fieldState: { error } }) => {
+                      // Convert field value to number for BranchSelect if it's a numeric string
+                      const branchValue =
+                        typeof field.value === 'string' && /^\d+$/.test(field.value)
+                          ? parseInt(field.value, 10)
+                          : typeof field.value === 'number'
+                          ? field.value
+                          : field.value || '';
+                      return (
+                        <BranchSelect
+                          value={branchValue}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(
+                              value === '' ? '' : /^\d+$/.test(value) ? parseInt(value, 10) : value
+                            );
+                          }}
+                          label="Restaurant Location"
+                          formInputSx={{
+                            width: '100%',
+                            maxWidth: '100%',
+                            '& .MuiInputBase-root': {
+                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                            },
+                            '& .MuiInputLabel-root': {
+                              fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
+                            },
+                          }}
+                        />
+                      );
+                    }}
+                  />
+                </Grid>
+              )}
             </Grid>
           </Card>
         </Grid>
@@ -685,7 +764,7 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
               type="submit"
               variant="contained"
               size="large"
-              loading={isSubmitting}
+              loading={isSubmitting || isCreating || isUpdating}
               sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 140 } }}
             >
               {isEdit ? 'Update Wine' : 'Create Wine'}
@@ -697,4 +776,3 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
     </>
   );
 }
-

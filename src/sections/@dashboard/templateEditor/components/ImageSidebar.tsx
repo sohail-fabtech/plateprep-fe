@@ -81,7 +81,7 @@ export default function ImageSidebar({ editor, activeTool, onChangeActiveTool }:
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Images" description="Add images to your canvas" />
+        <ToolSidebarHeader title="Images" description="Add images to your canvas" icon="solar:gallery-bold" />
 
         <Box sx={{ p: 2, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
           <input

@@ -43,7 +43,11 @@ export default function TemplateSidebar({ editor, activeTool, onChangeActiveTool
       }}
     >
       <Stack sx={{ height: '100%', width: 360 }}>
-        <ToolSidebarHeader title="Templates" description="Choose from a variety of templates to get started" />
+        <ToolSidebarHeader 
+          title="Templates" 
+          description="Choose from a variety of templates to get started"
+          icon="solar:gallery-bold"
+        />
 
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
           <Grid container spacing={2}>
