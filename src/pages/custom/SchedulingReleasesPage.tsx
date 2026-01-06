@@ -12,7 +12,7 @@ export default function SchedulingReleasesPage() {
   return (
     <>
       <Helmet>
-        <title> Release Management | Minimal UI</title>
+        <title> Release Management | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

@@ -183,7 +183,7 @@ export default function UserOneOffPermissionsPage() {
   return (
     <>
       <Helmet>
-        <title>{`One-Off Permissions: ${userName} | Minimal UI`}</title>
+        <title>{`One-Off Permissions: ${userName} | Plateprep`}</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

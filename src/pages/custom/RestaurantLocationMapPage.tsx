@@ -12,7 +12,7 @@ export default function RestaurantLocationMapPage() {
   return (
     <>
       <Helmet>
-        <title> Location Map | Minimal UI</title>
+        <title> Location Map | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

@@ -475,7 +475,7 @@ export default function TasksListPage() {
   return (
     <>
       <Helmet>
-        <title> Tasks: List | Minimal UI</title>
+        <title> Tasks: List | Plateprep</title>
       </Helmet>
 
       <SubscriptionDialog

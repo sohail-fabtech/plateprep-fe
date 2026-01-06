@@ -12,7 +12,7 @@ export default function HowToGuidesPage() {
   return (
     <>
       <Helmet>
-        <title> How To Guides | Minimal UI</title>
+        <title> How To Guides | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

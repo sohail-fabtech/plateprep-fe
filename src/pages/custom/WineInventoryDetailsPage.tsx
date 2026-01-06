@@ -259,7 +259,7 @@ export default function WineInventoryDetailsPage() {
   return (
     <>
       <Helmet>
-        <title>{`Wine: ${wineData.wineName} | Minimal UI`}</title>
+        <title>{`Wine: ${wineData.wineName} | Plateprep`}</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

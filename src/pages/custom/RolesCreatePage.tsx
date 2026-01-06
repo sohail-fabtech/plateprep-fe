@@ -17,7 +17,7 @@ export default function RolesCreatePage() {
   return (
     <>
       <Helmet>
-        <title> Roles: Create new role | Minimal UI</title>
+        <title> Roles: Create new role | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

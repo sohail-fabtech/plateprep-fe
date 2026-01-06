@@ -12,7 +12,7 @@ export default function TemplatesCreatePage() {
   return (
     <>
       <Helmet>
-        <title> Create Template | Minimal UI</title>
+        <title> Create Template | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

@@ -12,7 +12,7 @@ export default function SchedulingCalendarPage() {
   return (
     <>
       <Helmet>
-        <title> Scheduling Calendar | Minimal UI</title>
+        <title> Scheduling Calendar | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

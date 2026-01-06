@@ -17,7 +17,7 @@ export default function RecipeCreatePage() {
   return (
     <>
       <Helmet>
-        <title> Recipe: Create a new recipe | Minimal UI</title>
+        <title> Recipe: Create a new recipe | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

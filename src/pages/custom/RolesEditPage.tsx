@@ -61,7 +61,7 @@ export default function RolesEditPage() {
   return (
     <>
       <Helmet>
-        <title> Roles: Edit role | Minimal UI</title>
+        <title> Roles: Edit role | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

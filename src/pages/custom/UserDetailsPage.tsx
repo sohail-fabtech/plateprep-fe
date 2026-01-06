@@ -261,7 +261,7 @@ export default function UserDetailsPage() {
   return (
     <>
       <Helmet>
-        <title>{`User: ${userData.name} | Minimal UI`}</title>
+        <title>{`User: ${userData.name} | Plateprep`}</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

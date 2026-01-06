@@ -17,7 +17,7 @@ export default function RestaurantLocationCreatePage() {
   return (
     <>
       <Helmet>
-        <title>Create Restaurant Location | Minimal UI</title>
+        <title>Create Restaurant Location | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

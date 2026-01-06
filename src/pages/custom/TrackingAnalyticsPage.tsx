@@ -367,7 +367,7 @@ export default function TrackingAnalyticsPage() {
   return (
     <>
       <Helmet>
-        <title> Tracking Analytics | Minimal UI</title>
+        <title> Tracking Analytics | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

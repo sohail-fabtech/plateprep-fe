@@ -12,7 +12,7 @@ export default function SettingsAccountPage() {
   return (
     <>
       <Helmet>
-        <title> Account Settings | Minimal UI</title>
+        <title> Account Settings | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

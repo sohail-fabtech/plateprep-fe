@@ -41,7 +41,7 @@ export default function RestaurantLocationEditPage() {
   return (
     <>
       <Helmet>
-        <title>Edit Restaurant Location | Minimal UI</title>
+        <title>Edit Restaurant Location | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

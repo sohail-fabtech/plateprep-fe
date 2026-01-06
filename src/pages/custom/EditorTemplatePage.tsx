@@ -12,7 +12,7 @@ export default function EditorTemplatePage() {
   return (
     <>
       <Helmet>
-        <title> Editor Template | Minimal UI</title>
+        <title> Editor Template | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

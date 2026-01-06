@@ -24,7 +24,7 @@ export default function RecipeEditPage() {
   return (
     <>
       <Helmet>
-        <title> Recipe: Edit recipe | Minimal UI</title>
+        <title> Recipe: Edit recipe | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

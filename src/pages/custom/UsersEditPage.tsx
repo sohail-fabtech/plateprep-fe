@@ -62,7 +62,7 @@ export default function UsersEditPage() {
   return (
     <>
       <Helmet>
-        <title> Users: Edit user | Minimal UI</title>
+        <title> Users: Edit user | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

@@ -12,7 +12,7 @@ export default function RecipesCreatePage() {
   return (
     <>
       <Helmet>
-        <title> Create Recipe | Minimal UI</title>
+        <title> Create Recipe | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

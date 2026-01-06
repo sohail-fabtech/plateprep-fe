@@ -12,7 +12,7 @@ export default function WineInventoryAddPage() {
   return (
     <>
       <Helmet>
-        <title> Add Wine | Minimal UI</title>
+        <title> Add Wine | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

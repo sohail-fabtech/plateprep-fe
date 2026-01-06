@@ -12,7 +12,7 @@ export default function DictionarySearchPage() {
   return (
     <>
       <Helmet>
-        <title> Dictionary | Minimal UI</title>
+        <title> Dictionary | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

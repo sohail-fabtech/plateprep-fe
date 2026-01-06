@@ -322,7 +322,7 @@ export default function RestaurantLocationListPage() {
   return (
     <>
       <Helmet>
-        <title> Restaurant Locations: List | Minimal UI</title>
+        <title> Restaurant Locations: List | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

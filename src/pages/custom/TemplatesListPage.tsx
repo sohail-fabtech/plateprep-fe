@@ -89,7 +89,7 @@ export default function TemplatesListPage() {
   return (
     <>
       <Helmet>
-        <title> Templates | Minimal UI</title>
+        <title> Templates | Plateprep</title>
       </Helmet>
 
       <TemplateCreationDialog

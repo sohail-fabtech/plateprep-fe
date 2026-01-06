@@ -163,7 +163,7 @@ export default function RecipeAIPreviewPage() {
   return (
     <>
       <Helmet>
-        <title>AI Recipe Preview | Minimal UI</title>
+        <title>AI Recipe Preview | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

@@ -17,7 +17,7 @@ export default function WineInventoryCreatePage() {
   return (
     <>
       <Helmet>
-        <title>Create Wine | Minimal UI</title>
+        <title>Create Wine | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

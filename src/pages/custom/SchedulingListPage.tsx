@@ -275,7 +275,7 @@ export default function SchedulingListPage() {
   return (
     <>
       <Helmet>
-        <title> Scheduling: List | Minimal UI</title>
+        <title> Scheduling: List | Plateprep</title>
       </Helmet>
 
       <SubscriptionDialog

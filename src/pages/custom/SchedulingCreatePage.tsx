@@ -17,7 +17,7 @@ export default function SchedulingCreatePage() {
   return (
     <>
       <Helmet>
-        <title>Create Schedule | Minimal UI</title>
+        <title>Create Schedule | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

@@ -16,7 +16,7 @@ export default function SubscriptionPage() {
   return (
     <>
       <Helmet>
-        <title> Subscription | Minimal UI</title>
+        <title> Subscription | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

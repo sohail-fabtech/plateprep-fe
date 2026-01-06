@@ -17,7 +17,7 @@ export default function TaskCreatePage() {
   return (
     <>
       <Helmet>
-        <title>Create Task | Minimal UI</title>
+        <title>Create Task | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

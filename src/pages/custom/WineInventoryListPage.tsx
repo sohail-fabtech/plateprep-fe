@@ -382,7 +382,7 @@ export default function WineInventoryListPage() {
   return (
     <>
       <Helmet>
-        <title> Wine Inventory: List | Minimal UI</title>
+        <title> Wine Inventory: List | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

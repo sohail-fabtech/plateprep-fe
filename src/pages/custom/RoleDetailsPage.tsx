@@ -203,7 +203,7 @@ export default function RoleDetailsPage() {
   return (
     <>
       <Helmet>
-        <title>{`Role: ${roleData.roleName} | Minimal UI`}</title>
+        <title>{`Role: ${roleData.roleName} | Plateprep`}</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

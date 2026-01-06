@@ -12,7 +12,7 @@ export default function VideoGenerationLibraryPage() {
   return (
     <>
       <Helmet>
-        <title> Video Library | Minimal UI</title>
+        <title> Video Library | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

@@ -339,7 +339,7 @@ export default function RecipesListPage() {
   return (
     <>
       <Helmet>
-        <title> Recipe: List | Minimal UI</title>
+        <title> Recipe: List | Plateprep</title>
       </Helmet>
 
       <SubscriptionDialog

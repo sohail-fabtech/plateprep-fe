@@ -10,7 +10,7 @@ export default function TemplateEditorPage() {
   return (
     <>
       <Helmet>
-        <title> Template Editor | Minimal UI</title>
+        <title> Template Editor | Plateprep</title>
       </Helmet>
 
       <Editor

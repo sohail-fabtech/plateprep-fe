@@ -51,7 +51,7 @@ export default function WineInventoryEditPage() {
   return (
     <>
       <Helmet>
-        <title>Edit Wine | Minimal UI</title>
+        <title>Edit Wine | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

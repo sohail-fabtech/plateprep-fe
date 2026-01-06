@@ -64,7 +64,7 @@ export default function SchedulingEditPage() {
   return (
     <>
       <Helmet>
-        <title>Edit Schedule | Minimal UI</title>
+        <title>Edit Schedule | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

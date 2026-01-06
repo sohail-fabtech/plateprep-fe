@@ -289,7 +289,7 @@ export default function TaskDetailsPage() {
   return (
     <>
       <Helmet>
-        <title>{`Task: ${taskData.taskName} | Minimal UI`}</title>
+        <title>{`Task: ${taskData.taskName} | Plateprep`}</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

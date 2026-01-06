@@ -438,7 +438,7 @@ export default function UsersListPage() {
   return (
     <>
       <Helmet>
-        <title> Users: List | Minimal UI</title>
+        <title> Users: List | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

@@ -237,7 +237,7 @@ export default function RestaurantLocationDetailsPage() {
   return (
     <>
       <Helmet>
-        <title>{`Location: ${locationData.branchName} | Minimal UI`}</title>
+        <title>{`Location: ${locationData.branchName} | Plateprep`}</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

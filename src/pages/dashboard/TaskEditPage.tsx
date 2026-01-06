@@ -25,7 +25,7 @@ export default function TaskEditPage() {
   return (
     <>
       <Helmet>
-        <title>Edit Task | Minimal UI</title>
+        <title>Edit Task | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'lg'}>

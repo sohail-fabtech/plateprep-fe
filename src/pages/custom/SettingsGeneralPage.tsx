@@ -75,7 +75,7 @@ export default function SettingsGeneralPage() {
   return (
     <>
       <Helmet>
-        <title> General Settings | Minimal UI</title>
+        <title> General Settings | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>

@@ -373,7 +373,7 @@ export default function RolesListPage() {
   return (
     <>
       <Helmet>
-        <title> Roles: List | Minimal UI</title>
+        <title> Roles: List | Plateprep</title>
       </Helmet>
 
       <Container maxWidth={themeStretch ? false : 'xl'}>
