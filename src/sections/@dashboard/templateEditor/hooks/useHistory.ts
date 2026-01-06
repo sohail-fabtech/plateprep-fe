@@ -1,5 +1,7 @@
 import { fabric } from 'fabric';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import debounce from 'lodash/debounce';
+import { DebouncedFunc } from 'lodash';
 
 import { JSON_KEYS } from '../../../../@types/editor';
 
@@ -11,6 +13,7 @@ interface UseHistoryProps {
     json: string;
     height: number;
     width: number;
+    dataUrl?: string;
   }) => void;
 }
 
@@ -18,6 +21,21 @@ export const useHistory = ({ canvas, saveCallback }: UseHistoryProps) => {
   const [historyIndex, setHistoryIndex] = useState(0);
   const canvasHistory = useRef<string[]>([]);
   const skipSave = useRef(false);
+  const debouncedSaveCallback = useRef<
+    DebouncedFunc<(payload: { json: string; height: number; width: number; dataUrl?: string }) => void> | null
+  >(null);
+
+  useEffect(() => {
+    if (saveCallback) {
+      debouncedSaveCallback.current = debounce(saveCallback, 500);
+    } else {
+      debouncedSaveCallback.current = null;
+    }
+
+    return () => {
+      debouncedSaveCallback.current?.cancel();
+    };
+  }, [saveCallback]);
 
   const canUndo = useCallback(() => {
     return historyIndex > 0;
@@ -43,9 +61,10 @@ export const useHistory = ({ canvas, saveCallback }: UseHistoryProps) => {
       const height = workspace?.height || 0;
       const width = workspace?.width || 0;
 
-      saveCallback?.({ json, height, width });
+      const dataUrl = canvas.toDataURL({ format: 'png', quality: 0.8 });
+      debouncedSaveCallback.current?.({ json, height, width, dataUrl });
     },
-    [canvas, saveCallback]
+    [canvas]
   );
 
   const undo = useCallback(() => {

@@ -17,13 +17,32 @@ interface ImageSidebarProps {
   onChangeActiveTool: (tool: ActiveTool) => void;
 }
 
-// Mock image gallery - using S3 URLs
-const MOCK_IMAGES = Array.from({ length: 12 }, (_, i) => ({
-  id: `mock-image-${i}`,
-  url: 'https://plateprep-be.s3.amazonaws.com/Garden_Breeze_2.png',
-  thumbnail: 'https://plateprep-be.s3.amazonaws.com/Garden_Breeze_2.png',
-  name: `Image ${i + 1}`,
-}));
+// Mock image gallery - using public placeholder images to avoid CORS issues
+const MOCK_IMAGES = Array.from({ length: 12 }, (_, i) => {
+  const placeholderImages = [
+    'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1504674900152-b8b80e7ddb5d?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1469022563149-aa64dbd37dae?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1505228395891-9a51e7e86e81?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe3e?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1485228857871-971b0b8e70f3?w=400&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=400&h=400&fit=crop',
+  ];
+
+  const imageUrl = placeholderImages[i % placeholderImages.length];
+
+  return {
+    id: `mock-image-${i}`,
+    url: imageUrl,
+    thumbnail: imageUrl,
+    name: `Image ${i + 1}`,
+  };
+});
 
 export default function ImageSidebar({ editor, activeTool, onChangeActiveTool }: ImageSidebarProps) {
   const open = activeTool === 'images';

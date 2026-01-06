@@ -179,6 +179,7 @@ export interface EditorHookProps {
     json: string;
     height: number;
     width: number;
+    dataUrl?: string;
   }) => void;
 }
 

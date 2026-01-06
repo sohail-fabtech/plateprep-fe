@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { fabric } from 'fabric';
 // @mui
 import { Box, Stack } from '@mui/material';
+import { useSnackbar } from '../../../../components/snackbar';
 // types
-import { ActiveTool, selectionDependentTools, EditorHookProps } from '../../../../@types/editor';
+import { ActiveTool, selectionDependentTools, EditorHookProps, JSON_KEYS } from '../../../../@types/editor';
 // hooks
 import { useEditor } from '../hooks/useEditor';
+// services
+import { exportCanvasAndUploadToS3, exportCanvasWithPayload } from '../../../../services/templateEditor/canvasExportService';
 // components
 import EditorNavbar from './EditorNavbar';
 import EditorSidebar from './EditorSidebar';
@@ -42,12 +45,101 @@ export default function Editor({
   defaultHeight = 1080,
 }: EditorProps) {
   const [activeTool, setActiveTool] = useState<ActiveTool>('select');
+  const { enqueueSnackbar } = useSnackbar();
+  const canvasRef = useRef<fabric.Canvas | null>(null);
+  const [isFirstSave, setIsFirstSave] = useState(true);
 
-  // Mock save callback - in real app, this would save to API
-  const saveCallback = useCallback((values: { json: string; height: number; width: number }) => {
-    // Just log for now - can be replaced with API call later
-    console.log('Editor save:', values);
-  }, []);
+  // Enhanced save callback - now exports and uploads to S3 on first save
+  const saveCallback = useCallback(
+    async (values: {
+      json: string;
+      height: number;
+      width: number;
+      dataUrl?: string;
+    }) => {
+      try {
+        const parsed = JSON.parse(values.json);
+
+        // On first save, automatically export and upload to S3
+        if (isFirstSave) {
+          console.log('🎯 First save detected - exporting and uploading to S3...');
+          setIsFirstSave(false);
+
+          // Get canvas from global reference
+          const canvas = (window as any).__FABRIC_CANVAS__;
+          if (!canvas) {
+            throw new Error('Canvas not initialized');
+          }
+
+          try {
+            const result = await exportCanvasAndUploadToS3(canvas, {
+              title: 'Untitled Design',
+              format: 'png',
+              quality: 1,
+              multiplier: 2,
+            });
+
+            if (result.success) {
+              const payload = {
+                title: 'Untitled Design',
+                image: result.imageUrl, // S3 URL
+                imageFile: result.imageFile,
+                source: parsed,
+                metadata: {
+                  width: values.width,
+                  height: values.height,
+                  uploadedAt: result.timestamp,
+                },
+              };
+
+              console.log('✅ Template exported and uploaded to S3:', payload);
+              enqueueSnackbar('Design saved and uploaded to S3!', {
+                variant: 'success',
+              });
+            } else {
+              throw new Error(result.error || 'Upload failed');
+            }
+          } catch (uploadError) {
+            console.error('❌ S3 upload failed:', uploadError);
+            enqueueSnackbar('Failed to upload design to S3', {
+              variant: 'error',
+            });
+
+            // Fallback: use dataUrl for the image
+            const fallbackPayload = {
+              title: 'Untitled Design',
+              image: values.dataUrl, // Fallback to dataUrl
+              source: parsed,
+              metadata: {
+                width: values.width,
+                height: values.height,
+              },
+            };
+            console.log('⚠️ Falling back to local dataUrl:', fallbackPayload);
+            enqueueSnackbar('Using local preview (S3 upload failed)', {
+              variant: 'warning',
+            });
+          }
+        } else if (!isFirstSave) {
+          // Subsequent saves: just log the payload (debounced in useHistory)
+          const payload = {
+            title: 'Untitled Design',
+            image: values.dataUrl,
+            source: parsed,
+            metadata: {
+              width: values.width,
+              height: values.height,
+            },
+          };
+          console.log('💾 Template autosave payload:', payload);
+        }
+      } catch (error) {
+        console.error('Failed to build save payload', error);
+        enqueueSnackbar('Error saving design', { variant: 'error' });
+      }
+    },
+    [isFirstSave, enqueueSnackbar]
+  );
 
   const onClearSelection = useCallback(() => {
     if (selectionDependentTools.includes(activeTool)) {
@@ -84,16 +176,19 @@ export default function Editor({
     [activeTool, editor]
   );
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const htmlCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!canvasRef.current || !containerRef.current) return;
+    if (!htmlCanvasRef.current || !containerRef.current) return;
 
-    const canvas = new fabric.Canvas(canvasRef.current, {
+    const canvas = new fabric.Canvas(htmlCanvasRef.current, {
       controlsAboveOverlay: true,
       preserveObjectStacking: true,
     });
+
+    // Store canvas reference globally for export operations
+    (window as any).__FABRIC_CANVAS__ = canvas;
 
     init({
       initialCanvas: canvas,
@@ -185,7 +280,7 @@ export default function Editor({
               justifyContent: 'center',
             }}
           >
-            <canvas ref={canvasRef} />
+            <canvas ref={htmlCanvasRef} />
           </Box>
 
           {/* Footer */}

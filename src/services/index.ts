@@ -270,3 +270,17 @@ export {
 // Export AI Recipe Generation types
 export type { GenerateAIRecipeRequest, GenerateAIRecipeResponse } from './aiRecipeGeneration/aiRecipeGenerationService';
 
+// Export Canvas Export & S3 Upload Service
+export {
+  exportCanvasToBlob,
+  exportCanvasAndUploadToS3,
+  exportCanvasWithPayload,
+  dataUrlToBlob,
+} from './templateEditor/canvasExportService';
+
+// Export Canvas Export types
+export type {
+  CanvasExportOptions,
+  TemplateExportPayload,
+  ExportAndUploadResult,
+} from './templateEditor/canvasExportService';
