@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useCallback, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -31,31 +31,13 @@ import {
 // routes
 import { PATH_DASHBOARD } from '../../../routes/paths';
 // @types
-import { IRecipe, IIngredient, IPreparationStep, IComment } from '../../../@types/recipe';
+import { IRecipe } from '../../../@types/recipe';
 // components
 import { useSnackbar } from '../../../components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect } from '../../../components/hook-form';
 import Iconify from '../../../components/iconify';
-import { ProcessingDialog } from '../../../components/processing-dialog';
-import BranchSelect from '../../../components/branch-select/BranchSelect';
-// hooks
-import { useBranchForm } from '../../../hooks/useBranchForm';
-// services
-import {
-  useCreateRecipe,
-  useUpdateRecipe,
-  useMenuCategories,
-  useAllPredefinedIngredients,
-  useAllPredefinedStarch,
-  useAllPredefinedVegetables,
-  uploadFileWithPresignedUrl,
-  generateFileKey,
-} from '../../../services';
 // sections
 import { ImageUploadZone, VideoUploadZone, DynamicIngredientList, DynamicStepList } from './form';
-// constants
-import { KITCHEN_STATION_OPTIONS } from '../../../constants/kitchenStations';
-import { MENU_CLASS_OPTIONS } from '../../../constants/menuClasses';
 
 // ----------------------------------------------------------------------
 
@@ -82,10 +64,10 @@ type FormValuesProps = {
   essentials: Array<{ name: string; quantity: number; unit: string }>;
   starchTitle: string;
   starchSteps: string[];
-  predefinedStarch: number[]; // Array of IDs
-  predefinedVegetable: number[]; // Array of IDs
+  predefinedStarch: string[];
+  predefinedVegetable: string[];
   designYourPlate: string[];
-  predefinedIngredients: number[]; // Array of IDs
+  predefinedIngredients: string[];
   availability: string;
   cookingDeviationComments: string[];
   realtimeVariableComments: string[];
@@ -103,153 +85,19 @@ type Props = {
 
 // ----------------------------------------------------------------------
 
-// Center of Plate options (from API documentation)
-const CENTER_OF_PLATE_OPTIONS = [
-  'Beans / Legumes',
-  'Beef',
-  'Breakfast Plate',
-  'Cheese-Centric',
-  'Chicken',
-  'Combination (Mixed Proteins)',
-  'Duck',
-  'Egg-Based',
-  'Grain-Based',
-  'Lamb',
-  'Other',
-  'Pasta-Based',
-  'Pizza / Flatbread',
-  'Pork',
-  'Rice-Based',
-  'Sandwich / Wrap',
-  'Seafood – Fish',
-  'Seafood – Shellfish',
-  'Soup / Stew',
-  'Tofu / Plant-Based Protein',
-  'Turkey',
-  'Veal',
-  'Vegetable-Centric',
-];
-
+const CUISINE_OPTIONS = ['Italian', 'Chinese', 'French', 'Japanese', 'Mexican', 'Indian', 'Thai', 'Mediterranean', 'African', 'American'];
+const CENTER_OF_PLATE_OPTIONS = ['Beans / Legumes', 'Beef', 'Pork', 'Chicken', 'Seafood', 'Lamb', 'Vegetable'];
+const MENU_CLASS_OPTIONS = ['Commence', 'Appetizer', 'Main Course', 'Dessert', 'Side Dish'];
+const STATION_OPTIONS = ['Baking/Pastry Station', 'Grill Station', 'Sauté Station', 'Fry Station', 'Cold Station'];
 const TIME_UNIT_OPTIONS = ['minutes', 'hours'];
+const PREDEFINED_STARCH = ['Bread Basket / Artisan Rolls', 'Bread Pudding (savory)', 'Arroz con Gandules', 'Brown Rice'];
+const PREDEFINED_VEGETABLE = ['Acorn Squash (roasted, stuffed)', 'Artichokes (braised, grilled, fried)', 'Beets (roasted, pickled, puréed)', 'Asparagus'];
+const PREDEFINED_INGREDIENTS = ['Bisque (shellfish)', 'Beef Stock', 'Blue Cheese Dressing', 'Beurre Blanc'];
 
 export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Props) {
   const navigate = useNavigate();
-  const location = useLocation();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
-
-  // TanStack Query hooks
-  const createRecipeMutation = useCreateRecipe();
-  const updateRecipeMutation = useUpdateRecipe();
-  const { data: menuCategories = [], isLoading: isLoadingCategories } = useMenuCategories();
-  
-  // Predefined items hooks
-  const { data: predefinedIngredients = [], isLoading: isLoadingIngredients } = useAllPredefinedIngredients();
-  const { data: predefinedStarch = [], isLoading: isLoadingStarch } = useAllPredefinedStarch();
-  const { data: predefinedVegetables = [], isLoading: isLoadingVegetables } = useAllPredefinedVegetables();
-
-  // Branch form hook
-  const { branchIdForApi, showBranchSelect, initialBranchId } = useBranchForm(
-    currentRecipe?.branchId ? String(currentRecipe.branchId) : ''
-  );
-
-  // Build cuisine options from API
-  const cuisineOptions = useMemo(() => {
-    return menuCategories
-      .filter((category) => category.categoryName)
-      .map((category) => category.categoryName);
-  }, [menuCategories]);
-
-  // Predefined items are already sorted and ready to use from hooks
-
-  // Map AI recipe data to form values
-  const mapAIDataToFormValues = useCallback((aiData: any): Partial<FormValuesProps> => {
-    if (!aiData) return {};
-
-    // Match cuisine type with API data
-    const matchedCuisineType = aiData.cuisine_style
-      ? (() => {
-          const cuisineName = aiData.cuisine_style;
-          const matched = menuCategories.find(
-            (cat) => cat.categoryName?.toLowerCase() === cuisineName.toLowerCase()
-          );
-          return matched?.categoryName || cuisineName;
-        })()
-      : '';
-
-    // Map ingredients
-    const mappedIngredients = (aiData.ingredients || []).map((ing: any) => ({
-      name: ing['Ingredient name'] || '',
-      quantity: parseFloat(ing.Quantity || '0') || 0,
-      unit: ing.Unit || '',
-    }));
-
-    // Map essentials (equipment)
-    const mappedEssentials = (aiData.essentials_needed || []).map((ess: any) => ({
-      name: ess['Equipment name'] || '',
-      quantity: parseFloat(ess.Quantity || '0') || 0,
-      unit: '',
-    }));
-
-    // Map steps to designYourPlate (preparation steps)
-    const mappedSteps = (aiData.steps || []).map((step: string) => step);
-
-    // Handle plating instructions - append to steps if both exist, otherwise use whichever is available
-    let platingSteps = [...mappedSteps];
-    if (aiData.plating_instructions) {
-      // If plating_instructions exist and steps are empty, use plating_instructions
-      // Otherwise, append plating_instructions to steps
-      if (mappedSteps.length === 0) {
-        platingSteps = aiData.plating_instructions.split('\n').filter((s: string) => s.trim());
-      } else {
-        // Append plating instructions as additional steps
-        const platingLines = aiData.plating_instructions.split('\n').filter((s: string) => s.trim());
-        platingSteps = [...mappedSteps, ...platingLines];
-      }
-    }
-
-    // Handle starch preparation
-    const starchTitle = aiData.starch_preparation && aiData.starch_preparation !== 'Not applicable for this recipe.'
-      ? aiData.starch_preparation
-      : '';
-    const starchSteps: string[] = [];
-
-    return {
-      dishName: aiData.dish_name || '',
-      cuisineType: matchedCuisineType ? [matchedCuisineType] : [],
-      menuClass: aiData.menu_class || 'Commence',
-      description: aiData.description || '',
-      menuPrice: aiData.price_range || 0,
-      ingredients: mappedIngredients,
-      essentials: mappedEssentials,
-      designYourPlate: platingSteps,
-      starchTitle,
-      starchSteps,
-      preparationTime: 30, // Default value
-      preparationTimeUnit: 'minutes',
-      costPerServing: 0,
-      station: '',
-      youtubeUrl: '',
-      restaurantLocation: initialBranchId ? String(initialBranchId) : '',
-      caseCost: 0,
-      caseWeight: 0,
-      servingWeight: 0,
-      servingsInCase: 16,
-      foodCostWanted: 20,
-      tags: [],
-      predefinedStarch: [],
-      predefinedVegetable: [],
-      predefinedIngredients: [],
-      availability: 'available',
-      cookingDeviationComments: [],
-      realtimeVariableComments: [],
-      status: 'public',
-      images: [],
-      primaryImageIndex: 0,
-      fullyPlatedImageIndex: -1,
-      video: null,
-    };
-  }, [menuCategories, initialBranchId]);
 
   const NewRecipeSchema = Yup.object().shape({
     dishName: Yup.string().required('Dish name is required'),
@@ -262,94 +110,44 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
     description: Yup.string().required('Description is required'),
   });
 
-  // Check for AI data from location state
-  const aiDataFromState = useMemo(() => {
-    const state = location.state as { approvedRecipeData?: any } | null;
-    return state?.approvedRecipeData || null;
-  }, [location.state]);
-
   const defaultValues = useMemo(
-    () => {
-      // If AI data is available and not editing, use AI data
-      if (aiDataFromState && !isEdit && !currentRecipe) {
-        const aiMappedValues = mapAIDataToFormValues(aiDataFromState);
-        return {
-          dishName: aiMappedValues.dishName || '',
-          cuisineType: aiMappedValues.cuisineType || [],
-          centerOfPlate: aiMappedValues.centerOfPlate || '',
-          menuClass: aiMappedValues.menuClass || 'Commence',
-          preparationTime: aiMappedValues.preparationTime || 30,
-          preparationTimeUnit: aiMappedValues.preparationTimeUnit || 'minutes',
-          menuPrice: aiMappedValues.menuPrice || 0,
-          costPerServing: aiMappedValues.costPerServing || 0,
-          station: aiMappedValues.station || '',
-          youtubeUrl: aiMappedValues.youtubeUrl || '',
-          restaurantLocation: aiMappedValues.restaurantLocation || (initialBranchId ? String(initialBranchId) : ''),
-          caseCost: aiMappedValues.caseCost || 0,
-          caseWeight: aiMappedValues.caseWeight || 0,
-          servingWeight: aiMappedValues.servingWeight || 0,
-          servingsInCase: aiMappedValues.servingsInCase || 16,
-          foodCostWanted: aiMappedValues.foodCostWanted || 20,
-          description: aiMappedValues.description || '',
-          tags: aiMappedValues.tags || [],
-          ingredients: aiMappedValues.ingredients || [],
-          essentials: aiMappedValues.essentials || [],
-          starchTitle: aiMappedValues.starchTitle || '',
-          starchSteps: aiMappedValues.starchSteps || [],
-          predefinedStarch: aiMappedValues.predefinedStarch || [],
-          predefinedVegetable: aiMappedValues.predefinedVegetable || [],
-          designYourPlate: aiMappedValues.designYourPlate || [],
-          predefinedIngredients: aiMappedValues.predefinedIngredients || [],
-          availability: aiMappedValues.availability || 'available',
-          cookingDeviationComments: aiMappedValues.cookingDeviationComments || [],
-          realtimeVariableComments: aiMappedValues.realtimeVariableComments || [],
-          status: aiMappedValues.status || 'public',
-          images: aiMappedValues.images || [],
-          primaryImageIndex: aiMappedValues.primaryImageIndex || 0,
-          fullyPlatedImageIndex: aiMappedValues.fullyPlatedImageIndex || -1,
-          video: aiMappedValues.video || null,
-        };
-      }
-
-      // Otherwise, use existing logic for currentRecipe or defaults
-      return {
-        dishName: currentRecipe?.dishName || '',
-        cuisineType: currentRecipe?.cuisineType ? [currentRecipe.cuisineType] : [],
-        centerOfPlate: currentRecipe?.plateDesign?.centerOfPlate?.category || '',
-        menuClass: 'Commence',
-        preparationTime: currentRecipe?.preparationTime || 30,
-        preparationTimeUnit: 'minutes',
-        menuPrice: currentRecipe?.costing?.salePrice || 0,
-        costPerServing: currentRecipe?.costing?.costPerServing || 0,
-        station: currentRecipe?.station || '',
-        youtubeUrl: currentRecipe?.youtubeUrl || '',
-        restaurantLocation: initialBranchId ? String(initialBranchId) : '',
-        caseCost: currentRecipe?.costing?.caseCost || 0,
-        caseWeight: currentRecipe?.costing?.caseWeightLb || 0,
-        servingWeight: currentRecipe?.costing?.servingWeightOz || 0,
-        servingsInCase: 16,
-        foodCostWanted: currentRecipe?.costing?.foodCostPct || 20,
-        description: currentRecipe?.description || '',
-        tags: currentRecipe?.tags || [],
-        ingredients: currentRecipe?.ingredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
-        essentials: currentRecipe?.essentialIngredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
-        starchTitle: currentRecipe?.starchPreparation?.type || '',
-        starchSteps: currentRecipe?.starchPreparation?.steps?.map(step => step.description) || [],
-        predefinedStarch: (currentRecipe as any)?.predefinedStarch?.map((item: any) => item.id) || [],
-        predefinedVegetable: (currentRecipe as any)?.predefinedVegetables?.map((item: any) => item.id) || [],
-        designYourPlate: currentRecipe?.plateDesign?.platingSteps?.map(step => step.description) || [],
-        predefinedIngredients: (currentRecipe as any)?.predefinedIngredients?.map((item: any) => item.id) || [],
-        availability: currentRecipe?.isAvailable ? 'available' : 'unavailable',
-        cookingDeviationComments: currentRecipe?.cookingDeviationComments?.map(comment => comment.step) || [],
-        realtimeVariableComments: currentRecipe?.realtimeVariableComments?.map(comment => comment.step) || [],
-        status: currentRecipe?.status === 'private' ? 'private' : 'public',
-        images: currentRecipe?.imageFiles || [],
-        primaryImageIndex: 0,
-        fullyPlatedImageIndex: -1,
-        video: currentRecipe?.videoFile ? { url: currentRecipe.videoFile, name: 'video.mp4', type: 'preparation' as 'preparation' | 'presentation' } : null,
-      };
-    },
-    [currentRecipe, initialBranchId, aiDataFromState, isEdit, mapAIDataToFormValues]
+    () => ({
+      dishName: currentRecipe?.dishName || '',
+      cuisineType: currentRecipe?.cuisineType ? [currentRecipe.cuisineType] : [],
+      centerOfPlate: currentRecipe?.plateDesign?.centerOfPlate?.category || '',
+      menuClass: 'Commence',
+      preparationTime: currentRecipe?.preparationTime || 30,
+      preparationTimeUnit: 'minutes',
+      menuPrice: currentRecipe?.costing?.salePrice || 0,
+      costPerServing: currentRecipe?.costing?.costPerServing || 0,
+      station: currentRecipe?.station || '',
+      youtubeUrl: currentRecipe?.youtubeUrl || '',
+      restaurantLocation: '',
+      caseCost: currentRecipe?.costing?.caseCost || 0,
+      caseWeight: currentRecipe?.costing?.caseWeightLb || 0,
+      servingWeight: currentRecipe?.costing?.servingWeightOz || 0,
+      servingsInCase: 16,
+      foodCostWanted: currentRecipe?.costing?.foodCostPct || 20,
+      description: currentRecipe?.description || '',
+      tags: currentRecipe?.tags || [],
+      ingredients: currentRecipe?.ingredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
+      essentials: currentRecipe?.essentialIngredients?.map(ing => ({ name: ing.title, quantity: ing.quantity, unit: ing.unit })) || [],
+      starchTitle: '',
+      starchSteps: [],
+      predefinedStarch: [],
+      predefinedVegetable: [],
+      designYourPlate: [],
+      predefinedIngredients: [],
+      availability: 'available',
+      cookingDeviationComments: [],
+      realtimeVariableComments: [],
+      status: 'draft',
+      images: currentRecipe?.imageFiles || [],
+      primaryImageIndex: 0,
+      fullyPlatedImageIndex: -1,
+      video: currentRecipe?.videoFile ? { url: currentRecipe.videoFile, name: 'video.mp4', type: 'preparation' as 'preparation' | 'presentation' } : null,
+    }),
+    [currentRecipe]
   );
 
   const methods = useForm<FormValuesProps>({
@@ -387,305 +185,25 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values.caseCost, values.servingsInCase, setValue]);
 
-  // Transform form data to IRecipe format
-  const transformFormDataToRecipe = useCallback((data: FormValuesProps): Partial<IRecipe> => {
-    // Convert preparation time to minutes
-    const preparationTimeInMinutes = data.preparationTimeUnit === 'hours' 
-      ? data.preparationTime * 60 
-      : data.preparationTime;
-
-    // Get first cuisine type (API expects single value, not array)
-    const cuisineType = data.cuisineType && data.cuisineType.length > 0 ? data.cuisineType[0] : '';
-
-    // Transform ingredients
-    const ingredients: IIngredient[] = data.ingredients.map((ing, index) => ({
-      id: currentRecipe?.ingredients?.[index]?.id || String(Date.now() + index),
-      title: ing.name,
-      quantity: ing.quantity,
-      unit: ing.unit,
-    }));
-
-    // Transform essential ingredients
-    const essentialIngredients: IIngredient[] = data.essentials.map((ess, index) => ({
-      id: currentRecipe?.essentialIngredients?.[index]?.id || String(Date.now() + index + 1000),
-      title: ess.name,
-      quantity: ess.quantity,
-      unit: ess.unit || '',
-    }));
-
-    // Transform preparation steps (use existing steps from recipe if editing, otherwise empty)
-    const steps: IPreparationStep[] = currentRecipe?.steps || [];
-
-    // Transform design your plate steps (plating steps)
-    const platingSteps: IPreparationStep[] = (data.designYourPlate || []).map((step, index) => ({
-      id: currentRecipe?.plateDesign?.platingSteps?.[index]?.id || String(Date.now() + index + 2000),
-      stepNumber: index + 1,
-      description: step,
-    }));
-
-    // Transform starch preparation steps
-    const starchSteps: IPreparationStep[] = (data.starchSteps || []).map((step, index) => ({
-      id: currentRecipe?.starchPreparation?.steps?.[index]?.id || String(Date.now() + index + 3000),
-      stepNumber: index + 1,
-      description: step,
-    }));
-
-    // Transform comments
-    const cookingDeviationComments: IComment[] = (data.cookingDeviationComments || []).map((comment, index) => ({
-      id: currentRecipe?.cookingDeviationComments?.[index]?.id || String(Date.now() + index + 4000),
-      step: comment,
-    }));
-
-    const realtimeVariableComments: IComment[] = (data.realtimeVariableComments || []).map((comment, index) => ({
-      id: currentRecipe?.realtimeVariableComments?.[index]?.id || String(Date.now() + index + 5000),
-      step: comment,
-    }));
-
-    // Build recipe object
-    const recipe: Partial<IRecipe> = {
-      dishName: data.dishName,
-      cuisineType,
-      preparationTime: preparationTimeInMinutes,
-      station: data.station,
-      youtubeUrl: data.youtubeUrl,
-      description: data.description,
-      tags: data.tags || [],
-      imageFiles: data.images || [],
-      videoFile: data.video?.url || '',
-      ingredients,
-      essentialIngredients,
-      steps,
-      plateDesign: {
-        centerOfPlate: {
-          category: data.centerOfPlate,
-          subcategory: data.menuClass,
-        },
-        platingSteps,
-      },
-      starchPreparation: {
-        type: data.starchTitle || '',
-        steps: starchSteps,
-        cookingTime: preparationTimeInMinutes,
-      },
-      costing: {
-        caseCost: typeof data.caseCost === 'number' ? data.caseCost : parseFloat(String(data.caseCost || 0)) || 0,
-        caseWeightLb: typeof data.caseWeight === 'number' ? data.caseWeight : parseFloat(String(data.caseWeight || 0)) || 0,
-        servingWeightOz: typeof data.servingWeight === 'number' ? data.servingWeight : parseFloat(String(data.servingWeight || 0)) || 0,
-        costPerServing: typeof data.costPerServing === 'number' ? data.costPerServing : parseFloat(String(data.costPerServing || 0)) || 0,
-        salePrice: typeof data.menuPrice === 'number' ? data.menuPrice : parseFloat(String(data.menuPrice || 0)) || 0,
-        foodCostPct: typeof data.foodCostWanted === 'number' ? data.foodCostWanted : parseFloat(String(data.foodCostWanted || 0)) || 0,
-      },
-      status: data.status === 'private' ? 'private' : 'active',
-      isAvailable: data.availability === 'available',
-      isPublic: data.status === 'public',
-      cookingDeviationComments,
-      realtimeVariableComments,
-    };
-
-    // Add predefined items as arrays of IDs (for API)
-    (recipe as any).predefinedIngredients = data.predefinedIngredients || [];
-    (recipe as any).predefinedStarch = data.predefinedStarch || [];
-    (recipe as any).predefinedVegetables = data.predefinedVegetable || [];
-
-    // Add branch ID - use branchIdForApi from hook if available, otherwise use form value
-    if (branchIdForApi) {
-      (recipe as any).branchId = branchIdForApi;
-    } else if (data.restaurantLocation) {
-      const branchValue = typeof data.restaurantLocation === 'string' 
-        ? (/^\d+$/.test(data.restaurantLocation) ? parseInt(data.restaurantLocation, 10) : undefined)
-        : data.restaurantLocation;
-      if (branchValue) {
-        (recipe as any).branchId = branchValue;
-      }
-    }
-
-    return recipe;
-  }, [currentRecipe, branchIdForApi]);
-
   const onSubmit = async (data: FormValuesProps) => {
-    // Show processing dialog
-    setProcessingDialog({
-      open: true,
-      state: 'processing',
-      message: isEdit ? 'Updating recipe...' : 'Creating recipe...',
-    });
-
     try {
-      // Step 1: Upload files to S3 using presigned URLs
-      const uploadedImageUrls: string[] = [];
-      let uploadedVideoUrl: string | null = null;
-      let uploadedStarchImageUrl: string | null = null;
-      let uploadedPlateImageUrl: string | null = null;
-
-      // Upload recipe images
-      if (imageFiles.length > 0) {
-        setProcessingDialog({
-          open: true,
-          state: 'processing',
-          message: 'Uploading images...',
-        });
-        for (const file of imageFiles) {
-          const fileKey = generateFileKey('recipe_images', file.name);
-          const s3Url = await uploadFileWithPresignedUrl(file, fileKey, file.type);
-          uploadedImageUrls.push(s3Url);
-        }
-      }
-
-      // Keep existing image URLs (from current recipe or already uploaded)
-      const existingImageUrls = values.images.filter((url) => 
-        url.startsWith('http') && !url.startsWith('blob:')
-      );
-      const allImageUrls = [...existingImageUrls, ...uploadedImageUrls];
-
-      // Upload video if new file selected
-      if (videoFile) {
-        setProcessingDialog({
-          open: true,
-          state: 'processing',
-          message: 'Uploading video...',
-        });
-        const fileKey = generateFileKey('recipe_videos', videoFile.name);
-        uploadedVideoUrl = await uploadFileWithPresignedUrl(videoFile, fileKey, videoFile.type);
-      }
-
-      // Upload starch preparation image if new file selected
-      if (starchImageFile) {
-        setProcessingDialog({
-          open: true,
-          state: 'processing',
-          message: 'Uploading starch preparation image...',
-        });
-        const fileKey = generateFileKey('starch_preparation', starchImageFile.name);
-        uploadedStarchImageUrl = await uploadFileWithPresignedUrl(starchImageFile, fileKey, starchImageFile.type);
-      }
-
-      // Upload plate design image if new file selected
-      if (plateImageFile) {
-        setProcessingDialog({
-          open: true,
-          state: 'processing',
-          message: 'Uploading plate design image...',
-        });
-        const fileKey = generateFileKey('plate_design', plateImageFile.name);
-        uploadedPlateImageUrl = await uploadFileWithPresignedUrl(plateImageFile, fileKey, plateImageFile.type);
-      }
-
-      // Step 2: Transform form data to recipe format
-      setProcessingDialog({
-        open: true,
-        state: 'processing',
-        message: isEdit ? 'Updating recipe...' : 'Creating recipe...',
-      });
-
-      const recipeData = transformFormDataToRecipe(data);
-
-      // Step 3: Add uploaded URLs to recipe data
-      if (allImageUrls.length > 0) {
-        recipeData.imageFiles = allImageUrls;
-      }
-      if (uploadedVideoUrl) {
-        recipeData.videoFile = uploadedVideoUrl;
-      } else if (data.video?.url && data.video.url.startsWith('http') && !data.video.url.startsWith('blob:')) {
-        // Keep existing video URL if it's already an S3 URL
-        recipeData.videoFile = data.video.url;
-      }
-
-      // Add starch preparation image and plate design image
-      if (uploadedStarchImageUrl) {
-        (recipeData as any).starchPreparationImage = uploadedStarchImageUrl;
-      }
-      if (uploadedPlateImageUrl) {
-        (recipeData as any).plateDesignImage = uploadedPlateImageUrl;
-      }
-
-      // Step 4: Handle draft status - only set is_draft if status is draft (for backward compatibility)
-      // Status is now only 'public' or 'private', so is_draft should be false
-      (recipeData as any).is_draft = false;
-      (recipeData as any).is_schedule = false;
-
-      // Step 4.5: Add branch ID - use branchIdForApi from hook if available, otherwise use form value
-      if (branchIdForApi) {
-        (recipeData as any).branchId = branchIdForApi;
-      } else if (data.restaurantLocation) {
-        const branchValue = typeof data.restaurantLocation === 'string' 
-          ? (/^\d+$/.test(data.restaurantLocation) ? parseInt(data.restaurantLocation, 10) : undefined)
-          : data.restaurantLocation;
-        if (branchValue) {
-          (recipeData as any).branchId = branchValue;
-        }
-      }
-
-      // Step 5: Create or update recipe
-      if (isEdit && currentRecipe?.id) {
-        // Update existing recipe
-        await updateRecipeMutation.mutateAsync({
-          id: currentRecipe.id,
-          data: recipeData,
-        });
-        // Show success
-        setProcessingDialog({
-          open: true,
-          state: 'success',
-          message: 'Recipe updated successfully!',
-        });
-        // Navigate after a short delay to show success message
-        setTimeout(() => {
-          navigate(PATH_DASHBOARD.recipes.list);
-        }, 1500);
-      } else {
-        // Create new recipe
-        await createRecipeMutation.mutateAsync(recipeData);
-        // Show success
-        setProcessingDialog({
-          open: true,
-          state: 'success',
-          message: 'Recipe created successfully!',
-        });
-        // Navigate after a short delay to show success message
-        setTimeout(() => {
-          navigate(PATH_DASHBOARD.recipes.list);
-        }, 1500);
-      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log('DATA', data);
+      enqueueSnackbar(!isEdit ? 'Recipe created!' : 'Recipe updated!');
+      navigate(PATH_DASHBOARD.recipes.list);
     } catch (error) {
-      console.error('Error saving recipe:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'Failed to save recipe. Please try again.';
-      // Show error - form data is preserved (not reset)
-      setProcessingDialog({
-        open: true,
-        state: 'error',
-        message: errorMessage,
-      });
+      console.error(error);
+      enqueueSnackbar('Something went wrong!', { variant: 'error' });
     }
   };
 
   const onSaveDraft = async () => {
-    // Set as draft (private) when saving as draft
-    setValue('status', 'private');
+    setValue('status', 'draft');
     handleSubmit(onSubmit)();
   };
 
-  // Store File objects separately for upload
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [starchImageFile, setStarchImageFile] = useState<File | null>(null);
-  const [plateImageFile, setPlateImageFile] = useState<File | null>(null);
-
-  // Processing dialog state
-  const [processingDialog, setProcessingDialog] = useState<{
-    open: boolean;
-    state: 'processing' | 'success' | 'error';
-    message?: string;
-  }>({
-    open: false,
-    state: 'processing',
-  });
-
   const handleImageUpload = (files: File[]) => {
-    // Store File objects for later upload
-    setImageFiles((prev) => [...prev, ...files]);
-    // Create preview URLs for display
+    // Handle file upload logic here
     const urls = files.map((file) => URL.createObjectURL(file));
     setValue('images', [...values.images, ...urls]);
   };
@@ -693,8 +211,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   const handleImageRemove = (index: number) => {
     const newImages = values.images.filter((_, i) => i !== index);
     setValue('images', newImages);
-    // Remove corresponding file
-    setImageFiles((prev) => prev.filter((_, i) => i !== index));
     
     if (values.primaryImageIndex === index) {
       setValue('primaryImageIndex', 0);
@@ -705,15 +221,12 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   };
 
   const handleVideoUpload = (file: File) => {
-    // Store File object for later upload
-    setVideoFile(file);
     const url = URL.createObjectURL(file);
     setValue('video', { url, name: file.name, type: 'preparation' });
   };
 
   const handleVideoRemove = () => {
     setValue('video', null);
-    setVideoFile(null);
   };
 
   const handleVideoTypeChange = (type: 'preparation' | 'presentation') => {
@@ -757,15 +270,8 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
   }, [values, setValue]);
 
   return (
-    <>
-      <ProcessingDialog
-        open={processingDialog.open}
-        state={processingDialog.state}
-        message={processingDialog.message}
-        onClose={() => setProcessingDialog({ open: false, state: 'processing' })}
-      />
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={4}>
         <Grid item xs={12}>
           {/* Image Upload Section */}
@@ -934,8 +440,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     <Autocomplete
                       {...field}
                       multiple
-                      options={cuisineOptions}
-                      loading={isLoadingCategories}
+                      options={CUISINE_OPTIONS}
                       value={field.value}
                       onChange={(_, newValue) => field.onChange(newValue)}
                       renderTags={(value, getTagProps) =>
@@ -1053,7 +558,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
 
               <Grid item xs={12} md={4}>
                 <RHFSelect name="station" label="Station to Prepare Dish">
-                  {KITCHEN_STATION_OPTIONS.map((option) => (
+                  {STATION_OPTIONS.map((option) => (
                     <MenuItem key={option} value={option}>
                       {option}
                     </MenuItem>
@@ -1074,35 +579,6 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                   }}
                 />
               </Grid>
-
-              {showBranchSelect && (
-                <Grid item xs={12} md={4}>
-                  <Controller
-                    name="restaurantLocation"
-                    control={control}
-                    render={({ field, fieldState: { error } }) => (
-                      <BranchSelect
-                        value={field.value}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          field.onChange(value === '' ? '' : (/^\d+$/.test(value) ? parseInt(value, 10) : value));
-                        }}
-                        label="Restaurant Location"
-                        formInputSx={{
-                          width: '100%',
-                          maxWidth: '100%',
-                          '& .MuiInputBase-root': {
-                            fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                          },
-                          '& .MuiInputLabel-root': {
-                            fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-                          },
-                        }}
-                      />
-                    )}
-                  />
-                </Grid>
-              )}
             </Grid>
           </Card>
         </Grid>
@@ -1331,33 +807,20 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
               <Controller
                 name="predefinedStarch"
                 control={control}
-                render={({ field, fieldState: { error } }) => (
+                render={({ field }) => (
                   <Autocomplete
+                    {...field}
                     multiple
-                    options={predefinedStarch}
-                    getOptionLabel={(option: { id: number; name: string }) => option.name || ''}
-                    isOptionEqualToValue={(option: { id: number; name: string }, value: { id: number; name: string }) =>
-                      option.id === value.id
-                    }
-                    value={predefinedStarch.filter((item: { id: number; name: string }) =>
-                      field.value.includes(item.id)
-                    )}
-                    onChange={(_, newValue: { id: number; name: string }[]) => {
-                      field.onChange(newValue.map((item: { id: number; name: string }) => item.id));
-                    }}
-                    loading={isLoadingStarch}
+                    options={PREDEFINED_STARCH}
+                    value={field.value}
+                    onChange={(_, newValue) => field.onChange(newValue)}
                     renderTags={(value, getTagProps) =>
                       value.map((option, index) => (
-                        <Chip {...getTagProps({ index })} label={option.name} size="small" />
+                        <Chip {...getTagProps({ index })} label={option} size="small" />
                       ))
                     }
                     renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Predefined Starch"
-                        error={!!error}
-                        helperText={error?.message}
-                      />
+                      <TextField {...params} label="Predefined Starch" />
                     )}
                   />
                 )}
@@ -1366,33 +829,20 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
               <Controller
                 name="predefinedVegetable"
                 control={control}
-                render={({ field, fieldState: { error } }) => (
+                render={({ field }) => (
                   <Autocomplete
+                    {...field}
                     multiple
-                    options={predefinedVegetables}
-                    getOptionLabel={(option: { id: number; name: string }) => option.name || ''}
-                    isOptionEqualToValue={(option: { id: number; name: string }, value: { id: number; name: string }) =>
-                      option.id === value.id
-                    }
-                    value={predefinedVegetables.filter((item: { id: number; name: string }) =>
-                      field.value.includes(item.id)
-                    )}
-                    onChange={(_, newValue: { id: number; name: string }[]) => {
-                      field.onChange(newValue.map((item: { id: number; name: string }) => item.id));
-                    }}
-                    loading={isLoadingVegetables}
+                    options={PREDEFINED_VEGETABLE}
+                    value={field.value}
+                    onChange={(_, newValue) => field.onChange(newValue)}
                     renderTags={(value, getTagProps) =>
                       value.map((option, index) => (
-                        <Chip {...getTagProps({ index })} label={option.name} size="small" />
+                        <Chip {...getTagProps({ index })} label={option} size="small" />
                       ))
                     }
                     renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Predefined Vegetable"
-                        error={!!error}
-                        helperText={error?.message}
-                      />
+                      <TextField {...params} label="Predefined Vegetable" />
                     )}
                   />
                 )}
@@ -1401,33 +851,20 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
               <Controller
                 name="predefinedIngredients"
                 control={control}
-                render={({ field, fieldState: { error } }) => (
+                render={({ field }) => (
                   <Autocomplete
+                    {...field}
                     multiple
-                    options={predefinedIngredients}
-                    getOptionLabel={(option: { id: number; name: string }) => option.name || ''}
-                    isOptionEqualToValue={(option: { id: number; name: string }, value: { id: number; name: string }) =>
-                      option.id === value.id
-                    }
-                    value={predefinedIngredients.filter((item: { id: number; name: string }) =>
-                      field.value.includes(item.id)
-                    )}
-                    onChange={(_, newValue: { id: number; name: string }[]) => {
-                      field.onChange(newValue.map((item: { id: number; name: string }) => item.id));
-                    }}
-                    loading={isLoadingIngredients}
+                    options={PREDEFINED_INGREDIENTS}
+                    value={field.value}
+                    onChange={(_, newValue) => field.onChange(newValue)}
                     renderTags={(value, getTagProps) =>
                       value.map((option, index) => (
-                        <Chip {...getTagProps({ index })} label={option.name} size="small" />
+                        <Chip {...getTagProps({ index })} label={option} size="small" />
                       ))
                     }
                     renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Predefined Ingredients"
-                        error={!!error}
-                        helperText={error?.message}
-                      />
+                      <TextField {...params} label="Predefined Ingredients" />
                     )}
                   />
                 )}
@@ -1505,8 +942,9 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
                     control={control}
                     render={({ field }) => (
                       <RadioGroup {...field} row>
-                        <FormControlLabel value="public" control={<Radio />} label="Public" />
-                        <FormControlLabel value="private" control={<Radio />} label="Private" />
+                        <FormControlLabel value="draft" control={<Radio />} label="Draft" />
+                        <FormControlLabel value="active" control={<Radio />} label="Active" />
+                        <FormControlLabel value="archived" control={<Radio />} label="Archived" />
                       </RadioGroup>
                     )}
                   />
@@ -1548,7 +986,7 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
               type="submit"
               variant="contained"
               size="large"
-              loading={isSubmitting || createRecipeMutation.isPending || updateRecipeMutation.isPending}
+              loading={isSubmitting}
             >
               {isEdit ? 'Update Recipe' : 'Create Recipe'}
             </LoadingButton>
@@ -1557,6 +995,5 @@ export default function RecipeNewEditForm({ isEdit = false, currentRecipe }: Pro
       </Grid>
     </FormProvider>
     </DragDropContext>
-    </>
   );
 }
