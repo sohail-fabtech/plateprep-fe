@@ -9,6 +9,7 @@ The Canvas Export & S3 Upload system provides enterprise-level functionality for
 ## Architecture & Features
 
 ### 1. **Enterprise-Level Export System**
+
 - **Multiple Export Formats**: PNG, JPG, SVG, JSON
 - **CORS Handling**: Automatic image CORS negotiation
 - **Fallback Rendering**: Manual canvas rendering as backup
@@ -16,12 +17,14 @@ The Canvas Export & S3 Upload system provides enterprise-level functionality for
 - **Blob-based Export**: Returns Blob objects for programmatic use
 
 ### 2. **S3 Integration**
+
 - **Presigned URL Integration**: Uses existing presigned URL service
 - **Automatic Metadata**: Includes design metadata (dimensions, timestamp)
 - **Error Handling**: Graceful fallback to dataUrl on upload failure
 - **File Validation**: Ensures files are valid before upload
 
 ### 3. **Save Workflow**
+
 - **First Save Detection**: Automatically exports and uploads on first save
 - **Debounced Saves**: Subsequent saves are logged (debounced in useHistory)
 - **User Feedback**: Snackbar notifications for success/error states
@@ -54,25 +57,28 @@ src/
 Exports Fabric.js canvas to a Blob object.
 
 **Parameters:**
+
 ```typescript
 interface CanvasExportOptions {
-  format?: 'png' | 'jpg' | 'svg' | 'json';  // Default: 'png'
-  quality?: number;                          // Default: 1
-  multiplier?: number;                       // Default: 2 (for Retina)
+  format?: 'png' | 'jpg' | 'svg' | 'json'; // Default: 'png'
+  quality?: number; // Default: 1
+  multiplier?: number; // Default: 2 (for Retina)
 }
 ```
 
 **Returns:**
+
 ```typescript
-Promise<Blob>
+Promise<Blob>;
 ```
 
 **Example:**
+
 ```typescript
 const blob = await exportCanvasToBlob(fabricCanvas, {
   format: 'png',
   quality: 1,
-  multiplier: 2
+  multiplier: 2,
 });
 ```
 
@@ -83,31 +89,34 @@ const blob = await exportCanvasToBlob(fabricCanvas, {
 Exports canvas and automatically uploads to S3 via presigned URL.
 
 **Parameters:**
+
 ```typescript
 interface S3UploadOptions {
-  title?: string;              // Default: 'Untitled Design'
-  format?: 'png' | 'jpg';      // Default: 'png'
-  quality?: number;            // Default: 1
-  multiplier?: number;         // Default: 2
+  title?: string; // Default: 'Untitled Design'
+  format?: 'png' | 'jpg'; // Default: 'png'
+  quality?: number; // Default: 1
+  multiplier?: number; // Default: 2
 }
 ```
 
 **Returns:**
+
 ```typescript
 interface ExportAndUploadResult {
   success: boolean;
-  imageUrl?: string;           // S3 URL if successful
-  imageFile?: File;            // Original file object
-  error?: string;              // Error message if failed
-  timestamp: string;           // ISO timestamp
+  imageUrl?: string; // S3 URL if successful
+  imageFile?: File; // Original file object
+  error?: string; // Error message if failed
+  timestamp: string; // ISO timestamp
 }
 ```
 
 **Example:**
+
 ```typescript
 const result = await exportCanvasAndUploadToS3(fabricCanvas, {
   title: 'My Design',
-  format: 'png'
+  format: 'png',
 });
 
 if (result.success) {
@@ -124,16 +133,18 @@ if (result.success) {
 Exports canvas with complete template payload (image + JSON source).
 
 **Parameters:**
+
 ```typescript
 interface PayloadOptions {
-  title?: string;              // Default: 'Untitled Design'
-  width?: number;              // Default: canvas.width
-  height?: number;             // Default: canvas.height
-  uploadToS3?: boolean;        // Default: true
+  title?: string; // Default: 'Untitled Design'
+  width?: number; // Default: canvas.width
+  height?: number; // Default: canvas.height
+  uploadToS3?: boolean; // Default: true
 }
 ```
 
 **Returns:**
+
 ```typescript
 interface TemplateExportPayload & ExportAndUploadResult {
   title: string;
@@ -152,13 +163,13 @@ interface TemplateExportPayload & ExportAndUploadResult {
 ```
 
 **Example:**
+
 ```typescript
 const canvasJson = JSON.stringify(canvas.toJSON());
-const payload = await exportCanvasWithPayload(
-  canvas,
-  canvasJson,
-  { title: 'My Design', uploadToS3: true }
-);
+const payload = await exportCanvasWithPayload(canvas, canvasJson, {
+  title: 'My Design',
+  uploadToS3: true,
+});
 
 console.log('Complete payload:', payload);
 // Use payload for API save/update
@@ -184,15 +195,15 @@ const saveCallback = useCallback(
     if (isFirstSave) {
       const result = await exportCanvasAndUploadToS3(canvas, {
         title: 'Untitled Design',
-        format: 'png'
+        format: 'png',
       });
 
       if (result.success) {
         // Create payload with S3 URL
         const payload = {
           title: 'Untitled Design',
-          image: result.imageUrl,  // S3 URL
-          source: parsedJson
+          image: result.imageUrl, // S3 URL
+          source: parsedJson,
         };
         // Send to API
       }
@@ -306,7 +317,7 @@ import { exportCanvasToBlob } from '@/services';
 
 const blob = await exportCanvasToBlob(fabricCanvas, {
   format: 'png',
-  quality: 1
+  quality: 1,
 });
 
 // Use blob for anything
@@ -320,7 +331,7 @@ import { exportCanvasAndUploadToS3 } from '@/services';
 
 const result = await exportCanvasAndUploadToS3(fabricCanvas, {
   title: 'My Template',
-  format: 'png'
+  format: 'png',
 });
 
 if (result.success) {
@@ -337,14 +348,10 @@ if (result.success) {
 import { exportCanvasWithPayload } from '@/services';
 
 const canvasJson = JSON.stringify(canvas.toJSON(['id', 'filters']));
-const payload = await exportCanvasWithPayload(
-  canvas,
-  canvasJson,
-  {
-    title: 'Restaurant Menu Design',
-    uploadToS3: true
-  }
-);
+const payload = await exportCanvasWithPayload(canvas, canvasJson, {
+  title: 'Restaurant Menu Design',
+  uploadToS3: true,
+});
 
 // Send payload to API
 await templateApi.save(payload);
@@ -353,16 +360,12 @@ await templateApi.save(payload);
 ### Example 4: Manual Export Without Upload
 
 ```typescript
-const result = await exportCanvasWithPayload(
-  canvas,
-  canvasJson,
-  {
-    uploadToS3: false  // Use dataUrl instead
-  }
-);
+const result = await exportCanvasWithPayload(canvas, canvasJson, {
+  uploadToS3: false, // Use dataUrl instead
+});
 
 // Payload will have dataUrl instead of S3 URL
-console.log(result.image);  // data:image/png;base64,...
+console.log(result.image); // data:image/png;base64,...
 ```
 
 ---
@@ -376,7 +379,7 @@ The export service uses the existing presigned URL service:
 ```typescript
 import {
   uploadFileWithPresignedUrl,
-  generateFileKey
+  generateFileKey,
 } from '@/services/presignedUrl/presignedUrlService';
 
 // Integrated internally
@@ -398,8 +401,8 @@ const s3Url = await uploadFileWithPresignedUrl(imageFile, fileKey);
 ```typescript
 // Use lower quality for faster export
 await exportCanvasToBlob(canvas, {
-  quality: 0.8,  // Reduces file size by ~30%
-  multiplier: 1  // Reduces export time by ~50%
+  quality: 0.8, // Reduces file size by ~30%
+  multiplier: 1, // Reduces export time by ~50%
 });
 ```
 
@@ -425,7 +428,7 @@ await exportCanvasToBlob(canvas, {
 // The service will automatically fallback to dataUrl
 // Check snackbar notifications for status
 enqueueSnackbar('Using local preview (S3 upload failed)', {
-  variant: 'warning'
+  variant: 'warning',
 });
 ```
 
@@ -448,22 +451,25 @@ enqueueSnackbar('Using local preview (S3 upload failed)', {
 ### Issue: CORS Error on Images
 
 **Solution**: Ensure images have proper CORS headers. Service automatically handles this, but check:
+
 - Image host supports `crossOrigin="anonymous"`
 - No header restrictions on the origin
 
 ### Issue: Large File Upload Fails
 
 **Solution**: Reduce export quality or multiplier:
+
 ```typescript
 await exportCanvasToBlob(canvas, {
   quality: 0.7,
-  multiplier: 1
+  multiplier: 1,
 });
 ```
 
 ### Issue: DataUrl Used Instead of S3 URL
 
 **Solution**: Check S3 upload error in console logs. Verify:
+
 - AWS credentials are valid
 - S3 bucket has proper permissions
 - Network connectivity is stable
@@ -510,6 +516,7 @@ PATCH /api/templates/{id}/
 ## Summary
 
 ✅ **Implemented Features:**
+
 - Enterprise-level Fabric.js canvas export
 - CORS-aware image handling
 - Automatic S3 upload on first save
@@ -520,6 +527,7 @@ PATCH /api/templates/{id}/
 - Performance optimizations with Retina display support
 
 🎯 **Ready for:**
+
 - Production template exports
 - Multi-format save options
 - Enterprise-level reliability

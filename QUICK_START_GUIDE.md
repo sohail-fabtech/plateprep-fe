@@ -3,6 +3,7 @@
 ## Installation & Setup
 
 No additional dependencies needed! Uses existing:
+
 - ✅ `fabric.js` - Already in project
 - ✅ `presignedUrlService` - Already configured
 - ✅ `useSnackbar` - Already available
@@ -24,7 +25,7 @@ const blob = await exportCanvasToBlob(fabricCanvas);
 const blob = await exportCanvasToBlob(fabricCanvas, {
   format: 'png',
   quality: 1,
-  multiplier: 2
+  multiplier: 2,
 });
 
 // Use the blob
@@ -46,28 +47,28 @@ export function MyEditor() {
 
   const handleSave = async () => {
     setIsUploading(true);
-    
+
     try {
       const result = await exportCanvasAndUploadToS3(canvas, {
         title: 'My Design',
-        format: 'png'
+        format: 'png',
       });
 
       if (result.success) {
         enqueueSnackbar('Saved to S3!', { variant: 'success' });
         console.log('S3 URL:', result.imageUrl);
-        
+
         // Save S3 URL to database
         await saveTemplateToDatabase({
           imageUrl: result.imageUrl,
-          timestamp: result.timestamp
+          timestamp: result.timestamp,
         });
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
-      enqueueSnackbar('Upload failed: ' + error.message, { 
-        variant: 'error' 
+      enqueueSnackbar('Upload failed: ' + error.message, {
+        variant: 'error',
       });
     } finally {
       setIsUploading(false);
@@ -93,23 +94,19 @@ import { exportCanvasWithPayload } from '@/services';
 const canvasJson = JSON.stringify(canvas.toJSON(['id', 'filters']));
 
 // Export with S3 upload
-const payload = await exportCanvasWithPayload(
-  canvas,
-  canvasJson,
-  {
-    title: 'Restaurant Menu',
-    uploadToS3: true  // Automatic S3 upload
-  }
-);
+const payload = await exportCanvasWithPayload(canvas, canvasJson, {
+  title: 'Restaurant Menu',
+  uploadToS3: true, // Automatic S3 upload
+});
 
 // Use payload for API
 if (payload.success) {
   // Send to backend API
   const response = await api.post('/templates/', {
     title: payload.title,
-    image: payload.image,           // S3 URL
-    source: payload.source,         // Canvas JSON
-    metadata: payload.metadata      // Width, height, timestamp
+    image: payload.image, // S3 URL
+    source: payload.source, // Canvas JSON
+    metadata: payload.metadata, // Width, height, timestamp
   });
 
   console.log('Template saved:', response.id);
@@ -127,12 +124,7 @@ The Editor component already does this via `useHistory`:
 ```typescript
 // In Editor.tsx - already integrated!
 const saveCallback = useCallback(
-  async (values: {
-    json: string;
-    height: number;
-    width: number;
-    dataUrl?: string;
-  }) => {
+  async (values: { json: string; height: number; width: number; dataUrl?: string }) => {
     // First save: Export and upload to S3
     if (isFirstSave) {
       const result = await exportCanvasAndUploadToS3(canvas);
@@ -142,7 +134,7 @@ const saveCallback = useCallback(
     else {
       const payload = {
         image: values.dataUrl,
-        source: JSON.parse(values.json)
+        source: JSON.parse(values.json),
       };
       console.log('Autosave:', payload);
     }
@@ -162,18 +154,18 @@ import { exportCanvasToBlob } from '@/services';
 const pngBlob = await exportCanvasToBlob(canvas, {
   format: 'png',
   quality: 1,
-  multiplier: 2  // 2x for Retina
+  multiplier: 2, // 2x for Retina
 });
 
 const jpgBlob = await exportCanvasToBlob(canvas, {
   format: 'jpg',
   quality: 0.85,
-  multiplier: 1  // 1x for web
+  multiplier: 1, // 1x for web
 });
 
 // Compare sizes
-console.log('PNG size:', pngBlob.size);      // Larger, lossless
-console.log('JPG size:', jpgBlob.size);      // Smaller, lossy
+console.log('PNG size:', pngBlob.size); // Larger, lossless
+console.log('JPG size:', jpgBlob.size); // Smaller, lossy
 ```
 
 ---
@@ -188,16 +180,15 @@ const result = await exportCanvasAndUploadToS3(canvas);
 if (result.success) {
   // Use S3 URL
   console.log('Image uploaded:', result.imageUrl);
-  
+
   // Metadata
   console.log('Uploaded at:', result.timestamp);
   console.log('File:', result.imageFile.name);
-  
 } else {
   // Automatic fallback: Editor uses dataUrl instead
   console.log('Upload failed:', result.error);
   console.log('Fallback to dataUrl');
-  
+
   // Options:
   // 1. Retry upload later
   // 2. Show offline indicator
@@ -217,7 +208,7 @@ async function downloadDesign(format) {
   const blob = await exportCanvasToBlob(canvas, {
     format: format as 'png' | 'jpg' | 'svg' | 'json',
     quality: 1,
-    multiplier: 2
+    multiplier: 2,
   });
 
   // Create download link
@@ -226,13 +217,13 @@ async function downloadDesign(format) {
   link.href = url;
   link.download = `design_${Date.now()}.${format}`;
   link.click();
-  
+
   URL.revokeObjectURL(url);
 }
 
 // Usage
-downloadDesign('png');  // Download as PNG
-downloadDesign('jpg');  // Download as JPG
+downloadDesign('png'); // Download as PNG
+downloadDesign('jpg'); // Download as JPG
 ```
 
 ---
@@ -265,7 +256,9 @@ const handleSave = async () => {
 };
 
 // Show spinner while saving
-{saving && <CircularProgress />}
+{
+  saving && <CircularProgress />;
+}
 ```
 
 ### Pattern 3: Retry Failed Uploads
@@ -274,13 +267,13 @@ const handleSave = async () => {
 async function uploadWithRetry(canvas, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     const result = await exportCanvasAndUploadToS3(canvas);
-    
+
     if (result.success) return result;
-    
+
     // Wait before retry
-    await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+    await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, i)));
   }
-  
+
   throw new Error('Upload failed after retries');
 }
 ```
@@ -293,7 +286,7 @@ const [cachedBlob, setCachedBlob] = useState<Blob | null>(null);
 
 const getCachedExport = async () => {
   if (cachedBlob) return cachedBlob;
-  
+
   const blob = await exportCanvasToBlob(canvas);
   setCachedBlob(blob);
   return blob;
@@ -350,8 +343,8 @@ AWS S3 Console:
 ```typescript
 // Fast export (smaller file)
 const blob = await exportCanvasToBlob(canvas, {
-  quality: 0.7,      // Reduce quality
-  multiplier: 1      // 1x instead of 2x
+  quality: 0.7, // Reduce quality
+  multiplier: 1, // 1x instead of 2x
 });
 
 // Result: 50-70% smaller, faster upload
@@ -375,7 +368,7 @@ setTimeout(() => {
 // Clean up blob URLs
 const url = URL.createObjectURL(blob);
 // ... use url
-URL.revokeObjectURL(url);  // Important!
+URL.revokeObjectURL(url); // Important!
 ```
 
 ---
@@ -386,8 +379,8 @@ URL.revokeObjectURL(url);  // Important!
 // types.ts
 export interface TemplatePayload {
   title: string;
-  image: string;  // S3 URL
-  source: any;    // Canvas JSON
+  image: string; // S3 URL
+  source: any; // Canvas JSON
   metadata?: {
     width: number;
     height: number;
@@ -412,9 +405,9 @@ if (payload.success) {
     title: payload.title,
     image: payload.image,
     source: payload.source,
-    metadata: payload.metadata
+    metadata: payload.metadata,
   });
-  
+
   console.log('Saved template:', template.id);
 }
 ```
@@ -424,6 +417,7 @@ if (payload.success) {
 ## Troubleshooting
 
 ### Problem: "Canvas not initialized"
+
 ```typescript
 // Make sure canvas is passed correctly
 const canvas = (window as any).__FABRIC_CANVAS__;
@@ -434,6 +428,7 @@ if (!canvas) {
 ```
 
 ### Problem: CORS Error
+
 ```typescript
 // Service handles this automatically
 // But if you see CORS errors in console:
@@ -443,6 +438,7 @@ if (!canvas) {
 ```
 
 ### Problem: S3 Upload Fails
+
 ```typescript
 // Check:
 // 1. AWS credentials valid
@@ -451,15 +447,16 @@ if (!canvas) {
 // 4. File size limits
 
 // Result: Falls back to dataUrl automatically
-console.log('Fallback image:', result.image);  // dataUrl
+console.log('Fallback image:', result.image); // dataUrl
 ```
 
 ### Problem: Large Files
+
 ```typescript
 // Reduce quality/resolution:
 const blob = await exportCanvasToBlob(canvas, {
   quality: 0.6,
-  multiplier: 1
+  multiplier: 1,
 });
 
 // Or compress before upload:
@@ -472,6 +469,7 @@ const blob = await exportCanvasToBlob(canvas, {
 ## Next Steps
 
 1. **Test the export**
+
    ```bash
    npm run dev
    # Open editor and make changes
@@ -479,16 +477,19 @@ const blob = await exportCanvasToBlob(canvas, {
    ```
 
 2. **Verify S3 upload**
+
    - Check AWS S3 console
    - Confirm files appear in bucket
    - Test S3 URLs work
 
 3. **Integrate API save**
+
    - Create backend `/templates/` endpoint
    - Update Editor to send payload
    - Store S3 URLs in database
 
 4. **Add UI feedback**
+
    - Save status indicator
    - Upload progress bar
    - Success/error notifications
