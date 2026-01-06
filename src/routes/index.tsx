@@ -381,37 +381,37 @@ export default function Router() {
           ],
         },
         
-        // Original Routes
-        { path: 'app', element: <GeneralAppPage /> },
-        { path: 'ecommerce', element: <GeneralEcommercePage /> },
-        { path: 'analytics', element: <GeneralAnalyticsPage /> },
-        { path: 'banking', element: <GeneralBankingPage /> },
-        { path: 'booking', element: <GeneralBookingPage /> },
-        { path: 'file', element: <GeneralFilePage /> },
-        {
-          path: 'e-commerce',
-          children: [
-            { element: <Navigate to="/dashboard/e-commerce/shop" replace />, index: true },
-            { path: 'shop', element: <EcommerceShopPage /> },
-            { path: 'product/:name', element: <EcommerceProductDetailsPage /> },
-            { path: 'list', element: <EcommerceProductListPage /> },
-            { path: 'product/new', element: <EcommerceProductCreatePage /> },
-            { path: 'product/:name/edit', element: <EcommerceProductEditPage /> },
-            { path: 'checkout', element: <EcommerceCheckoutPage /> },
-          ],
-        },
-        {
-          path: 'user',
-          children: [
-            { element: <Navigate to="/dashboard/user/list" replace />, index: true },
-            { path: 'profile', element: <UserProfilePage /> },
-            { path: 'cards', element: <UserCardsPage /> },
-            { path: 'list', element: <UsersListPage /> },
-            { path: 'new', element: <UserCreatePage /> },
-            { path: ':name/edit', element: <UserEditPage /> },
-            { path: 'account', element: <UserAccountPage /> },
-          ],
-        },
+        // Original Routes (Commented out - Not needed for Restaurant Management System)
+        // { path: 'app', element: <GeneralAppPage /> },
+        // { path: 'ecommerce', element: <GeneralEcommercePage /> },
+        // { path: 'analytics', element: <GeneralAnalyticsPage /> },
+        // { path: 'banking', element: <GeneralBankingPage /> },
+        // { path: 'booking', element: <GeneralBookingPage /> },
+        // { path: 'file', element: <GeneralFilePage /> },
+        // {
+        //   path: 'e-commerce',
+        //   children: [
+        //     { element: <Navigate to="/dashboard/e-commerce/shop" replace />, index: true },
+        //     { path: 'shop', element: <EcommerceShopPage /> },
+        //     { path: 'product/:name', element: <EcommerceProductDetailsPage /> },
+        //     { path: 'list', element: <EcommerceProductListPage /> },
+        //     { path: 'product/new', element: <EcommerceProductCreatePage /> },
+        //     { path: 'product/:name/edit', element: <EcommerceProductEditPage /> },
+        //     { path: 'checkout', element: <EcommerceCheckoutPage /> },
+        //   ],
+        // },
+        // {
+        //   path: 'user',
+        //   children: [
+        //     { element: <Navigate to="/dashboard/user/list" replace />, index: true },
+        //     { path: 'profile', element: <UserProfilePage /> },
+        //     { path: 'cards', element: <UserCardsPage /> },
+        //     { path: 'list', element: <UsersListPage /> },
+        //     { path: 'new', element: <UserCreatePage /> },
+        //     { path: ':name/edit', element: <UserEditPage /> },
+        //     { path: 'account', element: <UserAccountPage /> },
+        //   ],
+        // },
         {
           path: 'invoice',
           children: [
@@ -422,36 +422,36 @@ export default function Router() {
             { path: 'new', element: <InvoiceCreatePage /> },
           ],
         },
-        {
-          path: 'blog',
-          children: [
-            { element: <Navigate to="/dashboard/blog/posts" replace />, index: true },
-            { path: 'posts', element: <BlogPostsPage /> },
-            { path: 'post/:title', element: <BlogPostPage /> },
-            { path: 'new', element: <BlogNewPostPage /> },
-          ],
-        },
-        { path: 'files-manager', element: <FileManagerPage /> },
-        {
-          path: 'mail',
-          children: [
-            { element: <Navigate to="/dashboard/mail/all" replace />, index: true },
-            { path: 'label/:customLabel', element: <MailPage /> },
-            { path: 'label/:customLabel/:mailId', element: <MailPage /> },
-            { path: ':systemLabel', element: <MailPage /> },
-            { path: ':systemLabel/:mailId', element: <MailPage /> },
-          ],
-        },
-        {
-          path: 'chat',
-          children: [
-            { element: <ChatPage />, index: true },
-            { path: 'new', element: <ChatPage /> },
-            { path: ':conversationKey', element: <ChatPage /> },
-          ],
-        },
-        { path: 'calendar', element: <CalendarPage /> },
-        { path: 'kanban', element: <KanbanPage /> },
+        // {
+        //   path: 'blog',
+        //   children: [
+        //     { element: <Navigate to="/dashboard/blog/posts" replace />, index: true },
+        //     { path: 'posts', element: <BlogPostsPage /> },
+        //     { path: 'post/:title', element: <BlogPostPage /> },
+        //     { path: 'new', element: <BlogNewPostPage /> },
+        //   ],
+        // },
+        // { path: 'files-manager', element: <FileManagerPage /> },
+        // {
+        //   path: 'mail',
+        //   children: [
+        //     { element: <Navigate to="/dashboard/mail/all" replace />, index: true },
+        //     { path: 'label/:customLabel', element: <MailPage /> },
+        //     { path: 'label/:customLabel/:mailId', element: <MailPage /> },
+        //     { path: ':systemLabel', element: <MailPage /> },
+        //     { path: ':systemLabel/:mailId', element: <MailPage /> },
+        //   ],
+        // },
+        // {
+        //   path: 'chat',
+        //   children: [
+        //     { element: <ChatPage />, index: true },
+        //     { path: 'new', element: <ChatPage /> },
+        //     { path: ':conversationKey', element: <ChatPage /> },
+        //   ],
+        // },
+        // { path: 'calendar', element: <CalendarPage /> },
+        // { path: 'kanban', element: <KanbanPage /> },
         { path: 'permission-denied', element: <PermissionDeniedPage /> },
         { path: 'subscription', element: <SubscriptionPage /> },
         { path: 'blank', element: <BlankPage /> },
@@ -469,7 +469,8 @@ export default function Router() {
         { path: 'about-us', element: <AboutPage /> },
         { path: 'contact-us', element: <Contact /> },
         { path: 'faqs', element: <FaqsPage /> },
-        // Demo Components
+        // Demo Components (Commented out)
+        /*
         {
           path: 'components',
           children: [
@@ -547,6 +548,7 @@ export default function Router() {
             },
           ],
         },
+        */
       ],
     },
     {

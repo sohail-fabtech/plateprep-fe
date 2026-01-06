@@ -1,5 +1,5 @@
 // routes
-import { PATH_AUTH, PATH_DOCS, PATH_PAGE } from '../../../routes/paths';
+import { PATH_AUTH, PATH_PAGE } from '../../../routes/paths';
 // config
 import { PATH_AFTER_LOGIN } from '../../../config-global';
 // components
@@ -14,54 +14,44 @@ const navConfig = [
     path: '/',
   },
   {
-    title: 'Components',
-    icon: <Iconify icon="ic:round-grain" />,
-    path: PATH_PAGE.components,
-  },
-  {
-    title: 'Pages',
+    title: 'Features',
     path: '/pages',
-    icon: <Iconify icon="eva:file-fill" />,
+    icon: <Iconify icon="eva:star-fill" />,
     children: [
       {
-        subheader: 'Other',
+        subheader: 'Restaurant Management',
         items: [
-          { title: 'About us', path: PATH_PAGE.about },
-          { title: 'Contact us', path: PATH_PAGE.contact },
-          { title: 'FAQs', path: PATH_PAGE.faqs },
-          { title: 'Pricing', path: PATH_PAGE.pricing },
-          { title: 'Payment', path: PATH_PAGE.payment },
-          { title: 'Maintenance', path: PATH_PAGE.maintenance },
-          { title: 'Coming Soon', path: PATH_PAGE.comingSoon },
+          { title: 'Recipe Management', path: PATH_AFTER_LOGIN },
+          { title: 'Wine Inventory', path: PATH_AFTER_LOGIN },
+          { title: 'Task Management', path: PATH_AFTER_LOGIN },
+          { title: 'Scheduling', path: PATH_AFTER_LOGIN },
+          { title: 'Multi-Location Support', path: PATH_AFTER_LOGIN },
         ],
       },
       {
-        subheader: 'Authentication',
+        subheader: 'Team Collaboration',
         items: [
-          { title: 'Login', path: PATH_AUTH.loginUnprotected },
-          { title: 'Register', path: PATH_AUTH.registerUnprotected },
-          { title: 'Reset password', path: PATH_AUTH.resetPassword },
-          { title: 'Verify code', path: PATH_AUTH.verify },
+          { title: 'User Management', path: PATH_AFTER_LOGIN },
+          { title: 'Role-Based Access', path: PATH_AFTER_LOGIN },
+          { title: 'Templates & Guides', path: PATH_AFTER_LOGIN },
         ],
-      },
-      {
-        subheader: 'Error',
-        items: [
-          { title: 'Page 403', path: PATH_PAGE.page403 },
-          { title: 'Page 404', path: PATH_PAGE.page404 },
-          { title: 'Page 500', path: PATH_PAGE.page500 },
-        ],
-      },
-      {
-        subheader: 'Dashboard',
-        items: [{ title: 'Dashboard', path: PATH_AFTER_LOGIN }],
       },
     ],
   },
   {
-    title: 'Documentation',
-    icon: <Iconify icon="eva:book-open-fill" />,
-    path: PATH_DOCS.root,
+    title: 'Pricing',
+    icon: <Iconify icon="eva:pricetags-fill" />,
+    path: PATH_PAGE.pricing,
+  },
+  {
+    title: 'Contact',
+    icon: <Iconify icon="eva:email-fill" />,
+    path: PATH_PAGE.contact,
+  },
+  {
+    title: 'Login',
+    icon: <Iconify icon="eva:person-fill" />,
+    path: PATH_AUTH.login,
   },
 ];
 
