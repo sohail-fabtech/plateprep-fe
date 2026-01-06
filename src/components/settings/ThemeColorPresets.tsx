@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { alpha, ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 //
 import { useSettingsContext } from './SettingsContext';
+import { navyPreset } from './presets';
 
 // ----------------------------------------------------------------------
 
@@ -16,16 +17,18 @@ export default function ThemeColorPresets({ children }: Props) {
 
   const { presetsColor } = useSettingsContext();
 
+  const safePreset = presetsColor || navyPreset;
+
   const themeOptions = useMemo(
     () => ({
       palette: {
-        primary: presetsColor,
+        primary: safePreset,
       },
       customShadows: {
-        primary: `0 8px 16px 0 ${alpha(presetsColor.main, 0.24)}`,
+        primary: `0 8px 16px 0 ${alpha(safePreset.main, 0.24)}`,
       },
     }),
-    [presetsColor]
+    [safePreset]
   );
 
   const theme = createTheme(merge(outerTheme, themeOptions));

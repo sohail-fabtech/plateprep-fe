@@ -6,7 +6,7 @@ import localStorageAvailable from '../../utils/localStorageAvailable';
 //
 import { defaultSettings } from './config-setting';
 import { SettingsContextProps } from './types';
-import { defaultPreset, getPresets, presetsOption } from './presets';
+import { getPresets, presetsOption, navyPreset } from './presets';
 
 // ----------------------------------------------------------------------
 
@@ -27,7 +27,7 @@ const initialState: SettingsContextProps = {
   onChangeContrast: () => {},
   // Color
   onChangeColorPresets: () => {},
-  presetsColor: defaultPreset,
+  presetsColor: navyPreset,
   presetsOption: [],
   // Stretch
   onToggleStretch: () => {},
@@ -174,7 +174,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       // Color
       onChangeColorPresets,
       presetsOption,
-      presetsColor: getPresets(settings.themeColorPresets),
+      presetsColor: getPresets(settings.themeColorPresets) || navyPreset,
       // Reset
       onResetSetting,
     }),

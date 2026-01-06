@@ -8,6 +8,16 @@ import { ThemeColorPresetsValue } from './types';
 const themePalette = palette('light');
 
 export const presets = [
+  // NAVY
+  {
+    name: 'navy',
+    lighter: '#C6D3E3',
+    light: '#4B5F78',
+    main: '#072241',
+    dark: '#04162C',
+    darker: '#020C18',
+    contrastText: '#FFFFFF',
+  },
   // DEFAULT
   {
     name: 'default',
@@ -65,12 +75,13 @@ export const presets = [
   },
 ];
 
-export const defaultPreset = presets[0];
-export const cyanPreset = presets[1];
-export const purplePreset = presets[2];
-export const bluePreset = presets[3];
-export const orangePreset = presets[4];
-export const redPreset = presets[5];
+export const navyPreset = presets[0];
+export const defaultPreset = presets[1];
+export const cyanPreset = presets[2];
+export const purplePreset = presets[3];
+export const bluePreset = presets[4];
+export const orangePreset = presets[5];
+export const redPreset = presets[6];
 
 export const presetsOption = presets.map((color) => ({
   name: color.name,
@@ -79,6 +90,7 @@ export const presetsOption = presets.map((color) => ({
 
 export function getPresets(key: ThemeColorPresetsValue) {
   return {
+    navy: navyPreset,
     default: defaultPreset,
     cyan: cyanPreset,
     purple: purplePreset,

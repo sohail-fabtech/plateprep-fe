@@ -14,7 +14,14 @@ export type ThemeModeValue = 'light' | 'dark';
 export type ThemeDirectionValue = 'rtl' | 'ltr';
 export type ThemeContrastValue = 'default' | 'bold';
 export type ThemeLayoutValue = 'vertical' | 'horizontal' | 'mini';
-export type ThemeColorPresetsValue = 'default' | 'cyan' | 'purple' | 'blue' | 'orange' | 'red';
+export type ThemeColorPresetsValue =
+  | 'navy'
+  | 'default'
+  | 'cyan'
+  | 'purple'
+  | 'blue'
+  | 'orange'
+  | 'red';
 export type ThemeStretchValue = boolean;
 
 export type SettingsValueProps = {
