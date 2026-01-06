@@ -14,6 +14,7 @@ import {
 // components
 import Iconify from '../../../../components/iconify';
 import MenuPopover from '../../../../components/menu-popover';
+import BranchSelect from '../../../../components/branch-select/BranchSelect';
 
 // ----------------------------------------------------------------------
 
@@ -22,22 +23,22 @@ type Props = {
   filterWineType: string;
   filterRegion: string;
   filterStockStatus: string;
-  filterLocation: string;
+  filterLocation: string | number | '';
   isFiltered: boolean;
   optionsWineType: string[];
   optionsRegion: string[];
   optionsStockStatus: string[];
-  optionsLocation: string[];
   onResetFilter: VoidFunction;
   onFilterName: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterWineType: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterRegion: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onFilterStockStatus: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onFilterLocation: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onFilterLocation?: ((event: React.ChangeEvent<HTMLInputElement>) => void) | undefined;
   columnVisibility: Record<string, boolean>;
   onToggleColumn: (columnId: string) => void;
   tableHead: { id: string; label?: string; tooltip?: string }[];
   formInputSx?: object;
+  showBranchFilter?: boolean;
 };
 
 export default function WineInventoryTableToolbar({
@@ -50,7 +51,6 @@ export default function WineInventoryTableToolbar({
   optionsWineType,
   optionsRegion,
   optionsStockStatus,
-  optionsLocation,
   onFilterName,
   onFilterWineType,
   onFilterRegion,
@@ -61,6 +61,7 @@ export default function WineInventoryTableToolbar({
   onToggleColumn,
   tableHead,
   formInputSx,
+  showBranchFilter = false,
 }: Props) {
   const [openPopover, setOpenPopover] = useState<HTMLElement | null>(null);
 
@@ -195,41 +196,16 @@ export default function WineInventoryTableToolbar({
           ))}
         </TextField>
 
-        <TextField
-          fullWidth
-          select
-          label="Location"
-          value={filterLocation}
-          onChange={onFilterLocation}
-          SelectProps={{
-            MenuProps: {
-              PaperProps: {
-                sx: {
-                  maxHeight: 260,
-                },
-              },
-            },
-          }}
-          sx={{
-            maxWidth: { sm: 200 },
-            ...formInputSx,
-          }}
-        >
-          {optionsLocation.map((option) => (
-            <MenuItem
-              key={option}
-              value={option}
-              sx={{
-                mx: 1,
-                borderRadius: 0.75,
-                typography: 'body2',
-                fontSize: { xs: '0.8125rem', sm: '0.875rem', md: '0.9375rem' },
-              }}
-            >
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
+        {showBranchFilter && onFilterLocation && (
+          <Box sx={{ maxWidth: { sm: 200 }, width: '100%' }}>
+            <BranchSelect
+              value={filterLocation || ''}
+              onChange={onFilterLocation}
+              label="Location"
+              formInputSx={formInputSx}
+            />
+          </Box>
+        )}
 
         <TextField
           fullWidth
@@ -335,4 +311,3 @@ export default function WineInventoryTableToolbar({
     </>
   );
 }
-

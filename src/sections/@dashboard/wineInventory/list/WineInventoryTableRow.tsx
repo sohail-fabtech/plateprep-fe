@@ -11,6 +11,8 @@ import {
   Stack,
   Divider,
   Button,
+  CircularProgress,
+  useTheme,
 } from '@mui/material';
 // routes
 import { PATH_DASHBOARD } from '../../../../routes/paths';
@@ -31,9 +33,11 @@ type Props = {
   onEditRow: VoidFunction;
   onDeleteRow: VoidFunction;
   onArchiveRow: VoidFunction;
+  onRestoreRow?: VoidFunction;
   filterStatus: string;
   columnVisibility: Record<string, boolean>;
   dense?: boolean;
+  isLoading?: boolean;
 };
 
 export default function WineInventoryTableRow({
@@ -42,9 +46,11 @@ export default function WineInventoryTableRow({
   onEditRow,
   onDeleteRow,
   onArchiveRow,
+  onRestoreRow,
   filterStatus,
   columnVisibility,
   dense = false,
+  isLoading = false,
 }: Props) {
   const {
     id,
@@ -62,7 +68,9 @@ export default function WineInventoryTableRow({
 
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [openArchiveConfirm, setOpenArchiveConfirm] = useState(false);
+  const [openRestoreConfirm, setOpenRestoreConfirm] = useState(false);
   const [openPopover, setOpenPopover] = useState<HTMLElement | null>(null);
+  const theme = useTheme();
 
   const handleOpenDeleteConfirm = () => {
     setOpenDeleteConfirm(true);
@@ -80,6 +88,15 @@ export default function WineInventoryTableRow({
 
   const handleCloseArchiveConfirm = () => {
     setOpenArchiveConfirm(false);
+  };
+
+  const handleOpenRestoreConfirm = () => {
+    setOpenRestoreConfirm(true);
+    handleClosePopover();
+  };
+
+  const handleCloseRestoreConfirm = () => {
+    setOpenRestoreConfirm(false);
   };
 
   const handleOpenPopover = (event: React.MouseEvent<HTMLElement>) => {
@@ -128,7 +145,17 @@ export default function WineInventoryTableRow({
     handleCloseArchiveConfirm();
   };
 
+  const handleConfirmRestore = () => {
+    if (onRestoreRow) {
+      onRestoreRow();
+    }
+    handleCloseRestoreConfirm();
+  };
+
+  const isArchived = isDeleted;
+  const isInAllTab = filterStatus === 'all';
   const showArchive = filterStatus !== 'archived' && !isDeleted;
+  const showRestore = filterStatus === 'archived' && isDeleted && !!onRestoreRow;
   const showDelete = filterStatus === 'archived' || isDeleted;
 
   return (
@@ -317,21 +344,55 @@ export default function WineInventoryTableRow({
 
         <Divider sx={{ borderStyle: 'dashed' }} />
 
-        {showArchive && (
-          <MenuItem
-            onClick={handleOpenArchiveConfirm}
-            sx={{ color: 'text.secondary' }}
-          >
-            <Iconify icon="eva:archive-fill" />
-            Archive
-          </MenuItem>
-        )}
-
-        {showDelete && (
+        {isArchived && isInAllTab ? (
           <MenuItem onClick={handleOpenDeleteConfirm} sx={{ color: 'error.main' }}>
-            <Iconify icon="eva:trash-2-outline" />
+            <Iconify icon="eva:trash-2-outline" sx={{ mr: 1 }} />
             Delete
           </MenuItem>
+        ) : isArchived ? (
+          <>
+            {showRestore && (
+              <MenuItem
+                onClick={handleOpenRestoreConfirm}
+                sx={{
+                  color: 'success.main',
+                  fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                  py: 1,
+                }}
+              >
+                <Iconify icon="eva:refresh-fill" sx={{ mr: 1 }} />
+                Restore
+              </MenuItem>
+            )}
+
+            {showDelete && (
+              <MenuItem
+                onClick={handleOpenDeleteConfirm}
+                sx={{
+                  color: 'error.main',
+                  fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                  py: 1,
+                }}
+              >
+                <Iconify icon="eva:trash-2-outline" sx={{ mr: 1 }} />
+                Delete
+              </MenuItem>
+            )}
+          </>
+        ) : (
+          showArchive && (
+            <MenuItem
+              onClick={handleOpenArchiveConfirm}
+              sx={{
+                color: 'text.secondary',
+                fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                py: 1,
+              }}
+            >
+              <Iconify icon="eva:archive-fill" sx={{ mr: 1 }} />
+              Archive
+            </MenuItem>
+          )
         )}
       </MenuPopover>
 
@@ -341,8 +402,8 @@ export default function WineInventoryTableRow({
         title="Archive Wine"
         content={
           <>
-            Are you sure you want to archive <strong> {wineName}</strong>? This action can be
-            undone later.
+            Are you sure you want to archive <strong> {wineName}</strong>? This action can be undone
+            later.
           </>
         }
         action={
@@ -350,15 +411,56 @@ export default function WineInventoryTableRow({
             variant="contained"
             color="warning"
             onClick={handleConfirmArchive}
+            startIcon={
+              isLoading ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : undefined
+            }
             sx={{
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+              bgcolor: theme.palette.grey[500],
+              color: '#fff',
               boxShadow: 'none',
               '&:hover': {
+                bgcolor: isLoading ? theme.palette.grey[500] : theme.palette.grey[600],
                 boxShadow: 'none',
-                bgcolor: 'warning.darker',
               },
             }}
           >
-            Archive
+            {isLoading ? 'Archiving...' : 'Archive'}
+          </Button>
+        }
+      />
+
+      <ConfirmDialog
+        open={openRestoreConfirm}
+        onClose={handleCloseRestoreConfirm}
+        title="Restore Wine"
+        content={
+          <>
+            Are you sure you want to restore <strong>{wineName}</strong>? This will make it active
+            again.
+          </>
+        }
+        action={
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleConfirmRestore}
+            disabled={isLoading}
+            startIcon={
+              isLoading ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : undefined
+            }
+            sx={{
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+              bgcolor: theme.palette.grey[500],
+              color: '#fff',
+              boxShadow: 'none',
+              '&:hover': {
+                bgcolor: isLoading ? theme.palette.grey[500] : theme.palette.grey[600],
+                boxShadow: 'none',
+              },
+            }}
+          >
+            {isLoading ? 'Restoring...' : 'Restore'}
           </Button>
         }
       />
@@ -369,7 +471,7 @@ export default function WineInventoryTableRow({
         title="Delete Wine"
         content={
           <>
-            Are you sure you want to delete <strong> {wineName}</strong>? This action cannot be
+            Are you sure you want to delete <strong>{wineName}</strong>? This action cannot be
             undone.
           </>
         }
@@ -378,19 +480,25 @@ export default function WineInventoryTableRow({
             variant="contained"
             color="error"
             onClick={handleConfirmDelete}
+            disabled={isLoading}
+            startIcon={
+              isLoading ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : undefined
+            }
             sx={{
+              fontSize: { xs: '0.8125rem', md: '0.875rem' },
+              bgcolor: theme.palette.grey[500],
+              color: '#fff',
               boxShadow: 'none',
               '&:hover': {
+                bgcolor: isLoading ? theme.palette.grey[500] : theme.palette.grey[600],
                 boxShadow: 'none',
-                bgcolor: 'error.darker',
               },
             }}
           >
-            Delete
+            {isLoading ? 'Deleting...' : 'Delete'}
           </Button>
         }
       />
     </>
   );
 }
-
