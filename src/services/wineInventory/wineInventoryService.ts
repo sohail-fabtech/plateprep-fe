@@ -3,11 +3,18 @@ import { IWineInventory } from '../../@types/wineInventory';
 import { QueryParams, PaginatedResponse } from '../common/types';
 
 export type WineBottleInventory = {
-  '187.5': number;
-  '375': number;
-  '750': number;
-  '1500': number;
-  '3000': number;
+  '187.5'?: number;
+  '375'?: number;
+  '750'?: number;
+  '1500'?: number;
+  '3000'?: number;
+};
+
+export type InventoryItem = {
+  bottle_size: number;
+  quantity: number | null;
+  purchase_price: number | null;
+  menu_price: number | null;
 };
 
 export interface WineInventoryQueryParams extends QueryParams {
@@ -42,9 +49,10 @@ export type WineInventoryApiRequest = {
   producer?: string | null;
   description?: string | null;
   supplier_name?: string | null;
-  purchase_price?: number | null;
   tags?: string[];
-  inventory?: WineBottleInventory;
+  inventory: InventoryItem[];
+  per_glass_price: number | null;
+  image_url?: string | null;
 };
 
 export interface RestoreWineResponse {
@@ -57,53 +65,21 @@ export interface PermanentlyDeleteWineResponse {
 
 type CreateWineParams = {
   data: WineInventoryApiRequest;
-  imageFile?: File | null;
 };
 
 type UpdateWineParams = {
   id: string | number;
   data: Partial<WineInventoryApiRequest>;
-  imageFile?: File | null;
 };
 
-function buildFormData(payload: WineInventoryApiRequest, imageFile?: File | null) {
-  const formData = new FormData();
-
-  Object.entries(payload).forEach(([key, value]) => {
-    if (value === undefined || value === null) return;
-
-    if (key === 'inventory' || key === 'tags') {
-      formData.append(key, JSON.stringify(value));
-    } else {
-      formData.append(key, value as any);
-    }
-  });
-
-  if (imageFile) {
-    formData.append('image', imageFile);
-  }
-
-  return formData;
-}
-
-export async function createWineInventory({ data, imageFile }: CreateWineParams) {
-  const hasImage = !!imageFile;
-  const payload = hasImage ? buildFormData(data, imageFile) : data;
-
-  const response = await axiosInstance.post('/custom-wine/', payload, {
-    headers: hasImage ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+export async function createWineInventory({ data }: CreateWineParams) {
+  const response = await axiosInstance.post('/custom-wine/', data);
 
   return response.data;
 }
 
-export async function updateWineInventory({ id, data, imageFile }: UpdateWineParams) {
-  const hasImage = !!imageFile;
-  const payload = hasImage ? buildFormData(data as WineInventoryApiRequest, imageFile) : data;
-
-  const response = await axiosInstance.patch(`/custom-wine/${id}/`, payload, {
-    headers: hasImage ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+export async function updateWineInventory({ id, data }: UpdateWineParams) {
+  const response = await axiosInstance.patch(`/custom-wine/${id}/`, data);
 
   return response.data;
 }
@@ -112,8 +88,8 @@ export async function updateWineInventory({ id, data, imageFile }: UpdateWinePar
  * Transform API response to IWineInventory format
  */
 function transformApiResponseToWineInventory(apiResponse: any): IWineInventory {
-  // Parse inventory object (could be string or object)
-  let inventory: IWineInventory['inventory'] = {
+  // Parse inventory from array format to object format
+  const inventory: IWineInventory['inventory'] = {
     '187.5': 0,
     '375': 0,
     '750': 0,
@@ -121,28 +97,20 @@ function transformApiResponseToWineInventory(apiResponse: any): IWineInventory {
     '3000': 0,
   };
 
-  if (apiResponse.inventory) {
-    if (typeof apiResponse.inventory === 'string') {
-      try {
-        inventory = JSON.parse(apiResponse.inventory);
-      } catch {
-        inventory = {
-          '187.5': 0,
-          '375': 0,
-          '750': 0,
-          '1500': 0,
-          '3000': 0,
-        };
+  const purchasePrices: IWineInventory['purchasePrices'] = {};
+  const menuPrices: IWineInventory['menuPrices'] = {};
+
+  if (Array.isArray(apiResponse.inventory)) {
+    apiResponse.inventory.forEach((item: InventoryItem) => {
+      const key = String(item.bottle_size) as '187.5' | '375' | '750' | '1500' | '3000';
+      inventory[key] = item.quantity ?? 0;
+      if (item.purchase_price !== null) {
+        purchasePrices[key] = item.purchase_price;
       }
-    } else {
-      inventory = {
-        '187.5': apiResponse.inventory['187.5'] || 0,
-        '375': apiResponse.inventory['375'] || 0,
-        '750': apiResponse.inventory['750'] || 0,
-        '1500': apiResponse.inventory['1500'] || 0,
-        '3000': apiResponse.inventory['3000'] || 0,
-      };
-    }
+      if (item.menu_price !== null) {
+        menuPrices[key] = item.menu_price;
+      }
+    });
   }
 
   // Calculate total stock from inventory
@@ -185,14 +153,14 @@ function transformApiResponseToWineInventory(apiResponse: any): IWineInventory {
     }
   }
 
-  // Parse purchase_price - can be string or number
-  let purchasePrice: number | undefined = undefined;
-  if (apiResponse.purchase_price !== null && apiResponse.purchase_price !== undefined) {
-    if (typeof apiResponse.purchase_price === 'string') {
-      const parsed = parseFloat(apiResponse.purchase_price);
-      purchasePrice = isNaN(parsed) ? undefined : parsed;
-    } else if (typeof apiResponse.purchase_price === 'number') {
-      purchasePrice = apiResponse.purchase_price;
+  // Parse per_glass_price - can be string or number
+  let perGlassPrice: number | undefined = undefined;
+  if (apiResponse.per_glass_price !== null && apiResponse.per_glass_price !== undefined) {
+    if (typeof apiResponse.per_glass_price === 'string') {
+      const parsed = parseFloat(apiResponse.per_glass_price);
+      perGlassPrice = isNaN(parsed) ? undefined : parsed;
+    } else if (typeof apiResponse.per_glass_price === 'number') {
+      perGlassPrice = apiResponse.per_glass_price;
     }
   }
 
@@ -206,14 +174,16 @@ function transformApiResponseToWineInventory(apiResponse: any): IWineInventory {
     wineType: apiResponse.wine_type || 'Red',
     wineProfile: apiResponse.wine_profile || 'Dry – Ripe Fruits & Spices',
     description: apiResponse.description || undefined,
-    imageUrl: apiResponse.image || null,
+    imageUrl: apiResponse.image_url || apiResponse.image || null,
     tags,
     inventory,
+    purchasePrices: Object.keys(purchasePrices).length > 0 ? purchasePrices : undefined,
+    menuPrices: Object.keys(menuPrices).length > 0 ? menuPrices : undefined,
+    perGlassPrice,
     totalStock: stock,
     stockStatus,
     minStockLevel: apiResponse.min_stock_level || 0,
     maxStockLevel: apiResponse.max_stock_level || 0,
-    purchasePrice,
     supplierName: apiResponse.supplier_name || undefined,
     location,
     locationId,

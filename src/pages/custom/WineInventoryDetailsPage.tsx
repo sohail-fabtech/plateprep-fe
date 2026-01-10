@@ -583,35 +583,6 @@ export default function WineInventoryDetailsPage() {
             </Typography>
             <Typography sx={{ color: 'text.secondary' }}>Total Bottles</Typography>
           </Card>
-
-          <Card
-            sx={{
-              p: 3,
-              textAlign: 'center',
-              bgcolor: alpha(theme.palette.primary.main, 0.08),
-              border: `1px solid ${alpha(theme.palette.primary.main, 0.16)}`,
-            }}
-          >
-            <Stack
-              alignItems="center"
-              justifyContent="center"
-              sx={{
-                width: 64,
-                height: 64,
-                mx: 'auto',
-                borderRadius: '50%',
-                color: 'primary.main',
-                bgcolor: alpha(theme.palette.primary.main, 0.08),
-                mb: 2,
-              }}
-            >
-              <Iconify icon="eva:credit-card-outline" width={36} />
-            </Stack>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              ${wineData.purchasePrice?.toFixed(2) || '0.00'}
-            </Typography>
-            <Typography sx={{ color: 'text.secondary' }}>Purchase Price</Typography>
-          </Card>
         </Box>
 
         {/* Description - Editable */}
@@ -816,36 +787,6 @@ export default function WineInventoryDetailsPage() {
           </Stack>
           <Divider sx={{ mb: 3 }} />
           <Grid container spacing={2}>
-            {wineData.purchasePrice !== undefined && (
-              <Grid item xs={12} sm={6} md={4}>
-                <Card
-                  sx={{
-                    p: 2.5,
-                    bgcolor: alpha(theme.palette.success.main, 0.04),
-                    border: `1px solid ${alpha(theme.palette.success.main, 0.12)}`,
-                  }}
-                >
-                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-                    <Iconify icon="eva:credit-card-outline" width={20} sx={{ color: 'success.main' }} />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: 'text.secondary',
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Purchase Price
-                    </Typography>
-                  </Stack>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
-                    ${wineData.purchasePrice.toFixed(2)}
-                  </Typography>
-                </Card>
-              </Grid>
-            )}
-
             {wineData.supplierName && (
               <Grid item xs={12} sm={6} md={4}>
                 <Card

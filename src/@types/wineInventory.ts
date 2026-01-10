@@ -36,11 +36,25 @@ export type IWineInventory = {
     '1500'?: number; // Magnum
     '3000'?: number; // Jeroboam
   };
+  purchasePrices?: {
+    '187.5'?: number;
+    '375'?: number;
+    '750'?: number;
+    '1500'?: number;
+    '3000'?: number;
+  };
+  menuPrices?: {
+    '187.5'?: number;
+    '375'?: number;
+    '750'?: number;
+    '1500'?: number;
+    '3000'?: number;
+  };
+  perGlassPrice?: number;
   totalStock: number;
   stockStatus: IStockStatus;
   minStockLevel: number;
   maxStockLevel: number;
-  purchasePrice?: number;
   supplierName?: string;
   location: string;
   locationId: string;
@@ -61,17 +75,29 @@ export type IWineInventoryForm = {
   wineType: IWineType;
   wineProfile: IWineProfile;
   tags: string[];
-  inventory: {
-    '187.5'?: number | null;
-    '375'?: number | null;
-    '750'?: number | null;
-    '1500'?: number | null;
-    '3000'?: number | null;
-  };
+  // Bottle quantities
+  bottle187: number | null;
+  bottle375: number | null;
+  bottle750: number | null;
+  bottle1500: number | null;
+  bottle3000: number | null;
+  // Purchase prices per bottle size
+  purchasePrice187: number | null;
+  purchasePrice375: number | null;
+  purchasePrice750: number | null;
+  purchasePrice1500: number | null;
+  purchasePrice3000: number | null;
+  // Menu prices per bottle size
+  menuPrice187: number | null;
+  menuPrice375: number | null;
+  menuPrice750: number | null;
+  menuPrice1500: number | null;
+  menuPrice3000: number | null;
+  // Per glass price
+  perGlassPrice: number | null;
   minStockLevel: number;
   maxStockLevel: number;
   stock: number;
-  purchasePrice?: number | null;
   supplierName?: string | null;
   locationId: string;
 };

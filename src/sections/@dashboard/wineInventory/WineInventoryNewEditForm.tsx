@@ -46,6 +46,8 @@ import {
   REGION_OPTIONS,
 } from '../../../constants/wineInventoryOptions';
 import { ProcessingDialog } from 'src/components/processing-dialog';
+// services
+import { uploadFileWithPresignedUrl, generateFileKey } from '../../../services/presignedUrl/presignedUrlService';
 
 // ----------------------------------------------------------------------
 
@@ -56,13 +58,78 @@ type Props = {
 
 // ----------------------------------------------------------------------
 
-const BOTTLE_SIZE_LABELS = {
-  '187.5': 'Split / Piccolo (187.5ml)',
-  '375': 'Demi / Half (375ml)',
-  '750': 'Standard (750ml)',
-  '1500': 'Magnum (1.5L)',
-  '3000': 'Jeroboam (3L)',
+type InventoryItem = {
+  bottle_size: number;
+  quantity: number | null;
+  purchase_price: number | null;
+  menu_price: number | null;
 };
+
+type WineInventoryApiPayload = {
+  wine_name: string;
+  producer: string | null;
+  vintage: number | null;
+  country: string;
+  region: string;
+  wine_type: string;
+  wine_profile: string;
+  description: string | null;
+  tags: string[];
+  inventory: InventoryItem[];
+  per_glass_price: number | null;
+  stock: number;
+  min_stock_level: number;
+  max_stock_level: number;
+  supplier_name: string | null;
+  branch: number | null;
+  image_url?: string | null;
+};
+
+// Bottle size configuration - Enterprise-level approach
+const BOTTLE_SIZES = [
+  { key: '187.5', label: 'Split / Piccolo (187.5ml)', quantityField: 'bottle187', purchaseField: 'purchasePrice187', menuField: 'menuPrice187' },
+  { key: '375', label: 'Demi / Half (375ml)', quantityField: 'bottle375', purchaseField: 'purchasePrice375', menuField: 'menuPrice375' },
+  { key: '750', label: 'Standard (750ml)', quantityField: 'bottle750', purchaseField: 'purchasePrice750', menuField: 'menuPrice750' },
+  { key: '1500', label: 'Magnum (1.5L)', quantityField: 'bottle1500', purchaseField: 'purchasePrice1500', menuField: 'menuPrice1500' },
+  { key: '3000', label: 'Jeroboam (3L)', quantityField: 'bottle3000', purchaseField: 'purchasePrice3000', menuField: 'menuPrice3000' },
+] as const;
+
+function transformToPayload(data: IWineInventoryForm, branchIdForApi: number | null): WineInventoryApiPayload {
+  const regionValue = data.region === 'Other' ? data.regionOther || '' : data.region;
+
+  const parseNumberOrNull = (value: unknown) => {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    return Number.isNaN(num) ? null : num;
+  };
+
+  // Enterprise-level: Dynamic inventory array construction
+  const inventory: InventoryItem[] = BOTTLE_SIZES.map(({ key, quantityField, purchaseField, menuField }) => ({
+    bottle_size: Number(key),
+    quantity: parseNumberOrNull(data[quantityField as keyof IWineInventoryForm]),
+    purchase_price: parseNumberOrNull(data[purchaseField as keyof IWineInventoryForm]),
+    menu_price: parseNumberOrNull(data[menuField as keyof IWineInventoryForm]),
+  }));
+
+  return {
+    wine_name: data.wineName,
+    producer: data.producer || null,
+    vintage: parseNumberOrNull(data.vintage),
+    country: data.country,
+    region: regionValue,
+    wine_type: data.wineType,
+    wine_profile: data.wineProfile,
+    description: data.description || null,
+    tags: data.tags || [],
+    inventory,
+    per_glass_price: parseNumberOrNull(data.perGlassPrice),
+    stock: Number(data.stock || 0),
+    min_stock_level: Number(data.minStockLevel),
+    max_stock_level: Number(data.maxStockLevel),
+    supplier_name: data.supplierName || null,
+    branch: branchIdForApi,
+  };
+}
 
 // Consistent Form Styling System (Matching Recipe, Task & Restaurant Forms)
 const FORM_INPUT_SX = {
@@ -104,25 +171,26 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
       wineType: currentWine?.wineType || 'Red',
       wineProfile: currentWine?.wineProfile || 'Dry – Ripe Fruits & Spices',
       tags: currentWine?.tags || [],
-      inventory: currentWine?.inventory
-        ? {
-            '187.5': currentWine.inventory['187.5'] ?? null,
-            '375': currentWine.inventory['375'] ?? null,
-            '750': currentWine.inventory['750'] ?? null,
-            '1500': currentWine.inventory['1500'] ?? null,
-            '3000': currentWine.inventory['3000'] ?? null,
-          }
-        : {
-            '187.5': null,
-            '375': null,
-            '750': null,
-            '1500': null,
-            '3000': null,
-          },
+      // Enterprise-level: Dynamic bottle size defaults
+      bottle187: currentWine?.inventory?.['187.5'] ?? null,
+      bottle375: currentWine?.inventory?.['375'] ?? null,
+      bottle750: currentWine?.inventory?.['750'] ?? null,
+      bottle1500: currentWine?.inventory?.['1500'] ?? null,
+      bottle3000: currentWine?.inventory?.['3000'] ?? null,
+      purchasePrice187: currentWine?.purchasePrices?.['187.5'] ?? null,
+      purchasePrice375: currentWine?.purchasePrices?.['375'] ?? null,
+      purchasePrice750: currentWine?.purchasePrices?.['750'] ?? null,
+      purchasePrice1500: currentWine?.purchasePrices?.['1500'] ?? null,
+      purchasePrice3000: currentWine?.purchasePrices?.['3000'] ?? null,
+      menuPrice187: currentWine?.menuPrices?.['187.5'] ?? null,
+      menuPrice375: currentWine?.menuPrices?.['375'] ?? null,
+      menuPrice750: currentWine?.menuPrices?.['750'] ?? null,
+      menuPrice1500: currentWine?.menuPrices?.['1500'] ?? null,
+      menuPrice3000: currentWine?.menuPrices?.['3000'] ?? null,
+      perGlassPrice: currentWine?.perGlassPrice ?? null,
       minStockLevel: currentWine?.minStockLevel || 0,
       maxStockLevel: currentWine?.maxStockLevel || 0,
       stock: currentWine?.totalStock || 0,
-      purchasePrice: currentWine?.purchasePrice || null,
       supplierName: currentWine?.supplierName || null,
       locationId: initialBranchId ? String(initialBranchId) : currentWine?.locationId || '',
     };
@@ -184,6 +252,29 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
     });
 
     try {
+      let uploadedImageUrl: string | null = null;
+
+      // Upload image file to S3 if new file selected
+      if (imageFileRef.current) {
+        setProcessingDialog({
+          open: true,
+          state: 'processing',
+          message: 'Uploading image...',
+        });
+        const fileKey = generateFileKey('wine_images', imageFileRef.current.name);
+        uploadedImageUrl = await uploadFileWithPresignedUrl(imageFileRef.current, fileKey, imageFileRef.current.type);
+      } else if (data.image && data.image.startsWith('http')) {
+        // Use existing image URL if it's already an HTTP URL
+        uploadedImageUrl = data.image;
+      }
+
+      // Update processing message
+      setProcessingDialog({
+        open: true,
+        state: 'processing',
+        message: isEdit ? 'Updating wine...' : 'Creating wine...',
+      });
+
       // Determine location ID - use branchIdForApi from hook if available, otherwise use form value
       let locationIdForApi: number | null = null;
       if (branchIdForApi) {
@@ -198,47 +289,22 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
         locationIdForApi = locationValue;
       }
 
-      const regionValue = data.region === 'Other' ? data.regionOther || '' : data.region;
+      const apiPayload = transformToPayload(data, locationIdForApi);
 
-      const inventory = {
-        '187.5': data.inventory['187.5'] || 0,
-        '375': data.inventory['375'] || 0,
-        '750': data.inventory['750'] || 0,
-        '1500': data.inventory['1500'] || 0,
-        '3000': data.inventory['3000'] || 0,
-      };
-
-      // Transform to API payload format
-      const apiPayload = {
-        wine_name: data.wineName,
-        producer: data.producer || null,
-        vintage: data.vintage || null,
-        country: data.country,
-        region: regionValue,
-        wine_type: data.wineType,
-        wine_profile: data.wineProfile,
-        description: data.description || null,
-        tags: data.tags,
-        inventory,
-        stock: data.stock || 0,
-        min_stock_level: data.minStockLevel,
-        max_stock_level: data.maxStockLevel,
-        purchase_price: data.purchasePrice || null,
-        supplier_name: data.supplierName || null,
-        branch: locationIdForApi,
-      };
+      // Add image_url to payload if uploaded
+      if (uploadedImageUrl) {
+        apiPayload.image_url = uploadedImageUrl;
+      }
 
       if (isEdit && currentWine?.id) {
         await updateWineInventory({
           id: currentWine.id,
           data: apiPayload,
-          imageFile: imageFileRef.current,
         });
         enqueueSnackbar('Wine updated successfully!');
       } else {
         await createWineInventory({
           data: apiPayload,
-          imageFile: imageFileRef.current,
         });
         enqueueSnackbar('Wine created successfully!');
       }
@@ -252,6 +318,13 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
         (error as Error)?.message ||
         'Something went wrong!';
       enqueueSnackbar(message, { variant: 'error' });
+
+      // Show error in processing dialog
+      setProcessingDialog({
+        open: true,
+        state: 'error',
+        message,
+      });
     }
   };
 
@@ -264,6 +337,39 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
   const handleImageRemove = () => {
     imageFileRef.current = null;
     setValue('image', null);
+  };
+
+  const handleClear = () => {
+    imageFileRef.current = null;
+
+    // Enterprise-level: Dynamic bottle size clear defaults
+    const bottleClearDefaults: Record<string, null> = {};
+    BOTTLE_SIZES.forEach(({ quantityField, purchaseField, menuField }) => {
+      bottleClearDefaults[quantityField] = null;
+      bottleClearDefaults[purchaseField] = null;
+      bottleClearDefaults[menuField] = null;
+    });
+
+    reset({
+      wineName: '',
+      producer: null,
+      vintage: null,
+      country: '',
+      region: '',
+      regionOther: null,
+      description: null,
+      image: null,
+      wineType: 'Red',
+      wineProfile: 'Dry – Ripe Fruits & Spices',
+      tags: [],
+      ...bottleClearDefaults,
+      perGlassPrice: null,
+      minStockLevel: 0,
+      maxStockLevel: 0,
+      stock: 0,
+      supplierName: null,
+      locationId: initialBranchId ? String(initialBranchId) : '',
+    });
   };
 
   // Check if "Other" is selected for region
@@ -513,7 +619,7 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
           </Card>
         </Grid>
 
-        {/* Inventory - Bottle Sizes & Stock */}
+        {/* Inventory - Bottle Sizes, Pricing & Stock - Enterprise-level dynamic rendering */}
         <Grid item xs={12}>
           <Card sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
             <Typography
@@ -524,28 +630,24 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
                 fontSize: { xs: '0.875rem', sm: '1rem', md: '1.125rem' },
               }}
             >
-              Inventory – Bottle Sizes & Stock
+              Inventory – Bottle Sizes, Pricing & Stock
             </Typography>
 
-            <Grid container spacing={{ xs: 2, md: 3 }}>
-              {Object.entries(BOTTLE_SIZE_LABELS).map(([size, label]) => (
-                <Grid item xs={12} sm={6} md={4} key={size}>
-                  <Controller
-                    name={`inventory.${size}` as any}
-                    control={control}
-                    render={({ field, fieldState: { error } }) => (
-                      <TextField
-                        {...field}
-                        label={label}
+            <Stack spacing={{ xs: 3, md: 4 }}>
+              {/* Dynamic rendering of bottle sizes */}
+              {BOTTLE_SIZES.map(({ key, label, quantityField, purchaseField, menuField }) => (
+                <Box key={key}>
+                  <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>
+                    {label}
+                  </Typography>
+                  <Grid container spacing={{ xs: 2, md: 2 }}>
+                    <Grid item xs={12} sm={4}>
+                      <RHFTextField
+                        name={quantityField}
+                        label="Quantity"
                         type="number"
-                        fullWidth
-                        error={!!error}
-                        helperText={error?.message}
-                        value={field.value !== null && field.value !== undefined ? field.value : ''}
-                        onChange={(e) => {
-                          const value = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                          field.onChange(value);
-                        }}
+                        placeholder="e.g., 0"
+                        sx={FORM_INPUT_SX}
                         InputProps={{
                           inputProps: { min: 0 },
                           startAdornment: (
@@ -554,13 +656,60 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
                             </InputAdornment>
                           ),
                         }}
-                        sx={FORM_INPUT_SX}
                       />
-                    )}
-                  />
-                </Grid>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <RHFTextField
+                        name={purchaseField}
+                        label="Purchase Price"
+                        type="number"
+                        placeholder="e.g., 12.00"
+                        sx={FORM_INPUT_SX}
+                        InputProps={{
+                          inputProps: { min: 0, step: 0.01 },
+                          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <RHFTextField
+                        name={menuField}
+                        label="Menu Price"
+                        type="number"
+                        placeholder="e.g., 18.00"
+                        sx={FORM_INPUT_SX}
+                        InputProps={{
+                          inputProps: { min: 0, step: 0.01 },
+                          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
               ))}
-            </Grid>
+
+              {/* Per Glass Price */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, fontSize: { xs: '0.8125rem', md: '0.875rem' } }}>
+                  Per Glass Pricing
+                </Typography>
+                <Grid container spacing={{ xs: 2, md: 2 }}>
+                  <Grid item xs={12} sm={4}>
+                    <RHFTextField
+                      name="perGlassPrice"
+                      label="Per Glass Price"
+                      type="number"
+                      placeholder="e.g., 8.00"
+                      sx={FORM_INPUT_SX}
+                      InputProps={{
+                        inputProps: { min: 0, step: 0.01 },
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            </Stack>
           </Card>
         </Grid>
 
@@ -654,25 +803,6 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
             </Typography>
 
             <Grid container spacing={{ xs: 2, md: 3 }}>
-              {/* Purchase Price */}
-              <Grid item xs={12} sm={6} md={4}>
-                <RHFTextField
-                  name="purchasePrice"
-                  label="Purchase Price"
-                  type="number"
-                  placeholder="e.g., 22.50"
-                  sx={FORM_INPUT_SX}
-                  InputProps={{
-                    inputProps: { min: 0, step: 0.01 },
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Iconify icon="eva:credit-card-outline" width={20} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-
               {/* Supplier Name */}
               <Grid item xs={12} sm={6} md={4}>
                 <RHFTextField
@@ -754,7 +884,7 @@ export default function WineInventoryNewEditForm({ isEdit = false, currentWine }
             <Button
               variant="outlined"
               size="large"
-              onClick={() => reset()}
+              onClick={handleClear}
               sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 120 } }}
             >
               Clear
