@@ -139,6 +139,20 @@ export default function WineInventoryTableSkeleton({
         </TableCell>
       )}
 
+      {columnVisibility.archiveStatus && (
+        <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
+          <Skeleton
+            variant="rectangular"
+            width={80}
+            height={24}
+            sx={{
+              borderRadius: 1,
+              fontSize: { xs: '0.6875rem', md: '0.75rem' },
+            }}
+          />
+        </TableCell>
+      )}
+
       <TableCell align="right" sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
         <Skeleton variant="circular" width={dense ? 36 : 40} height={dense ? 36 : 40} />
       </TableCell>

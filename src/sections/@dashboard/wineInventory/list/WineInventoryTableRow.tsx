@@ -100,6 +100,7 @@ export default function WineInventoryTableRow({
   };
 
   const handleOpenPopover = (event: React.MouseEvent<HTMLElement>) => {
+    if (shouldDisableMenu) return; // Prevent opening menu if deleted in "All" tab
     setOpenPopover(event.currentTarget);
   };
 
@@ -156,7 +157,9 @@ export default function WineInventoryTableRow({
   const isInAllTab = filterStatus === 'all';
   const showArchive = filterStatus !== 'archived' && !isDeleted;
   const showRestore = filterStatus === 'archived' && isDeleted && !!onRestoreRow;
-  const showDelete = filterStatus === 'archived' || isDeleted;
+  const showDelete = filterStatus === 'archived' && isDeleted;
+  // In "All" tab, if wine is deleted, disable the menu (similar to user table)
+  const shouldDisableMenu = isArchived && isInAllTab;
 
   return (
     <>
@@ -314,8 +317,33 @@ export default function WineInventoryTableRow({
           </TableCell>
         )}
 
+        {columnVisibility.archiveStatus && (
+          <TableCell sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
+            <Label
+              variant="soft"
+              color={isArchived ? 'error' : 'success'}
+              sx={{
+                textTransform: 'capitalize',
+                fontSize: { xs: '0.6875rem', md: '0.75rem' },
+                fontWeight: 600,
+              }}
+            >
+              {isArchived ? 'Archived' : 'Active'}
+            </Label>
+          </TableCell>
+        )}
+
         <TableCell align="right" sx={{ px: { xs: 1.5, md: 2 }, ...(dense && { py: 1 }) }}>
-          <IconButton onClick={handleOpenPopover}>
+          <IconButton
+            onClick={handleOpenPopover}
+            disabled={isLoading || shouldDisableMenu}
+            sx={{
+              width: { xs: 36, md: 40 },
+              height: { xs: 36, md: 40 },
+              opacity: shouldDisableMenu ? 0.5 : 1,
+              cursor: shouldDisableMenu ? 'not-allowed' : 'pointer',
+            }}
+          >
             <Iconify icon="eva:more-vertical-fill" />
           </IconButton>
         </TableCell>
@@ -332,17 +360,17 @@ export default function WineInventoryTableRow({
           View
         </MenuItem>
 
-        <MenuItem
-          onClick={() => {
-            onEditRow();
-            handleClosePopover();
-          }}
-        >
-          <Iconify icon="eva:edit-fill" />
-          Edit
-        </MenuItem>
-
-        <Divider sx={{ borderStyle: 'dashed' }} />
+        {!isArchived && (
+          <MenuItem
+            onClick={() => {
+              onEditRow();
+              handleClosePopover();
+            }}
+          >
+            <Iconify icon="eva:edit-fill" />
+            Edit
+          </MenuItem>
+        )}
 
         {isArchived && isInAllTab ? (
           <MenuItem onClick={handleOpenDeleteConfirm} sx={{ color: 'error.main' }}>

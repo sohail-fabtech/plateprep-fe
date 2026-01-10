@@ -293,7 +293,7 @@ export async function restoreWineInventory(
 export async function permanentlyDeleteWineInventory(
   id: string | number
 ): Promise<PermanentlyDeleteWineResponse> {
-  const response = await axiosInstance.delete<PermanentlyDeleteWineResponse>(
+  const response = await axiosInstance.post<PermanentlyDeleteWineResponse>(
     `/custom-wine/${id}/delete/`
   );
   return response.data;

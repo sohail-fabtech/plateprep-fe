@@ -158,22 +158,6 @@ export default function WineInventoryDetailsPage() {
     setEditingField(null);
   }, []);
 
-  // Handle delete wine
-  const handleDeleteWine = useCallback(async () => {
-    if (!wineData) return;
-
-    try {
-      console.log('✅ [WINE DELETED]', { wineId: wineData.id });
-      enqueueSnackbar('Wine deleted successfully!', { variant: 'success' });
-      navigate(PATH_DASHBOARD.wineInventory.list);
-    } catch (err) {
-      console.error('Error deleting wine:', err);
-      enqueueSnackbar('Failed to delete wine', { variant: 'error' });
-    } finally {
-      setOpenDeleteConfirm(false);
-    }
-  }, [wineData, enqueueSnackbar, navigate]);
-
   // Get stock status color
   const getStockStatusColor = (status: string): 'success' | 'warning' | 'error' => {
     switch (status) {
@@ -407,9 +391,12 @@ export default function WineInventoryDetailsPage() {
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                         Wine Type
                       </Typography>
-                       <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {wineData.wineType}
-                        </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Box sx={{ color: 'primary.main', display: 'flex', alignItems: 'center' }}>
+                          {icon('ic_wine')}
+                        </Box>
+                        <Chip label={wineData.wineType} size="small" color="primary" />
+                      </Stack>
                     </Stack>
                   </Card>
                 </Grid>
@@ -428,9 +415,16 @@ export default function WineInventoryDetailsPage() {
                         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                           Profile
                         </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {wineData.wineProfile}
-                        </Typography>
+                        <EditableField
+                          value={wineData.wineProfile || ''}
+                          type="text"
+                          canEdit={canEdit}
+                          isEditing={editingField === 'wineProfile'}
+                          onEdit={() => handleFieldEdit('wineProfile')}
+                          onSave={(value) => handleFieldSave('wineProfile', value as string)}
+                          onCancel={handleFieldCancel}
+                          placeholder="Enter profile"
+                        />
                       </Stack>
                     </Card>
                   </Grid>
@@ -461,7 +455,7 @@ export default function WineInventoryDetailsPage() {
                   </Card>
                 </Grid>
 
-                {/* <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6}>
                   <Card
                     sx={{
                       p: 2,
@@ -485,7 +479,7 @@ export default function WineInventoryDetailsPage() {
                       </Label>
                     </Stack>
                   </Card>
-                </Grid> */}
+                </Grid>
               </Grid>
 
               {/* Tags - Editable */}
@@ -494,11 +488,24 @@ export default function WineInventoryDetailsPage() {
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
                     Tags
                   </Typography>
+                  {canEdit && editingField !== 'tags' && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleFieldEdit('tags')}
+                      sx={{
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.16),
+                        },
+                      }}
+                    >
+                      <Iconify icon="eva:edit-outline" width={18} />
+                    </IconButton>
+                  )}
                 </Stack>
                 <EditableField
-                  label="Tags"
                   value={wineData.tags || []}
-                  type="tags"
+                  type="select-multiple"
                   canEdit={canEdit}
                   isEditing={editingField === 'tags'}
                   onEdit={() => handleFieldEdit('tags')}
@@ -622,9 +629,22 @@ export default function WineInventoryDetailsPage() {
                 <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
                   Description
                 </Typography>
+                {canEdit && editingField !== 'description' && (
+                  <IconButton
+                    size="small"
+                    onClick={() => handleFieldEdit('description')}
+                    sx={{
+                      bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.primary.main, 0.16),
+                      },
+                    }}
+                  >
+                    <Iconify icon="eva:edit-outline" width={18} />
+                  </IconButton>
+                )}
               </Stack>
               <EditableField
-                label="Description"
                 value={wineData.description}
                 type="multiline"
                 canEdit={canEdit}

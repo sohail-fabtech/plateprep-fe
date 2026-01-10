@@ -84,6 +84,7 @@ const TABLE_HEAD = [
   { id: 'stockStatus', label: 'Stock Status', align: 'left' },
   { id: 'tags', label: 'Tags', align: 'left' },
   { id: 'location', label: 'Location', align: 'left' },
+  { id: 'archiveStatus', label: 'Archive Status', align: 'left' },
   { id: '', label: 'Action', align: 'right' },
 ];
 
@@ -97,6 +98,7 @@ const DEFAULT_COLUMN_VISIBILITY = {
   stockStatus: true,
   tags: true,
   location: true,
+  archiveStatus: true,
 };
 
 // LocalStorage keys specific to wine inventory table
